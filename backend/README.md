@@ -39,9 +39,16 @@ cargo run -- --config src/config/bot.toml --environment dev --mode observe --ope
 export PERSIST_MARKET_DATA=1
 ```
 
-### WebSocket klines (read-only)
+### WebSocket + REST hybrid (read-only market data)
 
-In `dev`, the monitor opens `wss://stream.testnet.binance.vision/ws/<symbol>@kline_1m` (mainnet uses `stream.binance.com` when `environment = prod`). Closed 1m candles are logged and forwarded to `closed_kline_rx` in `app.rs` for future strategy wiring. Shutdown cancels the stream via `CancellationToken` (no orphan tasks).
+When `market.timeframe` is `1m`, the monitor runs **both**:
+
+- **WebSocket** (`wss://stream.testnet.binance.vision/ws/<symbol>@kline_1m` in `dev`; mainnet uses `stream.binance.com` in `prod`): each **closed** 1m kline upserts into `HybridCandleFeed` (`src/market_feed.rs`) and triggers SMA evaluation if that bar timestamp was not already evaluated (avoids duplicate eval when REST catches up).
+- **REST poll** (`market.poll_seconds`): refreshes the sliding candle window as backfill/fallback; evaluates only when the newest bar timestamp advances past `last_evaluated_ts`.
+
+For timeframes other than `1m`, only REST drives strategy (WS is not started). Shutdown cancels the stream via `CancellationToken`.
+
+With `PERSIST_MARKET_DATA=1` and `DATABASE_URL` set, 1m candles from REST windows (`monitor-rest`) and WS closes (`monitor-ws`) use the same `persist_dataset` path.
 
 ### PostgreSQL integration test (ignored by default)
 
@@ -75,7 +82,8 @@ cargo test
 - `src/ui/`: terminal dashboard and pause/quit controls.
 - `src/market.rs`: canonical 1m `HistoricalDataset` for backtests/persistence; converts to `mantis_ta` candles for SMA evaluation.
 - `src/persistence/`: optional PostgreSQL migrations + `persist_dataset` (`backtest --persist` or monitor with `PERSIST_MARKET_DATA=1`).
-- `src/exchanges/live.rs`: WS session plan + Binance `kline_1m` stream (`tokio-tungstenite`). Emits closed candles on an internal channel in `app.rs` (REST poll remains the primary feed for strategy evaluation). No order submission on the WS path.
+- `src/market_feed.rs`: `HybridCandleFeed` merges REST windows and WS closed 1m bars with de-duplicated evaluation triggers.
+- `src/exchanges/live.rs`: WS session plan + Binance `kline_1m` stream (`tokio-tungstenite`). No order submission on the WS path.
 - `src/backtest_cli.rs`: non-TUI `backtest` subcommand.
 - `src/domain.rs` / `src/portfolio.rs`: ranking and balance models used in tests and backtest output (not live execution).
 

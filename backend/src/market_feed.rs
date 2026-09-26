@@ -20,10 +20,11 @@ pub struct HybridCandleFeed {
 }
 
 impl HybridCandleFeed {
-    pub fn new(limit: usize) -> Self {
+    pub fn new(limit: u32) -> Self {
+        let limit = usize::try_from(limit).unwrap_or(1).max(1);
         Self {
             candles: Vec::new(),
-            limit: limit.max(1),
+            limit,
             last_evaluated_ts: None,
         }
     }

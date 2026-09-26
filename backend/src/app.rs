@@ -24,7 +24,7 @@ use crate::{
     },
     jev::JevAdvisor,
     market::{Candle, HistoricalDataset},
-    market_feed::{HybridCandleFeed, ws_matches_configured_timeframe},
+    market_feed::{ws_matches_configured_timeframe, HybridCandleFeed},
     persistence::{persist_market_data_enabled, Database},
     portfolio::Asset,
     risk::{gate_signal, profile_limits, ExecutionContext, RiskLimits},
@@ -128,12 +128,12 @@ async fn apply_strategy_snapshot(
     dashboard.update_market(snapshot, note);
     dashboard.push_log(format!(
         "{} | {} | {} | {}",
-        config.market.symbol,
-        config.operation,
-        config.risk_profile,
-        feed_source
+        config.market.symbol, config.operation, config.risk_profile, feed_source
     ));
-    event_tx.send(AppEvent::Refresh(dashboard.clone())).await.is_ok()
+    event_tx
+        .send(AppEvent::Refresh(dashboard.clone()))
+        .await
+        .is_ok()
 }
 
 async fn run_evaluation_cycle(
@@ -196,8 +196,7 @@ pub async fn run(config: Config, database: Option<Database>) -> BotResult<()> {
     let ws_for_timeframe = ws_matches_configured_timeframe(&config.market.timeframe);
     let (mut closed_kline_rx, ws_stream_task) = if ws_for_timeframe {
         let (closed_kline_tx, closed_kline_rx) = mpsc::channel::<ClosedKline>(64);
-        let task = match market_stream_plan(&spot.id, &config.market.symbol, config.environment)
-        {
+        let task = match market_stream_plan(&spot.id, &config.market.symbol, config.environment) {
             Ok(plan) => Some(spawn_market_kline_stream(
                 plan,
                 ws_shutdown.clone(),
@@ -278,6 +277,7 @@ pub async fn run(config: Config, database: Option<Database>) -> BotResult<()> {
                 Some(UiCommand::Resume) => { paused = false; info!(target: "system", "Trading evaluation resumed by operator"); }
             },
             kline = recv_ws_kline(&mut closed_kline_rx), if !paused && ws_feed_active => {
+                let Some(kline) = kline else { break };
                 if persist_market_data_enabled() {
                     if let Some(db) = database.as_ref() {
                         persist_ws_1m_candle(db, &config.market.symbol, kline.candle).await;
