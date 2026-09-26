@@ -1,0 +1,24 @@
+[exchange]
+id = "binance"
+
+[spot]
+account_label = "paper-main"
+symbols = ["BTC/USDT"]
+
+[spot.limits]
+rate_limit_per_minute = 600
+
+[spot.endpoints]
+rest_base_url = "https://testnet.binance.vision"
+stream_base_url = "wss://testnet.binance.vision/ws"
+
+[futures]
+account_label = "paper-main"
+symbols = ["BTC/USDT"]
+
+[futures.limits]
+rate_limit_per_minute = 600
+
+[futures.endpoints]
+rest_base_url = "https://testnet.binancefuture.com"
+stream_base_url = "wss://stream.binancefuture.com/ws"

@@ -1,0 +1,40 @@
+[package]
+name = "rust-trading-bot"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Backend-only crypto trading bot with terminal UI"
+license = "MIT"
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio-rustls", "postgres", "migrate"] }
+ccxt-core = "=0.1.5"
+ccxt-exchanges = { version = "=0.1.5", features = ["rustls-tls"] }
+crossterm = { version = "0.29", features = ["event-stream"] }
+futures-util = "0.3"
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-webpki-roots"] }
+tokio-util = "0.7"
+mantis-ta = { version = "0.6.7", features = ["strategy", "backtest"] }
+ratatui = "0.30"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+rust_decimal = { version = "1", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "signal"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-appender = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+
+[dev-dependencies]
+httpmock = "0.7"
+tempfile = "3"
+
+[[bin]]
+name = "bot"
+path = "src/main.rs"

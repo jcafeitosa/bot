@@ -1,0 +1,34 @@
+environment = "dev"
+operation = "day_trader"
+risk_profile = "conservative"
+run_mode = "observe"
+
+[market]
+symbol = "BTC/USDT"
+timeframe = "15m"
+candle_limit = 120
+poll_seconds = 15
+
+[strategy]
+sma_fast = 5
+sma_slow = 20
+
+[risk]
+max_order_quote = 25.0
+max_daily_loss_quote = 25.0
+max_open_positions = 1
+
+[production]
+enabled = false
+acknowledgement = ""
+
+[jev]
+enabled = false
+market_regime = true
+signal_review = true
+ops_triage = true
+timeout_seconds = 8
+
+[logging]
+level = "info"
+directory = "logs"
