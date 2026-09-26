@@ -1,0 +1,60 @@
+# Local development services owned by the bot project.
+# Data is isolated in bot_* volumes; existing NexusOS containers/volumes stay untouched.
+# PostgreSQL uses official 18.6/TimescaleDB 2.30.1 digest. Legacy data stays in
+# bot-agents-postgres-data:/var/lib/postgresql; new PG18 data lives in
+# bot-agents-postgres-v2-data:/home/postgres/pgdata. Never swap only the image
+# back to the legacy custom tag on the active new PGDATA. Recover legacy data
+# from a cold volume snapshot on an isolated clone or from a validated dump.
+name: bot
+
+services:
+  agents-postgres:
+    image: "timescale/timescaledb-ha@sha256:131bfdf82ec0dfe42eaa3f4a189f8e04b7b1dc2b27705cfd921e55ebef339840"
+    container_name: bot-agents-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${BOT_AGENTS_DB:-bot_agents}"
+      POSTGRES_USER: "${BOT_AGENTS_DB_USER:-bot_agents}"
+      POSTGRES_PASSWORD: "${BOT_AGENTS_DB_PASSWORD:?set BOT_AGENTS_DB_PASSWORD in .env}"
+      PGDATA: /home/postgres/pgdata/data
+    ports:
+      - "127.0.0.1:55433:5432"
+    volumes:
+      - bot-agents-postgres-data:/var/lib/postgresql:ro
+      - bot-agents-postgres-v2-data:/home/postgres/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  graph:
+    image: "neo4j@sha256:7f2c38fa0de8caf875d35237fa7dabda74de4f4fc2fc7c3c9e4b53c2add268ad"
+    container_name: bot-agents-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: "${BOT_NEO4J_USER:-neo4j}/${BOT_NEO4J_PASSWORD:?set BOT_NEO4J_PASSWORD in .env}"
+      NEO4J_server_http_x__forward_enabled: "false"
+      NEO4J_server_http_x__forward_allow__proxies: "127.0.0.1,::1"
+      NEO4J_server_http_x__forward_allow__hosts: "localhost,127.0.0.1"
+      NEO4J_server_http_x__forward_private__ips__enabled: "false"
+    ports:
+      - "127.0.0.1:7475:7474"
+      - "127.0.0.1:7688:7687"
+    volumes:
+      - bot-agents-neo4j-data:/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "auth=$${NEO4J_AUTH}; user=$${auth%%/*}; pass=$${auth#*/}; cypher-shell -a bolt://127.0.0.1:7687 -u \"$$user\" -p \"$$pass\" 'RETURN 1' >/dev/null"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bot-agents-postgres-data:
+    name: bot-agents-postgres-data
+  bot-agents-postgres-v2-data:
+    name: bot-agents-postgres-v2-data
+  bot-agents-neo4j-data:
+    name: bot-agents-neo4j-data
