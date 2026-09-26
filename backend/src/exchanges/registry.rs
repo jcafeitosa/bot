@@ -9,6 +9,8 @@ pub struct AccountRegistration {
     pub id: ExchangeAccountId,
     pub symbols: Vec<String>,
     pub rate_limit_per_minute: u32,
+    pub rest_base_url: Option<String>,
+    pub stream_base_url: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -65,6 +67,8 @@ pub fn default_dev_accounts() -> Vec<AccountRegistration> {
             },
             symbols: vec!["BTC/USDT".to_owned()],
             rate_limit_per_minute: 600,
+            rest_base_url: None,
+            stream_base_url: None,
         })
         .collect()
 }

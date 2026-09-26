@@ -2,12 +2,13 @@ use tracing::info;
 
 use crate::config::Environment;
 use crate::exchanges::{
+    live::market_stream_plan,
     registry::{default_dev_accounts, ExchangeRegistry},
     resources::ResourceManager,
     rest::RestUse,
     router::{default_live_streams, rest_use_for_need, MarketNeed},
     stream::{StreamEvent, StreamKind},
-    ws::{WsConfig, WsSessionPlan},
+    ws::WsConfig,
     ExchangeAccountId, ExchangeError,
 };
 
@@ -82,7 +83,7 @@ pub fn log_transport_plan(
         live_stream_subscriptions = streams.len(),
         "Default live stream plan (not armed in REST polling mode)"
     );
-    if let Ok(plan) = build_ws_session_plan(&spot.id, symbol, &streams) {
+    if let Ok(plan) = market_stream_plan(spot, symbol) {
         if let Err(error) = plan.validate() {
             info!(target: "exchanges", %error, "Websocket session plan validation failed");
         }
@@ -95,21 +96,6 @@ pub fn log_transport_plan(
     }
 
     let _futures_registered = !registry.futures_accounts(environment).is_empty();
-}
-
-fn build_ws_session_plan(
-    _account: &ExchangeAccountId,
-    symbol: &str,
-    subscriptions: &[crate::exchanges::stream::StreamSubscription],
-) -> Result<WsSessionPlan, ExchangeError> {
-    if subscriptions.is_empty() {
-        return Err(ExchangeError::StreamDisconnected);
-    }
-    Ok(WsSessionPlan {
-        endpoint: format!("wss://stream.binance.com/ws/{symbol}@kline_1m"),
-        config: WsConfig::default(),
-        subscriptions: subscriptions.to_vec(),
-    })
 }
 
 fn sample_stream_event(

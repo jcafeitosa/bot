@@ -188,14 +188,11 @@ pub struct Credentials {
 
 impl Config {
     pub fn load(cli: &MonitorCli) -> BotResult<Self> {
-        let mut config = if cli.config.exists() {
-            let raw = fs::read_to_string(&cli.config)
-                .map_err(|e| BotError::Configuration(format!("cannot read config: {e}")))?;
-            toml::from_str(&raw)
-                .map_err(|e| BotError::Configuration(format!("invalid TOML: {e}")))?
-        } else {
-            Self::default()
-        };
+        let raw = fs::read_to_string(&cli.config).map_err(|e| {
+            BotError::Configuration(format!("cannot read config {}: {e}", cli.config.display()))
+        })?;
+        let mut config: Self = toml::from_str(&raw)
+            .map_err(|e| BotError::Configuration(format!("invalid TOML: {e}")))?;
         if let Some(v) = cli.environment {
             config.environment = v;
         }
@@ -319,12 +316,8 @@ impl Config {
         let (fast, slow) = periods_for_mode(self.operation);
         if self.strategy.sma_fast != fast || self.strategy.sma_slow != slow {
             return Err(BotError::Configuration(format!(
-                "strategy SMA {}/{} must match operation preset {}/{} for {} (see src/config/profiles.toml)",
-                self.strategy.sma_fast,
-                self.strategy.sma_slow,
-                fast,
-                slow,
-                self.operation,
+                "strategy SMA {}/{} must match operation preset {}/{} for {}",
+                self.strategy.sma_fast, self.strategy.sma_slow, fast, slow, self.operation,
             )));
         }
         Ok(())
@@ -380,29 +373,55 @@ mod tests {
             .contains("not implemented"));
     }
     #[test]
-    fn profiles_toml_matches_periods_for_mode() {
-        #[derive(serde::Deserialize)]
-        struct ModePreset {
-            fast_period: usize,
-            slow_period: usize,
-        }
-        #[derive(serde::Deserialize)]
-        struct ProfileDocument {
-            scalper: ModePreset,
-            day_trader: ModePreset,
-            swing_trader: ModePreset,
-        }
-        let profiles: ProfileDocument =
-            toml::from_str(include_str!("profiles.toml")).expect("profiles.toml");
-        let pairs = [
-            (OperationMode::Scalper, &profiles.scalper),
-            (OperationMode::DayTrader, &profiles.day_trader),
-            (OperationMode::SwingTrader, &profiles.swing_trader),
+    fn operation_presets_accept_only_documented_periods_and_timeframes() {
+        let cases = [
+            (OperationMode::Scalper, "1m", 5, 20),
+            (OperationMode::DayTrader, "15m", 5, 20),
+            (OperationMode::SwingTrader, "1h", 20, 50),
         ];
-        for (mode, preset) in pairs {
-            let (fast, slow) = crate::strategy::periods_for_mode(mode);
-            assert_eq!(fast, preset.fast_period);
-            assert_eq!(slow, preset.slow_period);
+        for (operation, timeframe, fast, slow) in cases {
+            assert_eq!(periods_for_mode(operation), (fast, slow));
+            let accepted = Config {
+                operation,
+                market: MarketConfig {
+                    timeframe: timeframe.into(),
+                    ..Config::default().market
+                },
+                strategy: StrategyConfig {
+                    sma_fast: fast,
+                    sma_slow: slow,
+                },
+                ..Config::default()
+            };
+            assert!(
+                accepted.validate().is_ok(),
+                "expected {operation} {timeframe} {fast}/{slow}"
+            );
+
+            let wrong_periods = Config {
+                strategy: StrategyConfig {
+                    sma_fast: fast + 1,
+                    sma_slow: slow,
+                },
+                ..accepted.clone()
+            };
+            let error = wrong_periods.validate().unwrap_err().to_string();
+            assert!(error.contains("operation preset"));
+            assert!(!error.contains("profiles.toml"));
+
+            let wrong_timeframe = Config {
+                market: MarketConfig {
+                    timeframe: if operation == OperationMode::SwingTrader {
+                        "1m"
+                    } else {
+                        "4h"
+                    }
+                    .into(),
+                    ..accepted.market.clone()
+                },
+                ..accepted
+            };
+            assert!(wrong_timeframe.validate().is_err());
         }
     }
     #[test]

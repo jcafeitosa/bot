@@ -1,4 +1,5 @@
-use super::{ExchangeAccountId, ExchangeError, Transport};
+use super::{ExchangeAccountId, ExchangeError, ExchangeId, MarketType, Transport};
+use crate::config::Environment;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RestUse {
@@ -23,12 +24,19 @@ impl RestUse {
 }
 
 pub fn authorize_rest_use(
-    _account: &ExchangeAccountId,
-    _operation: RestUse,
+    account: &ExchangeAccountId,
+    operation: RestUse,
 ) -> Result<(), ExchangeError> {
-    // Execution stays disabled until sandbox verification, idempotency,
-    // reconciliation, kill-switch, audit and independent review land.
-    Err(ExchangeError::ExecutionDisabled)
+    if account.exchange == ExchangeId::Binance
+        && account.market == MarketType::Spot
+        && account.environment == Environment::Dev
+        && operation == RestUse::HistoricalBackfill
+    {
+        Ok(())
+    } else {
+        // Private REST and order paths remain disabled.
+        Err(ExchangeError::ExecutionDisabled)
+    }
 }
 
 #[cfg(test)]
@@ -49,6 +57,54 @@ mod tests {
         assert_eq!(
             authorize_rest_use(&account, RestUse::OrderSubmit).unwrap_err(),
             ExchangeError::ExecutionDisabled
+        );
+    }
+
+    #[test]
+    fn only_public_spot_dev_backfill_is_allowed() {
+        let spot = ExchangeAccountId::new(
+            ExchangeId::Binance,
+            MarketType::Spot,
+            "paper-main",
+            Environment::Dev,
+        )
+        .unwrap();
+        assert_eq!(
+            authorize_rest_use(&spot, RestUse::HistoricalBackfill),
+            Ok(())
+        );
+        for private_use in [
+            RestUse::BalanceSnapshot,
+            RestUse::OrderSubmit,
+            RestUse::OrderStatus,
+            RestUse::OrderCancel,
+        ] {
+            assert_eq!(
+                authorize_rest_use(&spot, private_use),
+                Err(ExchangeError::ExecutionDisabled)
+            );
+        }
+        let futures = ExchangeAccountId::new(
+            ExchangeId::Binance,
+            MarketType::Futures,
+            "paper-main",
+            Environment::Dev,
+        )
+        .unwrap();
+        assert_eq!(
+            authorize_rest_use(&futures, RestUse::HistoricalBackfill),
+            Err(ExchangeError::ExecutionDisabled)
+        );
+        let prod = ExchangeAccountId::new(
+            ExchangeId::Binance,
+            MarketType::Spot,
+            "paper-main",
+            Environment::Prod,
+        )
+        .unwrap();
+        assert_eq!(
+            authorize_rest_use(&prod, RestUse::HistoricalBackfill),
+            Err(ExchangeError::ExecutionDisabled)
         );
     }
 }

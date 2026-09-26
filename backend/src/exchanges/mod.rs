@@ -100,6 +100,8 @@ pub enum ExchangeError {
     ExecutionDisabled,
     #[error("stream disconnected")]
     StreamDisconnected,
+    #[error("configured endpoint is outside the permitted Spot testnet origin")]
+    InvalidEndpoint,
 }
 
 #[cfg(test)]

@@ -57,7 +57,7 @@ impl Candle {
         }
     }
 
-    fn validate(&self) -> Result<(), MarketError> {
+    pub(crate) fn validate(&self) -> Result<(), MarketError> {
         if self.timestamp_ms < 0
             || [self.open, self.high, self.low, self.close, self.volume]
                 .iter()
