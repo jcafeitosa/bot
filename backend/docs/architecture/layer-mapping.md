@@ -98,6 +98,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `active_config_snapshot` (incl. `monitor_registry`), `providers_status_snapshot` | Config / providers |
 | `order_execution_mode` + `GET /orders/execution-status` | Orders seam (read-only status) |
 | `order_reconciliation_lookup` + `GET /orders/reconciliation/{client_order_id}` | Reconciliação pós-submit live |
+| `hydrate_order_reconciliation_from_pg` | Infra → domain (boot HTTP `serve`, espelha `order_reconciliation` PG na memória) |
 
 Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`portfolio/paper-snapshot`**) chamam `http_bridge` diretamente com body/query. O snapshot paper agrega fills de `PaperLedgerExecutor` (modo `paper`) via `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (saldos quote + `positions` quando `paper_fill_unit_price` no submit HTTP ou `BOT_PAPER_FILL_UNIT_PRICE`).
 
@@ -114,7 +115,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 cargo test --locked --bin bot
 ```
 
-Evidência: **346** testes no bin `bot`, **8** ignorados (PG/Neo4j + testnet manual).
+Evidência: **347** testes no bin `bot`, **8** ignorados (PG/Neo4j + testnet manual).
 
 ## Documentos relacionados
 
