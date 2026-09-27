@@ -1,0 +1,75 @@
+---
+title: Referência de CLI e configuração
+description: Comandos, opções, variáveis de ambiente e contratos de configuração do backend
+tags:
+  - reference
+  - backend
+  - cli
+  - configuration
+---
+# Referência de CLI e configuração
+
+## Comandos
+
+O binário tem dois caminhos principais:
+
+| Caminho | Uso |
+|---|---|
+| Monitor | Executado sem subcomando; inicia a TUI e o fluxo de mercado configurado. |
+| Backtest | `cargo run -- backtest --config <arquivo>`; gera candles sintéticos e imprime um resumo JSON. |
+
+Exemplo do monitor:
+
+```sh
+cargo run -- --config src/config/bot.toml --environment dev --mode observe --operation day-trader --risk-profile conservative
+```
+
+Sem `--config`, o processo procura `src/config/bot.toml` relativo ao diretório de execução.
+
+## Opções do monitor
+
+| Opção | Valores |
+|---|---|
+| `--environment` | `dev`, `prod` |
+| `--operation` | `hft`, `scalper`, `day-trader`, `swing-trader` |
+| `--risk-profile` | `conservative`, `moderate`, `aggressive`, `auto` |
+| `--mode` | `observe`, `paper`, `testnet` |
+| `--config` | caminho para TOML, padrão `src/config/bot.toml` |
+
+O modo `hft` é explicitamente rejeitado pelo backend atual. `testnet` não habilita ordens na versão atual.
+
+## Timeframes por operação
+
+| Operação | Timeframes aceitos |
+|---|---|
+| `scalper` | `1m`, `3m`, `5m` |
+| `day-trader` | `5m`, `15m`, `30m` |
+| `swing-trader` | `1h`, `4h` |
+| `hft` | `1m`, mas a operação é rejeitada |
+
+A validação de período SMA e timeframe é feita junto com a configuração. Combinações inválidas impedem a inicialização.
+
+## Variáveis de ambiente
+
+| Variável | Finalidade |
+|---|---|
+| `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_SECRET` | Credenciais opcionais da conta Spot de teste; devem ser fornecidas em conjunto. |
+| `DATABASE_URL` | Ativa a tentativa de conexão e migração do PostgreSQL. |
+| `PERSIST_MARKET_DATA=1` | Ativa a persistência opcional do monitor. |
+| `TYPESAFE_API_KEY` | Credencial para avaliações consultivas do Jev/TypeSafe quando habilitadas. |
+| `TYPESAFE_ENDPOINT` | Endpoint compatível alternativo; HTTP só é aceito para localhost. |
+
+Nunca comite `.env` ou credenciais.
+
+## Persistência
+
+- O backtest usa `--persist` para gravar o dataset sintético.
+- O monitor só persiste com `PERSIST_MARKET_DATA=1`, `DATABASE_URL` e timeframe `1m`.
+- As migrações ativas ficam em `src/persistence/migrations/`.
+- Falha de conexão não deve ser tratada como prova de histórico completo.
+
+A semântica de estados, gaps e recuperação está no [SDD T-15](../sdd/monitor-persistence-policy-sdd.md). O fluxo de candles e avaliação está no [SDD T-10](../sdd/monitor-pause-resume-sdd.md).
+
+## Contratos de segurança
+
+O backend trabalha com dados públicos e não envia ordens no fluxo atual. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).
