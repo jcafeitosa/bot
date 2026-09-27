@@ -1,3 +1,12 @@
+---
+title: SDD T-16 — Mapa de módulos do backend no README
+description: Design do mapa de módulos do backend no README
+tags:
+  - sdd
+  - backend
+  - architecture
+---
+
 # SDD T-16 — Mapa de módulos do backend no README
 
 - **Autor:** System Designer Builder `/root/module_map_designer`

@@ -1,3 +1,12 @@
+---
+title: Plano de execução das correções pendentes do backend
+description: Plano de entregas, gates, dependências e bloqueios do backend
+tags:
+  - planning
+  - backend
+  - execution
+---
+
 # Plano de execução das correções pendentes do backend
 
 - **Responsável:** Orquestrador `/root`

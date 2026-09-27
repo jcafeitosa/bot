@@ -1,3 +1,12 @@
+---
+title: Pesquisa de capacidades para o módulo agents
+description: Pesquisa de referências e limites para a identidade persistente de agentes
+tags:
+  - research
+  - agents
+  - backend
+---
+
 # Pesquisa de capacidades para o módulo `agents`
 
 - **Status:** pesquisa inicial — revisão independente pendente

@@ -1,3 +1,12 @@
+---
+title: SDD — Correções de configuração, mercado e organização do backend
+description: Design técnico das correções de configuração, mercado e organização do backend
+tags:
+  - sdd
+  - backend
+  - market-data
+---
+
 # SDD — Correções de configuração, mercado e organização do backend
 
 - **ID:** T-03
