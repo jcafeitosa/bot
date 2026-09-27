@@ -13,6 +13,8 @@ w0_01_status: draft
 
 # SDD — HTTP admin bearer seam
 
+TEST
+
 ## W0-01 — fail-closed de verdade (Onda 0, proposta para G1) [SEGURANÇA]
 
 - **Estado desta seção: `draft`** (G1, ciclo 3 do Builder, depois do Critic G1 ciclo 2 = REPROVADO). É o último ciclo antes de escalar ao owner. Vale só para esta seção: o `status: partial` do front-matter continua descrevendo as seções "Gate 1" em diante, que documentam o código atual. Nenhum gate aprovado. Precisa de Critic independente e de acordo do Julio sobre os seams antes do primeiro teste (AGENTS.md, G1/G3).
