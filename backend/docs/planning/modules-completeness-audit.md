@@ -20,7 +20,7 @@ tags:
 | `modules/orders` | Paper/recording/testnet, idempotência+PG, reconciliação+poll (`LiveExchangeSpotOrderReconciliationQuery` + testnet observe), `SpotOrderSubmitAck` | `spot_order_reconciliation_query.rs`, `binance_spot_testnet_reconcile.rs`, `state.rs` | Prod REST; threat model/Critic |
 | `modules/portfolio` | `paper_snapshot_with_fills` + posições com `fill_unit_price`/`BOT_PAPER_FILL_UNIT_PRICE`; HTTP `positions[]` | `controllers.rs`, `http_bridge/portfolio.rs`, `paper_ledger_executor.rs` | Preço de mercado dinâmico (não só env fixo) |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
-| `presentation/http` | OpenAPI **36** paths; `GET /meta` (`order_reconciliation_pending`); catálogo bots `monitor_evaluator`; contratos `meta_and_*`; `HttpAdminAuth` | `meta.rs`, `server.rs` (`bots_catalog_http_*`) | Auth owner produto (Gate 1) |
+| `presentation/http` | OpenAPI **36** paths; `GET /meta`; reconciliação orders; `meta_and_*`; seam `HttpAdminAuth` com matriz 401/2xx em [test-matrix](../reference/test-matrix.md) | `server.rs`, `state.rs`, `verify-backend-gates.sh` (**379** testes) | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 
