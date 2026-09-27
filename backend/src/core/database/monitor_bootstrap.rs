@@ -2,7 +2,6 @@ use thiserror::Error;
 
 use crate::core::persistence::{Database, PersistenceError};
 
-use super::config::postgres_url_from_env;
 use crate::core::config::monitor::database_url_for_monitor;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -66,14 +65,7 @@ pub async fn bootstrap_monitor_postgres(
 }
 
 pub async fn postgres_for_cli_persist() -> Result<Database, PersistenceError> {
-    let url = postgres_url_from_env()
-        .map_err(|_| PersistenceError::InvalidUrl)?
-        .filter(|value| !value.trim().is_empty())
-        .ok_or(PersistenceError::MissingUrl)?;
-    if url.trim().is_empty() {
-        return Err(PersistenceError::InvalidUrl);
-    }
-    let db = Database::connect_from_url(&url).await?;
+    let db = Database::connect_from_env().await?;
     db.migrate().await?;
     Ok(db)
 }
