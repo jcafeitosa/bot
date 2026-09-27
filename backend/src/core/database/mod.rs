@@ -4,6 +4,7 @@
 mod bundle;
 mod config;
 mod graph_projection;
+pub mod graph_projection_cli;
 mod graph_projection_outbox;
 mod graph_projection_outbox_worker;
 pub(crate) mod monitor_bootstrap;
@@ -19,6 +20,9 @@ pub use graph_projection::{
     AgentHierarchyProjection, BotCatalogProjection, BotPromotionProjection, GraphProjectionError,
     GraphProjectionPort, OrderIntentProjection, ProjectedSupervisorKind, SubmittedEdgeProjection,
     AGENTS_GRAPH_DOMAIN, BOTS_GRAPH_DOMAIN, TRADING_GRAPH_DOMAIN,
+};
+pub use graph_projection_cli::{
+    GraphProjectionCli, GraphProjectionCommand, GraphProjectionDrainCli,
 };
 pub use graph_projection_outbox::{
     drain_graph_projection_outbox, drain_graph_projection_outbox_with_port,

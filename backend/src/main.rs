@@ -27,6 +27,8 @@ enum BotCommand {
     Backtest(modules::backtest::cli::BacktestCli),
     /// Start HTTP API with OpenAPI spec and Scalar UI at /docs
     Serve(presentation::http::ServeCli),
+    /// Graph projection operations (Neo4j outbox drain)
+    GraphProjection(crate::core::database::GraphProjectionCli),
 }
 
 #[derive(Debug, Parser)]
@@ -51,6 +53,7 @@ fn bot_config_path_for_cli(cli: &TopCli) -> std::path::PathBuf {
             .config
             .clone()
             .unwrap_or_else(|| cli.monitor.config.clone()),
+        Some(BotCommand::GraphProjection(_)) => cli.monitor.config.clone(),
         None => cli.monitor.config.clone(),
     }
 }
@@ -69,11 +72,14 @@ async fn main() -> Result<()> {
         Some(BotCommand::Backtest(_)) | None => {
             ensure_bot_config_readable(&bot_config_path_for_cli(&cli))?;
         }
-        Some(BotCommand::Serve(_)) => {}
+        Some(BotCommand::Serve(_)) | Some(BotCommand::GraphProjection(_)) => {}
     }
     match cli.command {
         Some(BotCommand::Backtest(args)) => {
             modules::backtest::cli::run(&args, &cli.monitor).await?
+        }
+        Some(BotCommand::GraphProjection(args)) => {
+            crate::core::database::graph_projection_cli::run(&args).await?;
         }
         Some(BotCommand::Serve(args)) => {
             let mut monitor_cli = cli.monitor.clone();
