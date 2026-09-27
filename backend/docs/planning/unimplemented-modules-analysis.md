@@ -18,15 +18,16 @@ tags:
 O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco, TUI, integrações públicas Binance, persistência básica opcional, logging e Jev consultivo. Os módulos abaixo ainda não existem como capacidade completa:
 
 1. Identidade **persistente** e administração de agentes (registro em memória existe; persistência e API administrativa não).
-2. Autenticação do owner, autorização por agência e bootstrap seguro.
-3. Runtime de execução de agentes, worker, scheduler e recuperação.
-4. Gateway de ferramentas, permissões, aprovações e sandbox.
-5. Memória de conhecimento, memória entre sessões e grafo.
-6. Canais de conversa, voz, aplicações e interface externa.
-7. Execução financeira, saldos privados, ordens e ambiente de produção.
-8. Observabilidade operacional completa.
-9. Estado de persistência e recuperação do monitor conforme C17.
-10. Round-trip PostgreSQL operacional conforme V18.
+2. **Módulo `bots`** — executores versionados de trading, avaliação e promoção (projeto futuro; **não** é `modules/agents` nem o tipo `BotId` do backtest).
+3. Autenticação do owner, autorização por agência e bootstrap seguro.
+4. Runtime de execução de agentes, worker, scheduler e recuperação.
+5. Gateway de ferramentas, permissões, aprovações e sandbox.
+6. Memória de conhecimento, memória entre sessões e grafo.
+7. Canais de conversa, voz, aplicações e interface externa.
+8. Execução financeira, saldos privados, ordens e ambiente de produção.
+9. Observabilidade operacional completa.
+10. Estado de persistência e recuperação do monitor conforme C17.
+11. Round-trip PostgreSQL operacional conforme V18.
 
 Essas capacidades não devem ser tratadas como módulos parcialmente prontos só porque existem tipos auxiliares, flags de configuração ou documentação de design.
 
@@ -35,6 +36,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Capacidade prevista | Situação no código | Evidência | Próximo gate |
 |---|---|---|---|
 | Identidade de agentes `IdentityOnly` | Módulo `modules/agents` em memória (registro, hierarquia, lifecycle, advisory Jev); sem schema PostgreSQL nem API HTTP admin. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, contrato HTTP admin e autenticação verificável do owner. |
+| Módulo `bots` (executores versionados) | **Não existe** `src/modules/bots/`. `backtest::BotId` é só chave de simulação (`strategy@version:timeframe:symbol`); `BotSignal.bot_id` em contratos é opcional para transporte de sinal, não cadastro de bot. | [Pesquisa agents](../research/agents-capability-research.md) — “Bots executores”; [SDD agents — Relação com bots](../sdd/agents-module-sdd.md). | SDD dedicado, gates após identidade/auth; não fundir com `AgentRegistry` nem renomear `BotId` sem migração explícita. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
 | Worker e scheduler | Não existe worker durável, agenda, heartbeat, lease ou retry de execução. | A pesquisa classifica rotinas e operação contínua como fase posterior. | SDD de execução durável, fila/outbox, recuperação e SLO. |
