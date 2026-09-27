@@ -130,7 +130,7 @@ modules/agents/
 - Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `http_integration_tests.rs`).
 - `GET /api/v1/meta` → `http_seams` (bindings owner/agency booleanos; ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
 - `assert_runtime_promotion_authorized`: capability, lifecycle, `promotion_rejects_invalid_bot_id` (`bot_promotion.rs`).
-- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **386** testes (**17** ignorados: PG×15 no script incl. `loads_credentials_from_postgres` (0007); Neo4j; testnet manual); PG domínio **15/15** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.
+- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **432** testes (**0** ignorados: PG×20 no script incl. `loads_credentials_from_postgres` (0007); Neo4j; testnet manual); PG domínio **20/20** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.
 - **Gap Gate 1 produto:** autenticação/autorização do owner humano além de `BOT_HTTP_*` — ver [pesquisa de capacidades](../research/agents-capability-research.md); bloqueia fechamento do goal de completude de módulos.
 
 ## Critérios de fechamento G1 (checklist)
@@ -139,10 +139,10 @@ modules/agents/
 |----------|-----------------|--------|
 | `AgentRegistry` + hierarquia + lifecycle | `modules/agents/tests.rs`, `http_bridge/agents.rs` | Sim |
 | `IdentityOnly` (sem tools/ordens) | SDD + invariantes de módulo | Sim |
-| Espelhamento/hidratação PG | `PgAgentIdentityStore`, `load_agent_identity_snapshot` / `apply_agent_identity_snapshot` no boot `server.rs`; `pg_identity_snapshot_round_trip`; HTTP `http_bridge/agents.rs` (lifecycle + cold-start) + `state.rs` `pg_register_agent_and_persist_cold_start_via_snapshot` | **Parcial** (PG×15 em `run-pg-integration-tests.sh`; gate default ignora) |
+| Espelhamento/hidratação PG | `PgAgentIdentityStore`, `load_agent_identity_snapshot` / `apply_agent_identity_snapshot` no boot `server.rs`; `pg_identity_snapshot_round_trip`; HTTP `http_bridge/agents.rs` (lifecycle + cold-start) + `state.rs` `pg_register_agent_and_persist_cold_start_via_snapshot` | **Parcial** (PG×20 em `run-pg-integration-tests.sh`; gate default ignora) |
 | Seam HTTP admin (`BOT_HTTP_*`) | [http-admin-auth-seam-sdd.md](./http-admin-auth-seam-sdd.md) | Sim (não é auth owner) |
 | Capability `promote_runtime_bot` + HTTP promote | `bot_promotion.rs`, migração `0005`, `server.rs` | Sim (seam) |
 | Autenticação verificável do owner humano | pesquisa § Etapa 1 item 4 | **Não** |
 | Bootstrap inicial único e auditado | pesquisa § bloqueador | **Não** |
 | Revisão Critic G1 + contrato público acordado | AGENTS.md | **Não** |
-| `./scripts/verify-backend-gates.sh` verde | **386** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **432** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |

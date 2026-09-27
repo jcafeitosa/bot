@@ -51,4 +51,4 @@ Nenhuma rota retorna coluna `secret`. Implementação futura exige owner auth Ga
 
 - Unit: env fallback when cache empty.
 - Scaffold: migration SQL contains table name.
-- Integration: `loads_credentials_from_postgres` em `core/providers/credentials/pg_integration.rs` (skip sem `DATABASE_URL`); incluído em `./scripts/run-pg-integration-tests.sh` (**15/15** com `DATABASE_URL` → `trading_bot`; evidência 2026-09-27: `OK: PostgreSQL integration tests passed (15 tests)`).
+- Integration: `loads_credentials_from_postgres` em `core/providers/credentials/pg_integration.rs` (skip sem `DATABASE_URL`); incluído em `./scripts/run-pg-integration-tests.sh` (**20/20** com `DATABASE_URL` → `trading_bot`; evidência 2026-09-27: `OK: PostgreSQL integration tests passed (20 tests)`).

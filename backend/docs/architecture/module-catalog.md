@@ -57,7 +57,7 @@ flowchart LR
 | `core` | `config` | `Config::load`, `Config::validate` | TOML em `src/core/config/`, overrides CLI, validação. | `tests/config_cli.rs`, testes do módulo. |
 | `core` | `error` / `logging` | `BotError`, `init` | Erros e tracing compartilhados. | Consumidores. |
 | `core` | `database` | `AppDatabases`, `PostgresDatabase`, `Neo4jGraph` | Dual-store PG 18+ (Timescale/pgvector) + Neo4j; pool, migrate, health. Domínio ainda não projeta no grafo — ver [unified-neo4j-graph-strategy.md](./unified-neo4j-graph-strategy.md). | Testes unitários; PG/Neo4j via `pg_integration` (skip sem env). |
-| `core` | `persistence` | `Database`, `persist_dataset` | Fachada de domínio sobre `PostgresDatabase`; conflito de manifesto → `DatasetManifestConflict`; lock `pg_advisory_xact_lock(hashtext(dataset_id))` na transação. | `manifest_match_*`, `postgres_scaffold_*`, `persist_dataset_*` (script PG **18/18** com `DATABASE_URL`). |
+| `core` | `persistence` | `Database`, `persist_dataset` | Fachada de domínio sobre `PostgresDatabase`; conflito de manifesto → `DatasetManifestConflict`; lock `pg_advisory_xact_lock(hashtext(dataset_id))` na transação. | `manifest_match_*`, `postgres_scaffold_*`, `persist_dataset_*` (script PG **20/20** com `DATABASE_URL`). |
 | `modules` | `monitor` | `run`, `bootstrap_monitor` | Supervisor REST/WS, pausa/retomada, dashboard, persistência. | Testes em `supervisor.rs` e controllers. |
 | `modules` | `market` | candles, `HybridCandleFeed` | Validação, agregação 1m, feed híbrido. | Testes de feed e modelos. |
 | `modules` | `strategy` | SMA/EMA, `evaluate_for_kind` | Sinais sem efeitos colaterais. | Testes de períodos e sinais. |
@@ -219,7 +219,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 
 ## 7. Débitos e limites conhecidos
 
-- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **414** testes no bin `bot`, **0** ignorados; PG **18/18** via `./scripts/verify-backend-full.sh` (`OK: backend full verification passed`) ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); `cargo test --bin bot http_integration -- --test-threads=1` → **41** passed; paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
+- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **432** testes no bin `bot`, **0** ignorados; PG **20/20** via `./scripts/verify-backend-full.sh` (`OK: backend full verification passed`) ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); `cargo test --bin bot http_integration -- --test-threads=1` → **43** passed; paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
 - Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) em testes com skip via `pg_integration` — exercício real exige `DATABASE_URL` → `trading_bot` (PG 18+).
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.
