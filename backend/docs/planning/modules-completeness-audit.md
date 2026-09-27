@@ -59,7 +59,7 @@ Evidência (2026-09-27): **230** testes no binário `bot`, **5** ignorados (`per
 | Completude bots | `modules/bots/`, `PgBotCatalogStore`, HTTP `/bots/*` | **Parcial** (sem runtime live) |
 | Completude orders | `submit_order`, HTTP 422/503, `HttpOrderExecutor` | **Parcial** (fail-closed default; sem exchange) |
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN`; opcional `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`; não substitui auth owner completo) |
-| Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge` (incl. `bots_runtime`), `ApiState` + enrich monitor/bot runtime, [layer-mapping.md](../architecture/layer-mapping.md) | **Feito** (supervisor ainda não executa bot promovido) |
+| Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge` (incl. `bots_runtime`), `ApiState` + enrich monitor/bot runtime, headless `publish_snapshot` via `monitor_snapshot_from_dashboard`, [layer-mapping.md](../architecture/layer-mapping.md) | **Feito** (sem loop de estratégia por bot promovido) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | 230 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
@@ -82,7 +82,7 @@ Evidência (2026-09-27): **230** testes no binário `bot`, **5** ignorados (`per
 | G1 PG scaffold | agents + bots catálogo | [bots-catalog-persistence-gate1-sdd.md](../sdd/bots-catalog-persistence-gate1-sdd.md) | **Parcial** (código + testes `#[ignore]` PG) |
 | G1 HTTP admin seam | presentation/http | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | **Sim** (não é auth owner produto) |
 | G2 orders live | orders | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`; sem exchange/idempotência) |
-| G2 bots runtime | bots + monitor | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | **Parcial** (`BotRuntimePort`, HTTP promote/demote; sem acoplamento monitor) |
+| G2 bots runtime | bots + monitor | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | **Parcial** (`BotRuntimePort`, HTTP promote/demote, snapshot headless + enrich runtime; sem loop live por `BotId`) |
 | Auth owner produto | agents | [agents-capability-research.md](../research/agents-capability-research.md) | **Bloqueado** na pesquisa |
 
 ## Fechamento do goal (pendente)

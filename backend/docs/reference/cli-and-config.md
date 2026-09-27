@@ -49,7 +49,7 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 | Grupo | Rotas | Notas |
 |---|---|---|
 | `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |
-| `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` usa promoção em memória no **mesmo processo** (`shared_bot_runtime`, compartilhado com HTTP `serve`; supervisor ainda não consome). |
+| `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` usa promoção em memória no **mesmo processo** (`shared_bot_runtime`, compartilhado com HTTP `serve` e enrich do snapshot monitor; `--with-monitor` publica snapshots headless). Executor de estratégia do supervisor ainda usa config global, não o `BotId` promovido. |
 | `orders` | `POST /orders/submit` | Default fail-closed (**503** após risco OK); `BOT_ORDERS_EXECUTION=dev_accept` aceita via double local (sem exchange); **422** se risco rejeita. |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
