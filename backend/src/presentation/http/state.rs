@@ -398,12 +398,25 @@ impl ApiState {
         let agency_id = self.inner.http_admin_auth.bound_agency_id_opt();
         let record = bots_runtime::promote_bot(self.inner.bot_runtime.as_ref(), request)
             .map_err(ApiError::from_bots_error)?;
-        crate::modules::bots::adapters::graph_projection::best_effort_project_bot_promotion(
-            self.graph_projection_sync(),
-            &record,
-            agency_id,
-        )
-        .await;
+        if let Some(db) = self.database() {
+            let store = crate::modules::bots::adapters::PgBotCatalogStore::new(db.as_postgres());
+            store
+                .enqueue_bot_promotion_graph_projection(&record, agency_id)
+                .await
+                .map_err(|error| ApiError::from_bot_error(BotError::Configuration(error)))?;
+            crate::core::database::graph_projection_drain_best_effort(
+                self.graph_projection_sync(),
+                1,
+            )
+            .await;
+        } else {
+            crate::modules::bots::adapters::graph_projection::best_effort_project_bot_promotion(
+                self.graph_projection_sync(),
+                &record,
+                agency_id,
+            )
+            .await;
+        }
         Ok(record)
     }
 
@@ -411,11 +424,25 @@ impl ApiState {
         let previous = self.bot_runtime_status().active;
         bots_runtime::demote_bot(self.inner.bot_runtime.as_ref())?;
         if let Some(active) = previous {
-            crate::modules::bots::adapters::graph_projection::best_effort_retract_bot_promotion(
-                self.graph_projection_sync(),
-                &active.bot_id,
-            )
-            .await;
+            if let Some(db) = self.database() {
+                let store =
+                    crate::modules::bots::adapters::PgBotCatalogStore::new(db.as_postgres());
+                store
+                    .enqueue_bot_demotion_graph_projection(&active.bot_id)
+                    .await
+                    .map_err(crate::modules::bots::BotsError::CatalogStore)?;
+                crate::core::database::graph_projection_drain_best_effort(
+                    self.graph_projection_sync(),
+                    1,
+                )
+                .await;
+            } else {
+                crate::modules::bots::adapters::graph_projection::best_effort_retract_bot_promotion(
+                    self.graph_projection_sync(),
+                    &active.bot_id,
+                )
+                .await;
+            }
         }
         Ok(())
     }
@@ -777,6 +804,7 @@ impl ApiState {
 
     pub async fn persist_bot_catalog(&self) -> Result<BotCatalogPersistResponse, BotError> {
         let config = self.app_config().clone();
+        let postgres_wired = self.database().is_some();
         let mut guard = self.inner.bot_catalog.lock().await;
         let response =
             crate::modules::http_bridge::bots::persist_catalog_for_config(&config, &mut *guard)
@@ -785,11 +813,19 @@ impl ApiState {
             .load_catalog()
             .await
             .map_err(BotError::Configuration)?;
-        crate::modules::bots::adapters::graph_projection::best_effort_project_bot_catalog(
-            self.graph_projection_sync(),
-            &entries,
-        )
-        .await;
+        if postgres_wired {
+            crate::core::database::graph_projection_drain_best_effort(
+                self.graph_projection_sync(),
+                entries.len(),
+            )
+            .await;
+        } else {
+            crate::modules::bots::adapters::graph_projection::best_effort_project_bot_catalog(
+                self.graph_projection_sync(),
+                &entries,
+            )
+            .await;
+        }
         Ok(response)
     }
 

@@ -62,14 +62,17 @@ Implementação: `core/database/graph_projection_cli.rs`; testes `graph_projecti
 
 **Pendente F2.1.3+ (outros domínios):** enqueue na mesma TX fora do caminho orders (§8).
 
-## 8. F2.1.3+ (*partial* — enqueue na mesma TX, fatia orders)
+## 8. F2.1.3+ (*partial* — enqueue na mesma TX)
 
 | Seam | Comportamento |
 |------|----------------|
-| `enqueue_graph_projection_outbox_tx` | INSERT outbox dentro de `sqlx::Transaction` existente (fail-closed → `OrdersError::StoreUnavailable` no caminho orders). |
+| `enqueue_graph_projection_outbox_tx` | INSERT outbox dentro de `sqlx::Transaction` existente (fail-closed → `OrdersError::StoreUnavailable` no caminho orders; `String` no caminho bots/agents PG). |
 | `PgOrderIdempotencyStore::persist_idempotency_and_enqueue_graph_projection` | Uma TX: `INSERT order_idempotency_keys` + N enqueues; usado após submit HTTP bem-sucedido quando `try_claim` PG já reservou a chave. |
+| `PgAgentIdentityStore::persist_identity_and_enqueue_graph_projection` | Uma TX: upsert identity + audit + enqueue hierarchy. |
+| `PgBotCatalogStore::save_catalog` | Uma TX: replace `bot_catalog_entries` + N enqueues `bot_catalog`. |
+| `PgBotCatalogStore::enqueue_bot_promotion_graph_projection` / `enqueue_bot_demotion_graph_projection` | TX só outbox após promote/demote HTTP (runtime sem SoT PG). |
 | `graph_projection_drain_best_effort` | Drain inline pós-commit (Neo4j wired), espelhando `graph_projection_best_effort`. |
 
-Evidência PG: `pg_order_idempotency_and_graph_projection_same_transaction` (`modules/orders/adapters/pg_idempotency.rs`, script **22/22**).
+Evidência PG: `pg_order_idempotency_and_graph_projection_same_transaction`, `pg_agent_identity_and_graph_projection_same_transaction`, `pg_bot_catalog_and_graph_projection_same_transaction` (`run-pg-integration-tests.sh` **24/24**).
 
-**Pendente:** agents/bots/catalog na mesma TX; monitor supervisor continua pós-commit (`best_effort_project_order_intent`).
+**Pendente:** monitor supervisor continua pós-commit (`best_effort_project_order_intent`).

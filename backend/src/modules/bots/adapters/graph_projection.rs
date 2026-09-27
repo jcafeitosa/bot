@@ -56,6 +56,28 @@ fn now_unix_ms() -> i64 {
         .unwrap_or(0)
 }
 
+pub fn bot_catalog_graph_projection_messages(
+    entries: &[BotDefinition],
+) -> Vec<GraphProjectionOutboxMessage> {
+    entries
+        .iter()
+        .map(|definition| {
+            GraphProjectionOutboxMessage::bot_catalog(bot_definition_to_projection(definition))
+        })
+        .collect()
+}
+
+pub fn bot_promotion_graph_projection_message(
+    record: &BotPromotionRecord,
+    agency_id: Option<&str>,
+) -> GraphProjectionOutboxMessage {
+    GraphProjectionOutboxMessage::bot_promotion(promotion_record_to_projection(record, agency_id))
+}
+
+pub fn bot_demotion_graph_projection_message(bot_id: &str) -> GraphProjectionOutboxMessage {
+    GraphProjectionOutboxMessage::bot_promotion(demotion_projection(bot_id))
+}
+
 pub async fn best_effort_project_bot_catalog(
     sync: GraphProjectionSync<'_>,
     entries: &[BotDefinition],
@@ -63,12 +85,7 @@ pub async fn best_effort_project_bot_catalog(
     if sync.postgres.is_none() && sync.neo4j.is_none() {
         return;
     }
-    let messages = entries
-        .iter()
-        .map(|definition| {
-            GraphProjectionOutboxMessage::bot_catalog(bot_definition_to_projection(definition))
-        })
-        .collect::<Vec<_>>();
+    let messages = bot_catalog_graph_projection_messages(entries);
     graph_projection_best_effort(sync, &messages).await;
 }
 
@@ -80,8 +97,7 @@ pub async fn best_effort_project_bot_promotion(
     if sync.postgres.is_none() && sync.neo4j.is_none() {
         return;
     }
-    let projection = promotion_record_to_projection(record, agency_id);
-    let message = GraphProjectionOutboxMessage::bot_promotion(projection);
+    let message = bot_promotion_graph_projection_message(record, agency_id);
     graph_projection_best_effort(sync, &[message]).await;
 }
 
@@ -89,8 +105,7 @@ pub async fn best_effort_retract_bot_promotion(sync: GraphProjectionSync<'_>, bo
     if sync.postgres.is_none() && sync.neo4j.is_none() {
         return;
     }
-    let projection = demotion_projection(bot_id);
-    let message = GraphProjectionOutboxMessage::bot_promotion(projection);
+    let message = bot_demotion_graph_projection_message(bot_id);
     graph_projection_best_effort(sync, &[message]).await;
 }
 

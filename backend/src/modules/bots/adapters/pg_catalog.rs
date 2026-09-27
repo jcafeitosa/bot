@@ -2,8 +2,30 @@ use sqlx::PgPool;
 
 use super::persistence::BotCatalogStore;
 use crate::core::config::OperationMode;
-use crate::core::database::PostgresDatabase;
-use crate::modules::bots::models::{BotDefinition, BotId, StrategyId, StrategyVersion};
+use crate::core::database::{
+    enqueue_graph_projection_outbox_tx, GraphProjectionOutboxError, PostgresDatabase,
+};
+use crate::modules::bots::adapters::graph_projection::{
+    bot_catalog_graph_projection_messages, bot_demotion_graph_projection_message,
+    bot_promotion_graph_projection_message,
+};
+use crate::modules::bots::models::{
+    BotDefinition, BotId, BotPromotionRecord, StrategyId, StrategyVersion,
+};
+
+fn graph_outbox_enqueue_error(error: GraphProjectionOutboxError) -> String {
+    match error {
+        GraphProjectionOutboxError::Store(message) => {
+            format!("graph projection outbox enqueue: {message}")
+        }
+        GraphProjectionOutboxError::InvalidPayload(message) => {
+            format!("graph projection outbox payload: {message}")
+        }
+        GraphProjectionOutboxError::Neo4jUnavailable(_) => {
+            "graph projection outbox enqueue: neo4j unavailable".into()
+        }
+    }
+}
 
 /// Gate 1: durable bot catalog rows in `bot_catalog_entries` (fail-closed; no auth).
 #[derive(Clone)]
@@ -16,6 +38,30 @@ impl PgBotCatalogStore {
         Self {
             pool: db.pool().clone(),
         }
+    }
+
+    /// Enqueues bot promotion graph outbox in one PG transaction (runtime promotion has no PG SoT).
+    pub async fn enqueue_bot_promotion_graph_projection(
+        &self,
+        record: &BotPromotionRecord,
+        agency_id: Option<&str>,
+    ) -> Result<(), String> {
+        let message = bot_promotion_graph_projection_message(record, agency_id);
+        let mut tx = self.pool.begin().await.map_err(|error| error.to_string())?;
+        enqueue_graph_projection_outbox_tx(&mut tx, &message)
+            .await
+            .map_err(graph_outbox_enqueue_error)?;
+        tx.commit().await.map_err(|error| error.to_string())
+    }
+
+    /// Enqueues bot demotion graph outbox in one PG transaction.
+    pub async fn enqueue_bot_demotion_graph_projection(&self, bot_id: &str) -> Result<(), String> {
+        let message = bot_demotion_graph_projection_message(bot_id);
+        let mut tx = self.pool.begin().await.map_err(|error| error.to_string())?;
+        enqueue_graph_projection_outbox_tx(&mut tx, &message)
+            .await
+            .map_err(graph_outbox_enqueue_error)?;
+        tx.commit().await.map_err(|error| error.to_string())
     }
 }
 
@@ -42,6 +88,11 @@ impl BotCatalogStore for PgBotCatalogStore {
             .execute(&mut *tx)
             .await
             .map_err(|error| error.to_string())?;
+        }
+        for message in bot_catalog_graph_projection_messages(entries) {
+            enqueue_graph_projection_outbox_tx(&mut tx, &message)
+                .await
+                .map_err(graph_outbox_enqueue_error)?;
         }
         tx.commit().await.map_err(|error| error.to_string())
     }
@@ -176,5 +227,55 @@ mod tests {
             assert_eq!(entry.symbol, round_tripped.symbol);
             assert_eq!(entry.operation, round_tripped.operation);
         }
+    }
+    #[tokio::test]
+    async fn pg_bot_catalog_and_graph_projection_same_transaction() {
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
+        use crate::modules::backtest::models::StrategyDefinition;
+        use crate::modules::bots::models::MonitorEvaluatorKind;
+        use crate::modules::bots::persist_catalog_snapshot;
+
+        let mut store = PgBotCatalogStore::new(db.as_postgres());
+        let strategy = StrategyDefinition {
+            id: StrategyId::new("sma-cross-outbox").unwrap(),
+            version: StrategyVersion(1),
+            name: "SMA".into(),
+            fast_period: 5,
+            slow_period: 20,
+            evaluator: MonitorEvaluatorKind::default(),
+        };
+        let mut config = crate::core::config::Config {
+            operation: OperationMode::DayTrader,
+            ..Default::default()
+        };
+        config.market.timeframe = "15m".into();
+        config.validate().unwrap();
+        let built = persist_catalog_snapshot(&config, &strategy, &mut store)
+            .await
+            .expect("persist snapshot");
+        assert!(!built.is_empty());
+        let sample = &built[0];
+        let message = crate::modules::bots::adapters::graph_projection::bot_catalog_graph_projection_messages(&built)[0]
+            .idempotency_key
+            .clone();
+        let pending: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_projection_outbox WHERE idempotency_key = $1 AND status = 'pending'",
+        )
+        .bind(&message)
+        .fetch_one(db.pool())
+        .await
+        .expect("outbox count");
+        assert_eq!(pending, 1);
+        let rows: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM bot_catalog_entries WHERE bot_id = $1")
+                .bind(sample.id.as_str())
+                .fetch_one(db.pool())
+                .await
+                .expect("catalog row");
+        assert_eq!(rows, 1);
     }
 }

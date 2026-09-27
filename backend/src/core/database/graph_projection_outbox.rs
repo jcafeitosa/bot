@@ -1,9 +1,10 @@
 //! Durable PG outbox for Neo4j graph projection (F2.1).
 //!
-//! **Enqueue timing:** agents HTTP + orders HTTP (PG paths) enqueue in the same TX as
-//! domain persist (`persist_identity_and_enqueue_graph_projection`,
-//! `persist_idempotency_and_enqueue_graph_projection` + `enqueue_graph_projection_outbox_tx`).
-//! Bots catalog and monitor supervisor remain post-commit (`graph_projection_best_effort`).
+//! **Enqueue timing:** agents/orders/bots catalog (PG) enqueue in the same TX as domain
+//! persist (`persist_identity_and_enqueue_graph_projection`,
+//! `persist_idempotency_and_enqueue_graph_projection`, `PgBotCatalogStore::save_catalog` +
+//! `enqueue_graph_projection_outbox_tx`). Bot promote/demote HTTP enqueues outbox in a
+//! dedicated PG TX when wired; monitor supervisor order intent remains post-commit.
 
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Postgres, Transaction};
