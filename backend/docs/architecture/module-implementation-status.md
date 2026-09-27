@@ -12,7 +12,7 @@ tags:
 **Data da verificação:** 2026-09-27 (`./scripts/verify-backend-full.sh` → **385** passed + **17** ignored, PG **15/15**).  
 **Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
 **Fatia goal completude (HTTP):** `presentation/http/http_integration_tests.rs` — bearer admin, orders executors, portfolio paper, catálogo `monitor_registry` v2; smoke/meta/OpenAPI em `server.rs`. Baseline docs: linha `OK:` de `verify-backend-gates.sh`.  
-**Fatia PG:** agents/bots write-through + hydrate; orders `0004`/`0006`; boot `build_api_state_for_http_serve`. Seam HTTP admin (`BOT_HTTP_*`) — não substitui auth owner. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (auth owner + Critic AGENTS.md).
+**Fatia PG:** agents/bots write-through + hydrate; orders `0004`/`0006`; `provider_credentials` `0007`; boot `build_api_state_for_http_serve` (**15/15** script). Seam HTTP admin (`BOT_HTTP_*`) — não substitui auth owner. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (auth owner + Critic AGENTS.md).
 
 ## Gates (G4)
 

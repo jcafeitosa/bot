@@ -45,4 +45,4 @@ core/config/
 
 ## Validação
 
-`scripts/verify-backend-gates.sh` (fmt, clippy, import-direction, env reads em `core/config/**` + `core/providers/credentials/**`).
+`scripts/verify-backend-gates.sh` → **385** passed / **17** ignored (bin `bot`); PG opcional `./scripts/verify-backend-full.sh` → **15/15** (`run-pg-integration-tests.sh`, incl. `loads_credentials_from_postgres`). Checagens: fmt, clippy, import-direction, env reads em `core/config/**` + `core/providers/credentials/**`.
