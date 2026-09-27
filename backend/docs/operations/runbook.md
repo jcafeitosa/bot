@@ -25,13 +25,13 @@ O backend é um processo de terminal para leitura de dados públicos da Binance 
 Monitor:
 
 ```sh
-cargo run -- --config src/config/bot.toml --environment dev --mode observe --operation day-trader --risk-profile conservative
+cargo run -- --config src/core/config/bot.toml --environment dev --mode observe --operation day-trader --risk-profile conservative
 ```
 
 Backtest:
 
 ```sh
-cargo run -- backtest --config src/config/bot.toml
+cargo run -- backtest --config src/core/config/bot.toml
 ```
 
 Persistência é opt-in. Para o backtest, use `--persist`. Para o monitor, defina `PERSIST_MARKET_DATA=1` e forneça `DATABASE_URL`; mantenha o timeframe em `1m`.

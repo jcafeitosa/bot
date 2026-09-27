@@ -21,10 +21,10 @@ O binário tem dois caminhos principais:
 Exemplo do monitor:
 
 ```sh
-cargo run -- --config src/config/bot.toml --environment dev --mode observe --operation day-trader --risk-profile conservative
+cargo run -- --config src/core/config/bot.toml --environment dev --mode observe --operation day-trader --risk-profile conservative
 ```
 
-Sem `--config`, o processo procura `src/config/bot.toml` relativo ao diretório de execução.
+Sem `--config`, o processo procura `src/core/config/bot.toml` relativo ao diretório de execução (execute a partir de `backend/` ou passe caminho absoluto).
 
 ## Opções do monitor
 
@@ -34,7 +34,7 @@ Sem `--config`, o processo procura `src/config/bot.toml` relativo ao diretório 
 | `--operation` | `hft`, `scalper`, `day-trader`, `swing-trader` |
 | `--risk-profile` | `conservative`, `moderate`, `aggressive`, `auto` |
 | `--mode` | `observe`, `paper`, `testnet` |
-| `--config` | caminho para TOML, padrão `src/config/bot.toml` |
+| `--config` | caminho para TOML, padrão `src/core/config/bot.toml` |
 
 O modo `hft` é explicitamente rejeitado pelo backend atual. `testnet` não habilita ordens na versão atual.
 
@@ -65,7 +65,7 @@ Nunca comite `.env` ou credenciais.
 
 - O backtest usa `--persist` para gravar o dataset sintético.
 - O monitor só persiste com `PERSIST_MARKET_DATA=1`, `DATABASE_URL` e timeframe `1m`.
-- As migrações ativas ficam em `src/persistence/migrations/`.
+- As migrações ativas ficam em `src/core/persistence/migrations/`.
 - Falha de conexão não deve ser tratada como prova de histórico completo.
 
 A semântica de estados, gaps e recuperação está no [SDD T-15](../sdd/monitor-persistence-policy-sdd.md). O fluxo de candles e avaliação está no [SDD T-10](../sdd/monitor-pause-resume-sdd.md).

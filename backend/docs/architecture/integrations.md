@@ -16,7 +16,7 @@ tags:
 | Binance Spot Test Network REST | `exchanges::binance` + `MarketDataSource` | Backfill público de candles OHLCV. | Ativo em `dev`; origem restrita. |
 | Binance Spot Test Network WebSocket | `exchanges::live` + `tokio-tungstenite` | Klines fechados `1m` no monitor. | Ativo apenas em `1m`; REST permanece fallback. |
 | `ccxt-core` / `ccxt-exchanges` | Patch local em `vendor/ccxt-core-0.1.5` | Cliente HTTP e adapter da exchange. | Vendorizado; política de redirect sob gate de segurança. |
-| PostgreSQL | `persistence::Database` | Migrações e gravação opcional de datasets/candles. | Opt-in; exige banco dedicado `trading_bot`. |
+| PostgreSQL | `core::persistence::Database` | Migrações e gravação opcional de datasets/candles. | Opt-in; exige banco dedicado `trading_bot`. |
 | TypeSafe/Jev | `JevAdvisor` | Avaliação consultiva de regime, qualidade do sinal e anomalia. | Opcional; não autoriza ordens. |
 | Terminal | Ratatui + Crossterm | Dashboard, comandos de pausa/retomada/saída e logs. | Caminho operacional principal. |
 
@@ -58,7 +58,7 @@ A persistência:
 - exige `DATABASE_URL`;
 - rejeita qualquer banco diferente de `trading_bot`;
 - abre pool com limite de oito conexões e timeout de aquisição;
-- aplica apenas `src/persistence/migrations/`;
+- aplica apenas `src/core/persistence/migrations/`;
 - grava o manifesto em `market_datasets` e candles em `candles_1m`;
 - usa `ON CONFLICT DO NOTHING` para reexecução idempotente;
 - executa a gravação em transação.
