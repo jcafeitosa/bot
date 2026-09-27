@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **302** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*` com `assert_bot_promotion_allowed` (catálogo + mercado), `MonitorStrategyRegistry` + `monitor_strategy_from_config`, `strategy_evaluation_binding`; catálogo HTTP expõe `monitor_fast_period` / `monitor_slow_period` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` (incl. `bots_runtime_promote_monitor_registry_v2_bot_in_catalog` para `sma-cross@2`), `meta_and_bot_runtime_status_agree_on_runtime_enabled`, com `BOT_HTTP_AGENCY_ID` e `fresh_agent_registry()` em `server.rs`.
+Evidência parcial (2026-09-27): **302** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `evaluate_for_kind` no supervisor e em `run_sma_crossover`, HTTP `/bots/runtime/*`, `MonitorEvaluatorKind` + catálogo `monitor_evaluator`, testes `strategy_evaluation_binding_uses_ema_evaluator_from_registry`, `ema_crossover_backtest_uses_strategy_evaluator`, `bots_runtime_promote_*`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`.
 
 ## Testes HTTP (isolamento)
 
@@ -54,7 +54,7 @@ Testes de `POST /bots/runtime/promote` em `presentation/http/server.rs` usam `fr
 
 ## Validação Gate 2 (quando implementado)
 
-- Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot; supervisor usa `strategy_evaluation_binding` + `BotSignal.bot_id` quando promoção casa com mercado; `promote_bot_http` rejeita `bot_id` fora do catálogo (`assert_catalog_contains_bot`). Períodos SMA por `strategy@version` vêm de `MonitorStrategyRegistry` + `[[strategy.monitor_registry]]` (evidência: `persist_catalog_then_promote_monitor_registry_v2_bot` + `strategy_evaluation_binding_with_v2_promotion_uses_registry_periods`). **Pendente:** evaluators além de SMA; alinhar runtime injetado em testes HTTP com `shared_bot_runtime()` do `serve`.
+- Testes de promoção/demote sem rede; supervisor/backtest usam `evaluate_for_kind` com `MonitorEvaluatorKind`; catálogo HTTP expõe `monitor_evaluator`. **Pendente:** alinhar runtime injetado em testes HTTP com `shared_bot_runtime()` do `serve`.
 - Nenhuma ordem real sem executor orders Gate 2.
 - Revisão Critic + SDD agents (autorização).
 - `./scripts/verify-backend-gates.sh` verde.
