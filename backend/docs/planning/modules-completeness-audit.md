@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**302** no bin `bot` + integração workspace).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**303** no bin `bot` + integração workspace).
 
 ## Resumo executivo
 
@@ -19,7 +19,7 @@ tags:
 | `modules/bots` | `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross`/`ema_cross`), supervisor + backtest via `evaluate_for_kind`, catálogo HTTP `monitor_evaluator` | `monitor_strategy.rs`, `evaluation_binding.rs`, `simulation.rs`, `server.rs` | Auth owner; orders live |
 | `modules/orders` | `RecordingExecutor`, `ReservedLiveExchangeExecutor`, idempotência, HTTP execution-status/meta | `orders/tests.rs`, `http_bridge/orders.rs` | Adapter exchange real |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
-| `presentation/http` | OpenAPI **34** paths, `GET /meta` + contratos `meta_and_*_agree_on_*` (orders/bots), `HttpAdminAuth`, rotas v1 | `meta.rs`, `openapi.rs`, `server.rs` | Auth owner produto (Gate 1) |
+| `presentation/http` | OpenAPI **34** paths; `GET /meta`; catálogo bots `monitor_evaluator`; contratos `meta_and_*`; `HttpAdminAuth` | `meta.rs`, `server.rs` (`bots_catalog_http_*`) | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 
@@ -41,7 +41,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
-Evidência (2026-09-27): **302** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
+Evidência (2026-09-27): **303** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
 
 ## Documentação relacionada
 
@@ -88,7 +88,7 @@ Evidência (2026-09-27): **302** testes no binário `bot`, **6** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **302** testes bin `bot`, **6** ignorados; OpenAPI **34** paths (`openapi_surface_lists_core_paths` em `server.rs`).
+Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **303** testes bin `bot`, **6** ignorados; OpenAPI **34** paths (`openapi_surface_lists_core_paths` em `server.rs`).
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
