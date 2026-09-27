@@ -37,6 +37,10 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD T-15 — Política de persistência opcional do monitor](./sdd/monitor-persistence-policy-sdd.md)
 - [SDD T-16 — Mapa de módulos do backend no README](./sdd/backend-module-map-sdd.md)
 
+## Governança
+
+- [Instruções para agentes do projeto](./AGENTS.md) — regras de governança, fluxo, segurança e operação.
+
 ## Convenções
 
 - Pesquisas ficam em `research/`.
