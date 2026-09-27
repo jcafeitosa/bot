@@ -1,5 +1,9 @@
 //! Provider API keys loaded from PostgreSQL (`provider_credentials`), with deprecated `.env` bootstrap fallback.
 
+/// Observability seam: encryption-at-rest for `provider_credentials.secret` is not implemented.
+/// Values are stored as plaintext in PostgreSQL until an ADR-backed encoder is wired.
+pub const PROVIDER_CREDENTIALS_ENCRYPTION_MODE: &str = "none";
+
 mod cache;
 mod store;
 
@@ -14,3 +18,13 @@ pub use store::{
 
 #[cfg(test)]
 mod pg_integration;
+
+#[cfg(test)]
+mod tests {
+    use super::PROVIDER_CREDENTIALS_ENCRYPTION_MODE;
+
+    #[test]
+    fn provider_credentials_encryption_mode_is_explicit_none_fail_closed() {
+        assert_eq!(PROVIDER_CREDENTIALS_ENCRYPTION_MODE, "none");
+    }
+}

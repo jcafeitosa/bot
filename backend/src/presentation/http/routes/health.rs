@@ -7,6 +7,7 @@ use crate::core::database::{
     GraphProjectionOutboxStats,
 };
 use crate::core::health::{liveness, readiness_databases, ProbeStatus};
+use crate::core::providers::credentials::PROVIDER_CREDENTIALS_ENCRYPTION_MODE;
 use crate::presentation::http::{error::ApiError, state::ApiState};
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -21,6 +22,8 @@ pub struct GraphProjectionOutboxHealth {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct HealthResponse {
     pub status: &'static str,
+    /// `none` until encryption-at-rest is implemented for `provider_credentials.secret`.
+    pub provider_credentials_encryption: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub graph_projection_outbox: Option<GraphProjectionOutboxHealth>,
 }
@@ -50,6 +53,7 @@ pub async fn healthz(State(state): State<ApiState>) -> Json<HealthResponse> {
     };
     Json(HealthResponse {
         status,
+        provider_credentials_encryption: PROVIDER_CREDENTIALS_ENCRYPTION_MODE,
         graph_projection_outbox: outbox,
     })
 }

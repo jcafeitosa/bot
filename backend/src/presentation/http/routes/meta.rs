@@ -2,6 +2,7 @@ use axum::{extract::State, Json};
 use serde::Serialize;
 use utoipa::ToSchema;
 
+use crate::core::providers::credentials::PROVIDER_CREDENTIALS_ENCRYPTION_MODE;
 use crate::presentation::http::state::ApiState;
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -14,6 +15,8 @@ pub struct HttpSeamsMeta {
     pub bot_runtime_enabled: bool,
     pub live_exchange_wired: bool,
     pub order_reconciliation_pending: usize,
+    /// `none` until encryption-at-rest is implemented (plaintext in PostgreSQL).
+    pub provider_credentials_encryption: &'static str,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -46,6 +49,7 @@ pub async fn meta(State(state): State<ApiState>) -> Json<MetaResponse> {
             bot_runtime_enabled: state.bot_runtime_status().runtime_enabled,
             live_exchange_wired: state.live_exchange_wired(),
             order_reconciliation_pending: state.order_reconciliation_pending_count_observed().await,
+            provider_credentials_encryption: PROVIDER_CREDENTIALS_ENCRYPTION_MODE,
         },
     })
 }

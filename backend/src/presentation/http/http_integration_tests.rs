@@ -787,6 +787,41 @@ async fn meta_reports_product_owner_bootstrap_active_when_verified() {
 }
 
 #[tokio::test]
+async fn meta_exposes_provider_credentials_encryption_none() {
+    let state = ApiState::with_order_executor(
+        None,
+        AppDatabases::empty(),
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::disabled(),
+        HttpOrderExecutor::dev_accept(),
+    );
+    let app = build_router(state);
+    let meta = json_get(&app, "/api/v1/meta").await;
+    assert_eq!(
+        meta["http_seams"]["provider_credentials_encryption"],
+        "none"
+    );
+}
+
+#[tokio::test]
+async fn healthz_exposes_provider_credentials_encryption_none() {
+    let state = ApiState::with_order_executor(
+        None,
+        AppDatabases::empty(),
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::disabled(),
+        HttpOrderExecutor::dev_accept(),
+    );
+    let app = build_router(state);
+    let health = json_get(&app, "/healthz").await;
+    assert_eq!(health["provider_credentials_encryption"], "none");
+}
+
+#[tokio::test]
 async fn meta_and_orders_execution_status_agree_on_seams() {
     let state = ApiState::with_order_executor(
         None,
