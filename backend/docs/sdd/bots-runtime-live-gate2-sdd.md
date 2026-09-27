@@ -45,7 +45,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **227** testes bin `bot`, **5** ignorados; HTTP `/bots/runtime/*`, `monitor_snapshot_includes_promoted_bot_from_runtime_seam`, `attach_bot_runtime_status` em `http_bridge/monitor.rs`.
+Evidência parcial (2026-09-27): **226** testes bin `bot`, **5** ignorados; HTTP `/bots/runtime/*`, `monitor_snapshot_includes_promoted_bot_from_runtime_seam`, `attach_bot_runtime_status` em `http_bridge/monitor.rs`.
 
 ## Validação Gate 2 (quando implementado)
 

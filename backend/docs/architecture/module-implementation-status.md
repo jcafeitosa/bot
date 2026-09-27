@@ -20,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --all-targets -- -D warnings` | PASS | exit 0 |
-| `cargo test --locked` | PASS | 227 testes (bin `bot`) no bin `bot`; 5 ignorados (dataset PG, scaffold, pg catalog, pg identity, Neo4j) |
+| `cargo test --locked` | PASS | 226 testes (bin `bot`) no bin `bot`; 5 ignorados (dataset PG, scaffold, pg catalog, pg identity, Neo4j) |
 | `./scripts/verify-backend-gates.sh (fmt, clippy, import-direction, tests)` | PASS | `OK: import direction heuristics passed` |
 
 ## Critério de linha
@@ -82,7 +82,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Veredito
 
-**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**227** testes bin `bot`, **5** ignorados).
+**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**226** testes bin `bot`, **5** ignorados).
 
 **COMPLETUDE_MODULOS_GOAL=parcial** — fundação bots/orders/agents/HTTP documentada e testada; pendem orders live, runtime bots, auth owner de produto e revisão Critic ([auditoria](../planning/modules-completeness-audit.md)).
 
