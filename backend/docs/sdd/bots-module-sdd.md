@@ -55,7 +55,7 @@ modules/bots/
 | `BotMetrics` | backtest report, ranking | Campos de identidade coerentes com `BotId`. |
 | `build_catalog_from_config` | testes, futura API | Uma entrada por timeframe suportado no modo da config. |
 | `full_ranking` / `rank_bots` | backtest CLI, agregadores | Escopo único (window, dataset_hash, quote); ordenação PnL ↓, drawdown ↑, bot_id. |
-| `BotCatalogStore` | Gate 1 | Trait only; `NoopBotCatalogStore` e `InMemoryBotCatalogStore` (snapshot em processo); PostgreSQL Gate 1 pendente. |
+| `BotCatalogStore` | Gate 1 | Trait only; `InMemoryBotCatalogStore`, `PgBotCatalogStore`, `BotCatalogBackend`; HTTP persist usa PG quando disponível. Gate 1 agents PG e auth pendente. |
 
 ## 4. Migração desde backtest
 

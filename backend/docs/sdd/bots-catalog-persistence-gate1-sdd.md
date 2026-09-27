@@ -1,6 +1,6 @@
 ---
 title: SDD — Gate 1 persistência agents/bots (PostgreSQL)
-description: Schema scaffold, repositórios Rust e critérios de aceite após stores em memória
+description: Schema scaffold, PgBotCatalogStore e critérios de aceite
 tags:
   - sdd
   - backend
@@ -12,27 +12,29 @@ status: draft
 
 # SDD — Gate 1: PostgreSQL para agents e catálogo bots
 
-- **Estado:** draft — migração SQL **scaffold** aplicável via `Database::migrate()`; adapters Rust (`PostgresBotCatalogStore`, identity PG) **não** implementados.
-- **Referências:** [SDD bots](./bots-module-sdd.md), [SDD agents](./agents-module-sdd.md), `src/core/persistence/migrations/0002_agents_bots_scaffold.sql`.
+- **Estado:** parcial — migrações em `src/core/database/migrations/` (incl. `0002_agents_bots_scaffold.sql`); **`PgBotCatalogStore`** implementado; identity PG e auth owner **pendentes**.
+- **Referências:** [SDD bots](./bots-module-sdd.md), [SDD agents](./agents-module-sdd.md).
 
-## Objetivo
+## Implementado
 
-1. Schema `0002_agents_bots_scaffold.sql` (tabelas `agent_identities`, `agent_identity_events`, `bot_catalog_entries`).
-2. Repositórios Rust que leem/escrevem essas tabelas, preservando seams públicos dos módulos.
-3. Testes de integração ignorados com `DATABASE_URL` → `trading_bot`.
+- `PgBotCatalogStore` (`modules/bots/adapters/pg_catalog.rs`) — `save_catalog` / `load_catalog` em `bot_catalog_entries`.
+- `BotCatalogBackend::from_databases` — PostgreSQL quando `AppDatabases` tem pool; senão memória.
+- Teste ignorado `pg_catalog_store_round_trip`.
 
-## Schema (scaffold existente)
+## Pendente
 
-- **Agents:** `agent_identities`, `agent_identity_events` (eventos de lifecycle).
-- **Bots:** `bot_catalog_entries` (linhas versionadas por `bot_id`, não snapshot JSONB).
+- `PgAgentRegistry` / persistência de identities.
+- Auth owner nas rotas HTTP.
+- Evolução SDD para `approved` + revisão Critic (AGENTS.md).
 
 ## Validação
 
 ```text
-cargo test --locked
+cargo fmt --check && cargo clippy --locked -- -D warnings && cargo test --locked --bin bot
+cargo test pg_catalog_store_round_trip -- --ignored
 cargo test postgres_scaffold_tables_exist_after_migrate -- --ignored
 ```
 
 ## Rollback
 
-Reverter migração 0002 e adapters; HTTP e domínio permanecem em memória.
+Desabilitar seleção PG em `BotCatalogBackend::from_databases`; HTTP volta a memória apenas.

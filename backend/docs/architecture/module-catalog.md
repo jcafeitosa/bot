@@ -95,7 +95,7 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 |---|---|
 | `models` | `BotIdentity`, `BotId`, `BotDefinition`, `BotMetrics`, erros e tipos de ranking. |
 | `controllers` | `build_catalog_from_config`, `full_ranking` / `rank_bots`. |
-| `adapters` | `BotCatalogStore`; `NoopBotCatalogStore`, `InMemoryBotCatalogStore`; PostgreSQL Gate 1 pendente. |
+| `adapters` | `BotCatalogStore`; `NoopBotCatalogStore`, `InMemoryBotCatalogStore`, `PgBotCatalogStore`; `BotCatalogBackend` (memória ou PG via `AppDatabases`). Agents PG pendente. |
 | `controllers` | `persist_catalog_snapshot` grava catálogo derivado da config no store. |
 
 **HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking` via `presentation/http/routes/bots.rs` (store compartilhado em `ApiState`).

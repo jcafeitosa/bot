@@ -1,44 +1,41 @@
 ---
-title: SDD — core::database (PostgreSQL 18+ dual-store)
-description: Fachada dual-store PostgreSQL (TimescaleDB + pgvector) e Neo4j
+title: SDD — core::database dual-store (PostgreSQL 18+ + Neo4j)
+description: Unified database seam, migrations, readiness probes, and Gate 1 bot catalog persistence
 tags:
   - sdd
   - backend
   - database
-status: implemented
+  - persistence
+  - neo4j
+status: draft
 ---
 
 # SDD — `core::database`
 
-## Contexto
+## Contexto e objetivo
 
-PostgreSQL opcional (`DATABASE_URL` → `trading_bot`) e Neo4j opcional (`BOT_AGENTS_ENABLED` + `BOT_NEO4J_*`). Orders/agents/bots permanecem fail-closed; sem live trading.
-
-## Stack PostgreSQL
-
-- **Mínimo:** PostgreSQL **18+** (`server_version_num >= 180000`).
-- **Extensões obrigatórias** quando PG está wired no health: `timescaledb`, `vector` (pgvector).
-- Migrations em `src/core/database/migrations/` (`0000` extensões, `0001` market, `0002` agents/bots scaffold, `0003` vector scaffold).
-
-## Neo4j
-
-- Driver `neo4rs`; `Neo4jGraph::connect` / `ping`.
-- Sem URI ou com `BOT_AGENTS_ENABLED=false`: grafo omitido (noop); readyz não exige Neo4j.
+Seam único para PostgreSQL 18+ (TimescaleDB + pgvector) e Neo4j opcional. `AppDatabases::bootstrap_http_api` conecta PG quando `DATABASE_URL` aponta para `trading_bot` e Neo4j quando `BOT_AGENTS_ENABLED` está ativo. Falhas logam warn e o processo continua fail-closed.
 
 ## Seams
 
-| Seam | Uso |
-|------|-----|
-| `PostgresDatabase` | Pool, migrate, ping, `extension_health` |
-| `Neo4jGraph` | Grafo agents/knowledge (futuro) |
-| `AppDatabases::bootstrap_http_api` | HTTP `serve` |
-| `core::persistence::Database` | Wrapper de domínio (datasets) |
-| `health::readiness_databases` | `/readyz` |
+- `PostgresDatabase` — versão ≥ 18, extensões obrigatórias em readyz quando conectado.
+- `PgBotCatalogStore` — tabela `bot_catalog_entries`; HTTP usa `BotCatalogBackend` (PG ou memória).
+- `readiness_databases` — probes `postgres`, `postgres_extensions`, `neo4j` (se wired).
 
-## Dev
+## Env
 
-[postgres-and-graph-dev.md](../operations/postgres-and-graph-dev.md), `docker-compose.bot.yml`.
+`DATABASE_URL`, `BOT_AGENTS_ENABLED`, `BOT_NEO4J_URI`, `BOT_NEO4J_USER`, `BOT_NEO4J_PASSWORD`, `BOT_NEO4J_DATABASE`.
+
+Compose opcional: `docker-compose.bot.yml` (Neo4j + Postgres agents); market/catálogo exigem DB `trading_bot` provisionado à parte.
+
+## Migrações
+
+`src/core/database/migrations/` (`0000` extensions … `0003` vector scaffold).
 
 ## Validação
 
-`cargo fmt --check`, `clippy -D warnings`, `cargo test --locked`, `check-import-direction.sh`.
+fmt, clippy -D warnings, cargo test --locked, check-import-direction; testes `--ignored` com PG 18+ real.
+
+## Próximo
+
+`PgAgentRegistry` sobre `agent_identities`.
