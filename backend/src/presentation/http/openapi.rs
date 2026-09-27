@@ -1,8 +1,8 @@
 use utoipa::OpenApi;
 
 use super::routes::{
-    agents, application, backtest, bots, config, exchanges, health, meta, monitor, orders,
-    portfolio, provider_credentials_admin, providers, strategy,
+    agents, application, backtest, bots, config, exchanges, graph_admin, health, meta, monitor,
+    orders, portfolio, provider_credentials_admin, providers, strategy,
 };
 use crate::modules::application_contracts::Signal;
 use crate::modules::config_api::{OperationMode, RiskProfile, RunMode};
@@ -30,6 +30,7 @@ use crate::presentation::http::error::ApiErrorBody;
         provider_credentials_admin::upsert_provider_credential,
         provider_credentials_admin::replace_provider_credential,
         provider_credentials_admin::delete_provider_credential,
+        graph_admin::list_graph_agents,
         exchanges::catalog,
         exchanges::routing_matrix,
         bots::bot_catalog,
@@ -79,6 +80,9 @@ use crate::presentation::http::error::ApiErrorBody;
         crate::modules::http_bridge::provider_credentials::ProviderCredentialsListResponse,
         crate::modules::http_bridge::provider_credentials::UpsertProviderCredentialRequest,
         crate::modules::http_bridge::provider_credentials::ReplaceProviderCredentialRequest,
+        crate::core::database::ProjectedAgentList,
+        crate::core::database::ProjectedAgentNode,
+        graph_admin::GraphAgentsQuery,
         exchanges_bridge::ExchangeCatalogResponse,
         exchanges_bridge::ExchangeRoutingResponse,
         exchanges_bridge::RoutingRow,

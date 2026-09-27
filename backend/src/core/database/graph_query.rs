@@ -111,7 +111,7 @@ pub fn normalize_module_path(module_path: &str) -> Result<(String, String), Grap
     Ok((module_id, path_fragment))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectedAgentNode {
     pub agent_id: String,
     pub agency_id: String,
@@ -119,7 +119,7 @@ pub struct ProjectedAgentNode {
     pub lifecycle: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectedAgentList {
     pub agents: Vec<ProjectedAgentNode>,
 }

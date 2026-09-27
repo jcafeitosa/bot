@@ -4,6 +4,7 @@ pub mod backtest;
 pub mod bots;
 pub mod config;
 pub mod exchanges;
+pub mod graph_admin;
 pub mod health;
 pub mod meta;
 pub mod monitor;
@@ -38,6 +39,7 @@ pub fn v1_routes() -> Router<ApiState> {
             put(provider_credentials_admin::replace_provider_credential)
                 .delete(provider_credentials_admin::delete_provider_credential),
         )
+        .route("/admin/graph/agents", get(graph_admin::list_graph_agents))
         .route("/exchanges/catalog", get(exchanges::catalog))
         .route("/exchanges/routing", get(exchanges::routing_matrix))
         .route("/agents/audit", get(agents::audit_log))

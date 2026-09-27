@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use crate::core::config::ProductOwnerBootstrapConfig;
-use crate::core::database::{AppDatabases, GraphProjectionSync};
+use crate::core::database::{
+    AppDatabases, GraphProjectionSync, GraphQueryPort, ProjectedAgentList,
+};
 use crate::core::error::BotError;
 use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
@@ -863,6 +865,31 @@ impl ApiState {
 
     pub fn require_bound_agency(&self, agency_id: &str) -> Result<(), ApiError> {
         self.inner.http_admin_auth.verify_agency_id(agency_id)
+    }
+
+    /// Advisory read-only list from Neo4j projection (PG remains SoT for identity).
+    pub async fn list_graph_agents_advisory(
+        &self,
+        limit: u32,
+    ) -> Result<ProjectedAgentList, ApiError> {
+        self.database().ok_or_else(|| {
+            ApiError::with_code(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "graph_query_unavailable",
+                "PostgreSQL is not configured for graph admin queries",
+            )
+        })?;
+        let neo4j = self.inner.databases.neo4j().ok_or_else(|| {
+            ApiError::with_code(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "graph_query_unavailable",
+                "Neo4j is not configured for graph admin queries",
+            )
+        })?;
+        let port = neo4j.graph_query();
+        port.list_agents(limit)
+            .await
+            .map_err(ApiError::from_graph_query_error)
     }
 
     pub async fn list_agents_in_agency(&self, agency: &str) -> Result<AgentListResponse, ApiError> {
@@ -2236,7 +2263,6 @@ mod state_tests {
             .list_agents_in_agency(&agency)
             .await
             .expect("list agents");
-        assert_eq!(listed.total, 1);
         assert_eq!(listed.total, 1);
         assert_eq!(listed.agents.len(), 1);
         assert_eq!(listed.agents[0].agent_id, agent_id);

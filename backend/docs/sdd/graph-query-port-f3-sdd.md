@@ -41,5 +41,20 @@ Implementação: `Neo4jGraphQuery` em `graph_query.rs`. CLI: `bot graph query ag
 | Port + Neo4j impl + testes unitários | **Sim** |
 | CLI agents + supervision-chain + bots-for-agent | **Sim** |
 | `bots_for_agent` port + Neo4j | **Sim** |
-| Leitura autorizativa no runtime HTTP | **Não** (roadmap) |
+| Leitura HTTP admin read-only (agents list) | **Sim** (advisory; PG+Neo4j gated) |
+| Leitura autorizativa no runtime HTTP (decisões de domínio) | **Não** (roadmap) |
 | `code_impact_for_module` port + Neo4j + CLI | **Sim** |
+
+## HTTP admin read-only (F3 fatia 1)
+
+| Método | Path | Auth | Comportamento |
+|--------|------|------|---------------|
+| GET | `/api/v1/admin/graph/agents` | `BOT_HTTP_ADMIN_TOKEN` (Bearer), mesmo seam que provider-credentials | **200** corpo `ProjectedAgentList` (advisory; PG SoT); **503** `graph_query_unavailable` sem PostgreSQL ou sem Neo4j wired em `ApiState`; **401** sem bearer quando admin habilitado |
+
+Query: `limit` opcional (1–500, default 32). Implementação: `ApiState::list_graph_agents_advisory` → `Neo4jGraph::graph_query().list_agents`.
+
+| Tipo | Evidência |
+|------|-----------|
+| HTTP integration | `graph_admin_list_returns_503_without_postgres`, `graph_admin_list_returns_503_without_neo4j_when_postgres_wired`, `graph_admin_list_requires_admin_bearer_when_enabled` em `http_integration_tests.rs` |
+| Neo4j E2E HTTP **200** | skip sem stack (mesmo critério que `neo4j_list_agents_after_local_graph`) |
+

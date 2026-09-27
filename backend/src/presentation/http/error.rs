@@ -216,6 +216,22 @@ impl ApiError {
         )
     }
 
+    pub fn from_graph_query_error(error: crate::core::database::GraphQueryError) -> Self {
+        use crate::core::database::GraphQueryError;
+        match error {
+            GraphQueryError::Invalid(message) => {
+                ApiError::with_code(StatusCode::BAD_REQUEST, "invalid_graph_query", message)
+            }
+            GraphQueryError::Unavailable(message) | GraphQueryError::Driver(message) => {
+                ApiError::with_code(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "graph_query_unavailable",
+                    message,
+                )
+            }
+        }
+    }
+
     pub fn from_provider_credentials_store_error(
         error: crate::core::providers::credentials::ProviderCredentialsStoreError,
     ) -> Self {
