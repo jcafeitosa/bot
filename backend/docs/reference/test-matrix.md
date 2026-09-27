@@ -49,7 +49,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | Rotas Axum, OpenAPI 28 paths, Scalar `/docs`, subcomando `serve`, bots ranking e orders fail-closed | Testes em `presentation/http/server.rs`; smoke runtime documentado. | Nenhuma rede Binance real. | Passa. |
+| `presentation/http` | Rotas Axum, OpenAPI 28 paths, Scalar `/docs`, `serve`, bots ranking, orders submit 422/503. | Testes em `presentation/http/server.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada

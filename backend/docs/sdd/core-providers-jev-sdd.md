@@ -13,14 +13,14 @@ status: draft
 
 ## Contexto
 
-Consultas advisory Jev/TypeSafe hoje vivem em `modules/jev` com HTTP ad hoc em `adapters/typesafe`. A proposta agrupa integrações LLM OpenAI-compatible em `core::providers`, move Jev para `core::providers::jev` e preserva o gate consultivo no monitor (sem autoridade de ordem).
+Consultas advisory Jev/TypeSafe vivem em `core::providers::jev` (HTTP em `adapters/`). Integrações LLM OpenAI-compatible ficam em `core::providers`; o gate consultivo no monitor permanece sem autoridade de ordem.
 
 Não há documentação de **9router** no repositório; o alvo de deploy é configurável via env genérica OpenAI-compatible.
 
 ## Objetivo
 
 1. Introduzir `src/core/providers/` (`openai_compatible`, `nine_router`, `jev/*`).
-2. Migrar comportamento de `modules/jev` sem alterar payload advisory nem regras HTTPS/localhost.
+2. Preservar payload advisory e regras HTTPS/localhost após consolidação em `core::providers::jev`.
 3. Respeitar direção de imports: `core` não importa `modules`; entrada de review usa `JevReviewInput` no monitor.
 
 ## Não-objetivos

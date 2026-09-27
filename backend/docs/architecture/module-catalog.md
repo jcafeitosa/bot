@@ -41,7 +41,7 @@ flowchart LR
   BacktestCLI --> Market[market/models]
   Market --> Backtest[backtest]
   Backtest --> Persist
-  Supervisor --> Jev[jev]
+  Supervisor --> Jev[core::providers::jev]
   Main --> Logging[core/logging]
 ```
 

@@ -10,7 +10,7 @@ status: draft
 
 # SDD — Módulo `modules/orders`
 
-- **Estado:** implementado (fundação G1) — `submit_order`, `FailClosedExecutor`, testes em `modules/orders/tests.rs`; sem exchange live nem HTTP.
+- **Estado:** implementado (fundação G1) — `submit_order`, `FailClosedExecutor`, testes em `modules/orders/tests.rs` e HTTP fail-closed em `presentation/http/server.rs`; sem exchange live.
 - **Referências:** [Catálogo de módulos](../architecture/module-catalog.md), `modules/exchanges/rest` (`ExecutionDisabled`), `modules/risk` (`OrderIntent`).
 
 ## Contexto

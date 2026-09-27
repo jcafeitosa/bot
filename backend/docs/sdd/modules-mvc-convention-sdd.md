@@ -16,16 +16,16 @@ status: draft
 - **Referências:** [Proposta 0001](../proposals/0001-backend-core-modules-mvc.md), [SDD extração core F1](./core-extraction-phase1-sdd.md), [SDD contrato apresentação monitor](./monitor-presentation-contract-sdd.md).
 - **Escopo deste documento:** convenção, árvores, imports e cronograma de esqueletos vs migração. **Não** autoriza mover código de produção fora das fatias planejadas.
 
-## Estado observado do repositório (2026-09-27)
+## Estado observado do repositório (2026-09-26)
 
 Inspeção de `backend/src/`:
 
 | Área | Estado |
 |------|--------|
-| `core/` | **Parcialmente implementado (F1):** `config`, `error`, `logging`, `persistence` sob `src/core/`; `main.rs` já usa `crate::core::config`. |
-| `modules/` | Apenas `modules/mod.rs` + `modules/monitor.rs` (scaffold de `MonitorHandle` / DTOs mínimos). |
-| Domínio legado na raiz | `app`, `backtest`, `backtest_cli`, `domain`, `exchanges`, `jev`, `market`, `market_feed`, `portfolio`, `risk`, `strategy`, `ui`, `monitor_startup`, `persistence_health`, etc. |
-| `presentation/terminal` | **Ainda não existe;** TUI permanece em `ui/`. |
+| `core/` | **F1 em uso:** `config`, `error`, `logging`, `persistence`, `health`, `notifications`, `providers` (incl. `core::providers::jev` — não há `modules/jev`). |
+| `modules/` | Domínios em MVC ou equivalente: `monitor`, `market`, `strategy`, `risk`, `portfolio`, `backtest`, `exchanges`, `agents`, `bots`, `orders`, `http_bridge`, `application_contracts`, `config_api`. |
+| Raiz `src/` | Entrada em `main.rs`; sem crates de domínio legados na raiz (`app`, `ui`, `jev` migrados ou removidos). |
+| `presentation/` | `terminal/` (TUI) e `http/` (Axum, OpenAPI, Scalar). |
 
 **Nota F1:** outro agente pode estar concluindo detalhes da fatia 1 (`core-extraction-phase1-sdd.md`). Este SDD assume F1 como baseline aceito e não duplica passos de `git mv` do core.
 
@@ -372,7 +372,7 @@ Durante migração, `pub use crate::market_feed::*` no `modules/market/mod.rs` �
 | **F5** | Demais domínios | Pastas MVC **somente** ao migrar cada crate raiz | `strategy`, `risk`, `portfolio`, `backtest`, `exchanges`; Jev em `core::providers::jev` (F1 providers) |
 | **F6** | Limpeza e gates | Remover reexports ponte | Apagar módulos raiz legados; `cargo test/clippy`; script imports + `cargo deny` |
 
-**Ordem recomendada dentro de F5:** `exchanges` → `strategy` + contratos → `risk` → `portfolio` → `backtest` → `jev`.
+**Ordem recomendada dentro de F5:** `exchanges` → `strategy` + contratos → `risk` → `portfolio` → `backtest` (Jev já em `core::providers`).
 
 **Esqueletos:** criar árvore MVC **no mesmo PR** que move o primeiro arquivo substantivo para cada camada — nunca PR só de pastas vazias.
 
@@ -403,7 +403,6 @@ flowchart TB
     PF[portfolio]
     BT[backtest]
     EX[exchanges]
-    JV[jev]
   end
 
   subgraph core_infra["core — infra only"]
@@ -411,6 +410,7 @@ flowchart TB
     ERR[error]
     LOG[logging]
     PER[persistence]
+    JV[providers::jev]
   end
 
   MAIN --> core_infra
