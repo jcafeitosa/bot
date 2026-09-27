@@ -15,13 +15,15 @@ tags:
 
 ## 1. Mapa de execução
 
-O binário tem três pontos de entrada funcionais:
+O binário `bot` tem seis pontos de entrada (`main.rs:24-36`): monitor TUI (sem subcomando) e os subcomandos `backtest`, `serve`, `graph-projection`, `graph` e `orders`:
 
 - **Monitor (TUI):** `main → core::config → modules::monitor::startup → supervisor → … → presentation::terminal`.
 - **Backtest (CLI):** `main → modules::backtest::cli → fixture 1m → modules::backtest → JSON`.
-- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (**36** paths utoipa; teste `openapi_surface_lists_core_paths` em `server.rs`).
+- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (**42** paths utoipa; teste `openapi_surface_lists_core_paths` em `server.rs`).
+- **Grafo (`graph-projection drain`, `graph query …`):** drain do `graph_projection_outbox` para Neo4j e leituras read-only F3; fail-closed sem PG/Neo4j.
+- **Orders (`orders retention-purge`):** relatório (dry-run padrão) ou `--apply` da retenção em `order_idempotency_keys`/`order_reconciliation`; sem trading.
 
-Produção REST de ordens permanece bloqueada (`authorize_rest_use`). Monitor e HTTP podem usar seams opt-in (`paper`, `recording`, testnet Spot com credenciais) via `modules/orders` — ver §3c. Backfill público de candles Spot `dev` e modos observe/paper no monitor seguem como hoje.
+Produção REST de ordens permanece bloqueada (`authorize_rest_use`). HTTP pode usar seams opt-in (`paper`, `dev_accept`, `recording`, testnet Spot com credenciais) via `modules/orders` — ver §3c. O monitor só executa `paper` (`PaperLedgerExecutor`, simulado); o ramo testnet do supervisor é inalcançável (`--mode testnet` rejeitado em `core/config/mod.rs:390-393`). Backfill público de candles Spot `dev` e modos observe/paper no monitor seguem como hoje.
 
 Mapeamento **domain / application / infrastructure / presentation** → [layer-mapping.md](./layer-mapping.md).
 
@@ -56,8 +58,8 @@ flowchart LR
 | raiz | `main` | `main() -> anyhow::Result` | Monitor ou `backtest`; bootstrap de persistência via `modules::monitor::startup`. | CLI/config indiretos. |
 | `core` | `config` | `Config::load`, `Config::validate` | TOML em `src/core/config/`, overrides CLI, validação. | `tests/config_cli.rs`, testes do módulo. |
 | `core` | `error` / `logging` | `BotError`, `init` | Erros e tracing compartilhados. | Consumidores. |
-| `core` | `database` | `AppDatabases`, `PostgresDatabase`, `Neo4jGraph`, `graph_projection_outbox` | Dual-store PG 18+ (Timescale/pgvector) + Neo4j; migrações até `0010` (owner bootstrap) e outbox `0009`; projeção write-only F1–F3.1 + drain inline/worker F2.1.2; leitura F3 `GraphQueryPort` + CLI `graph query agents` — [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md) — [unified-neo4j-graph-strategy.md](./unified-neo4j-graph-strategy.md), [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md). | PG **22/22** script; testes `pg_graph_projection_outbox_*`; Neo4j via `pg_integration` (skip sem stack). |
-| `core` | `persistence` | `Database`, `persist_dataset` | Fachada de domínio sobre `PostgresDatabase`; conflito de manifesto → `DatasetManifestConflict`; lock `pg_advisory_xact_lock(hashtext(dataset_id))` na transação. | `manifest_match_*`, `postgres_scaffold_*`, `persist_dataset_*` (script PG **22/22** com `DATABASE_URL`). |
+| `core` | `database` | `AppDatabases`, `PostgresDatabase`, `Neo4jGraph`, `graph_projection_outbox` | Dual-store PG 18+ (Timescale/pgvector) + Neo4j; migrações até `0011` (snapshot do supervisor C17; `0010` owner bootstrap) e outbox `0009`; projeção write-only F1–F3.1 + drain inline/worker F2.1.2; leitura F3 `GraphQueryPort` + CLI `graph query agents` — [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md) — [unified-neo4j-graph-strategy.md](./unified-neo4j-graph-strategy.md), [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md). | manifesto PG **30**; testes `pg_graph_projection_outbox_*`; Neo4j via `pg_integration` (skip sem stack). |
+| `core` | `persistence` | `Database`, `persist_dataset` | Fachada de domínio sobre `PostgresDatabase`; conflito de manifesto → `DatasetManifestConflict`; lock `pg_advisory_xact_lock(hashtext(dataset_id))` na transação. | `manifest_match_*`, `postgres_scaffold_*`, `persist_dataset_*` (manifesto PG **30**; requer `DATABASE_URL`). |
 | `modules` | `monitor` | `run`, `bootstrap_monitor` | Supervisor REST/WS, pausa/retomada, dashboard, persistência. | Testes em `supervisor.rs` e controllers. |
 | `modules` | `market` | candles, `HybridCandleFeed` | Validação, agregação 1m, feed híbrido. | Testes de feed e modelos. |
 | `modules` | `strategy` | SMA/EMA, `evaluate_for_kind` | Sinais sem efeitos colaterais. | Testes de períodos e sinais. |
@@ -83,7 +85,7 @@ Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-mo
 | `controllers/registry` | `AgentRegistry`: registro, listagem por agência, validação de hierarquia sem ciclos. |
 | `controllers/lifecycle` | `pause_agent`, `resume_agent`, `retire_agent` — aposentado é terminal. |
 | `controllers/advisory` | `run_advisory_step` — exige agente ativo com `consult_jev`; delega a `core::providers::jev`. |
-| `controllers/supervisor_hook` | `MonitorAgentHook` / `NoopMonitorAgentHook` — seam futuro com o supervisor do monitor. |
+| `controllers/supervisor_hook` | `MonitorAgentHook` / `NoopMonitorAgentHook` / `RegistryMonitorAgentHook` — ligado ao supervisor (`RegistryMonitorAgentHook` quando `BOT_AGENCY` está definido; `agents/controllers/runtime.rs:18-40`), mas só emite log `trace`; não age sobre sinal, risco ou ordens. |
 | `controllers/bot_promotion` | `assert_runtime_promotion_authorized` — `bot_id` válido, agente ativo, capability `promote_runtime_bot` (testes em `bot_promotion.rs`). |
 | `adapters/jev` | Adaptador fino para `JevAdvisor`; sem política de domínio nova. |
 
@@ -91,7 +93,7 @@ Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-mo
 
 **Limites:** sem autenticação verificável do owner no transporte (seam `BOT_HTTP_ADMIN_TOKEN` / `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`); `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando agência vinculada; sem scheduler, gateway MCP ou canais externos.
 
-**Agents vs bots vs backtest:** `bots::BotId` e `backtest::BotId` (reexport) compõem a mesma chave canônica `strategy@version:timeframe:symbol`; isso não é `AgentId`. O monitor opera o loop de mercado e pode, no futuro, usar `MonitorAgentHook`; hoje permanece noop. Tabela completa: [SDD bots](../sdd/bots-module-sdd.md), [SDD agents — Relação com bots](../sdd/agents-module-sdd.md).
+**Agents vs bots vs backtest:** `bots::BotId` e `backtest::BotId` (reexport) compõem a mesma chave canônica `strategy@version:timeframe:symbol`; isso não é `AgentId`. O monitor opera o loop de mercado e chama `MonitorAgentHook::on_evaluation_cycle` a cada avaliação (`supervisor.rs:794-795`); sem `BOT_AGENCY` é noop e, com `BOT_AGENCY`, só registra log `trace` — não age. Tabela completa: [SDD bots](../sdd/bots-module-sdd.md), [SDD agents — Relação com bots](../sdd/agents-module-sdd.md).
 
 
 ## 3b. Módulo `bots` (`src/modules/bots/`)
@@ -117,7 +119,7 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 | `controllers` | `submit_order` — valida request e `risk::validate_intent`; dedupe `client_order_id` via `OrderIdempotencyStore`; `run_reconciliation_poll_once` — uma passagem sobre `list_pending` + `SpotOrderReconciliationQuery`. |
 | `adapters` | `OrderExecutionPort` + `submit_spot_order` (`recording` / `testnet` → `binance_spot_testnet_submit`); `PgOrderIdempotencyStore` / `PgOrderReconciliationStore` (falhas SQL → `StoreUnavailable`; regras de domínio → `InvalidRequest`); `try_claim`/`release_claim` no submit HTTP; retenção ops: `scripts/pg-orders-retention-purge.sql`; `LiveExchangeSpotOrderReconciliationQuery` (binding recording ou `observe_testnet_spot_order_by_client_id` em `binance_spot_testnet_reconcile`). |
 
-**Monitor:** em modo live testnet, `supervisor` gera `client_order_id` determinístico (`mon:…`) e chama `record_monitor_spot_submit_reconciliation` no mesmo `shared_live_order_reconciliation_ledger` que o HTTP.
+**Monitor:** o `supervisor` tem um ramo live testnet que gera `client_order_id` determinístico (`mon:…`) e chama `record_monitor_spot_submit_reconciliation` no mesmo `shared_live_order_reconciliation_ledger` que o HTTP, mas esse ramo é **inalcançável** no binário: `Config::validate` rejeita `--mode testnet` (`core/config/mod.rs:390-393`). Envio Spot testnet real só pelo HTTP.
 
 **Testes:** ledger partilhado — `lock_shared_live_order_reconciliation_ledger_for_test()`; com `EnvTestGuard`, ordem **env → ledger**; gate `verify-backend-gates.sh` usa `--test-threads=1` ([test-matrix](../reference/test-matrix.md)).
 
@@ -148,7 +150,7 @@ Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog p
 | Peça | Comportamento |
 |---|---|
 | `routes/provider_credentials_admin.rs` | GET/POST/PUT/DELETE admin credentials (PG). |
-| `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
+| `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Sem token, nenhuma rota é protegida — lacuna aberta ([admin-http-auth-fail-open](../security/admin-http-auth-fail-open.md)). Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
 | `state` | `ApiState` (composition root); `graph_projection_sync()` para outbox Neo4j; agents/bots/orders/portfolio (`submit_order_http`, `paper_wallet_snapshot`, catálogo PG); `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); testes PG via `pg_integration` (skip sem `DATABASE_URL`) — [test-matrix](../reference/test-matrix.md). |
 | `server::run` | Bootstrap `AppDatabases`, `ApiState::build_api_state_for_http_serve` (agents PG + env seams + reconciliação hydrate + catálogo), poll reconciliação em background (opcional), Axum + Scalar. |
 | `routes/*` | Superfície v1: agents, bots (catalog `monitor_evaluator` + runtime), orders (**503** `order_store_unavailable` quando PG de idempotência falha), monitor, risk, backtest, `config/active` e `config/snapshot` (`monitor_registry[].evaluator`), `GET /healthz` (opcional `graph_projection_outbox` + `degraded`), `GET /meta` (`http_seams`). |
@@ -221,7 +223,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 
 ## 7. Débitos e limites conhecidos
 
-- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **470** testes no bin `bot`, **0** ignorados; PG **22/22** via `./scripts/verify-backend-full.sh` (`OK: backend full verification passed`) ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); `cargo test --bin bot http_integration -- --test-threads=1` → **48** passed; paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
+- Evidência registrada (goal completude módulos, `modules-completeness-evidence.json`): `./scripts/verify-backend-gates.sh` → **519** testes no bin `bot`, **0** ignorados; manifesto PG **30** (`verify-backend-full.sh` / `run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot`; execução não registrada; CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09)); `cargo test --bin bot http_integration -- --test-threads=1` → **62** passed; paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
 - Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) em testes com skip via `pg_integration` — exercício real exige `DATABASE_URL` → `trading_bot` (PG 18+).
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.

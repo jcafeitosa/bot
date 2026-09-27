@@ -12,6 +12,8 @@ status: draft
 
 # SDD — `core::providers::nvidia_nim`
 
+> **Estado atual (2026-09-27):** `NvidiaNimClient` / `NimLlmProvider` existem e têm testes, mas **não há chamador** no binário — nenhum módulo instancia o cliente fora de testes. Só `resolve_nim_base_url` é lido no status de providers (`modules/http_bridge/providers.rs:6`) e `normalize_nim_base_url` na validação de config (`core/config/mod.rs:399`). NIM não está em uso por agents nem pelo Jev.
+
 ## Contexto
 
 O bot já expõe `openai_compatible`, `nine_router` e `jev` em `core::providers`. Agentes futuros podem precisar de LLMs e modelos especiais hospedados na **NVIDIA NIM** (integrate API). O catálogo de modelos é **dinâmico** na NVIDIA; a referência oficial por categoria está em [NIM models reference](https://docs.api.nvidia.com/nim/reference/models-1) (LLM, retrieval, visual, multimodal, healthcare, route optimization, climate).

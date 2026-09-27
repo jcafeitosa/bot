@@ -142,6 +142,7 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `pg_bot_catalog_and_graph_projection_same_transaction` | `modules/bots/adapters/pg_catalog.rs` | F2.1.3+ TX catalog + outbox |
 | `pg_monitor_supervisor_graph_projection_outbox_same_transaction` | `modules/orders/adapters/pg_idempotency.rs` | F2.1.3+ monitor supervisor outbox TX |
 | `pg_order_idempotency_and_graph_projection_same_transaction` | `modules/orders/adapters/pg_idempotency.rs` | `DATABASE_URL`; claim idempotência + enqueue outbox na mesma transação PG |
+| `pg_order_idempotency_graph_outbox_transaction_rollback_on_injected_failure` | `modules/orders/adapters/pg_idempotency.rs` | W0-09; `ROLLBACK` após idempotência+outbox na mesma TX |
 | `pg_submit_order_idempotency_releases_claim_when_submit_fails` | `presentation/http/state.rs` | `DATABASE_URL`; falha de risco libera claim PG |
 | `persist_dataset_rejects_conflicting_manifest_for_same_id` | `core/persistence/v18_pg_tests.rs` | `DATABASE_URL`; `DatasetManifestConflict` |
 

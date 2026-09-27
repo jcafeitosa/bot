@@ -13,7 +13,7 @@ tags:
 
 ## Visão do sistema
 
-O binário `bot` possui dois caminhos de execução:
+O binário `bot` possui seis pontos de entrada (`main.rs:24-36`): monitor TUI (sem subcomando), `backtest`, `serve`, `graph-projection`, `graph` e `orders`. O diagrama abaixo cobre os dois caminhos originais (monitor e backtest):
 
 ```mermaid
 flowchart TD
@@ -35,7 +35,7 @@ flowchart TD
   Monitor --> UI[TUI e logs]
 ```
 
-O caminho de monitor não envia ordens. A autorização atual permite apenas backfill histórico público da Binance Spot em `dev`; os caminhos de saldo e execução permanecem bloqueados. O contrato de pausa/retomada está em [SDD T-10](../sdd/monitor-pause-resume-sdd.md), o de persistência em [SDD T-15](../sdd/monitor-persistence-policy-sdd.md) e o de redirects em [SDD T-05](../sdd/rest-redirect-sdd.md).
+O caminho de monitor não envia ordens à exchange: em `paper` usa `PaperLedgerExecutor` (simulado) e o ramo testnet do supervisor é inalcançável (`--mode testnet` rejeitado em `Config::validate`). A autorização atual permite apenas backfill histórico público da Binance Spot em `dev`; os caminhos de saldo e execução permanecem bloqueados. O contrato de pausa/retomada está em [SDD T-10](../sdd/monitor-pause-resume-sdd.md), o de persistência em [SDD T-15](../sdd/monitor-persistence-policy-sdd.md) e o de redirects em [SDD T-05](../sdd/rest-redirect-sdd.md).
 
 ## Camadas e módulos
 
@@ -45,7 +45,7 @@ O caminho de monitor não envia ordens. A autorização atual permite apenas bac
 | `core` | `config` | `Config::load`, `Config::validate` | Carrega TOML (`src/core/config/bot.toml`), aplica CLI e valida ambiente, operação, timeframe, risco e Jev. | `src/core/config/mod.rs` |
 | `core` | `error` | `BotError`, `BotResult` | Erros compartilhados de configuração, mercado, exchange, persistência e Jev. | `src/core/error.rs` |
 | `core` | `logging` | `init(&LoggingConfig)` | Tracing em stderr e arquivos JSON rotacionados. | `src/core/logging.rs` |
-| `core` | `persistence` | `Database`, `persist_dataset` | PostgreSQL dedicado `trading_bot`, migrações em `src/core/persistence/migrations/`. | `src/core/persistence/mod.rs` |
+| `core` | `persistence` | `Database`, `persist_dataset` | PostgreSQL dedicado `trading_bot`, migrações em `src/core/database/migrations/` (`0000`–`0011`, lidas em runtime por `core/database/postgres.rs:94-98`). | `src/core/persistence/mod.rs` |
 | `modules` | `application_contracts` | `Signal`, `BotSignal` | Tipos neutros compartilhados entre módulos (sem lógica de domínio pesada). | `src/modules/application_contracts.rs` |
 | `modules` | `monitor` | `run`, `bootstrap_monitor` | Supervisor do monitor: REST/WS, pausa/retomada, avaliação, Jev, feed, dashboard e persistência opcional. | `src/modules/monitor/controllers/supervisor.rs`, `startup.rs` |
 | `modules` | `market` | `Candle`, `HistoricalDataset`, `HybridCandleFeed` | Valida/agrega candles; feed híbrido REST+WS. | `src/modules/market/models.rs`, `controllers/feed.rs` |
@@ -60,7 +60,7 @@ O caminho de monitor não envia ordens. A autorização atual permite apenas bac
 | `modules` | `orders` | `submit_order`, `FailClosedExecutor` | Valida risco e bloqueia execução (`ExecutionDisabled`); HTTP `POST /api/v1/orders/submit` retorna 503 após risco OK. | [SDD orders](../sdd/orders-module-sdd.md) |
 | `modules` | `http_bridge` | facades por domínio | Camada entre `presentation::http` e módulos de domínio (rotas não importam domínio direto). | [module-catalog §3d](./module-catalog.md#3d-facade-http_bridge-srcmoduleshttp_bridge), `src/modules/http_bridge/` |
 | `presentation` | `terminal` | TUI Ratatui | Renderização e teclado; contrato com monitor via `presentation_contract`. | `src/presentation/terminal/mod.rs`, `modules/monitor/views/` |
-| `presentation` | `http` | Axum, OpenAPI, Scalar | Superfície REST (`serve`); **36** paths; `GET /meta` (`http_seams`); `HttpAdminAuth` em mutações; orders submit/reconciliação sob seams G2. | `src/presentation/http/`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) |
+| `presentation` | `http` | Axum, OpenAPI, Scalar | Superfície REST (`serve`); **42** paths; `GET /meta` (`http_seams`); `HttpAdminAuth` em mutações (opcional: sem token, sem auth — lacuna aberta); orders submit/reconciliação sob seams G2. | `src/presentation/http/`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) |
 
 ## Submódulos de exchanges (`src/modules/exchanges/`)
 

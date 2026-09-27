@@ -95,8 +95,8 @@ O código atual cobre parte da Etapa 1 **sem** satisfazer o item 4 (auth owner v
 | Capacidade | Onde | Limite |
 |------------|------|--------|
 | Registry + hierarquia + lifecycle | `modules/agents` | Memória + testes unitários |
-| Espelhamento PG + hydrate cold-start | `PgAgentIdentityStore`, `http_bridge/agents.rs`, boot `server.rs`, `state.rs` (`persist_agent_after_mutation`) | Sem reconciliação contínua; PG opcional em CI (`run-pg-integration-tests.sh`, **13** testes) |
-| Seam HTTP fail-closed | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` — [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | Não prova identidade do owner humano |
+| Espelhamento PG + hydrate cold-start | `PgAgentIdentityStore`, `http_bridge/agents.rs`, boot `server.rs`, `state.rs` (`persist_agent_after_mutation`) | Sem reconciliação contínua; PG opcional (`run-pg-integration-tests.sh`, manifesto de **29** testes; CI sem run verde) |
+| Seam HTTP (bearer opcional; sem token = rotas abertas, lacuna aberta) | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` — [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | Não prova identidade do owner humano |
 | Capability `promote_runtime_bot` | `bot_promotion.rs`, migração `0005` | Autorização administrativa, não auth de produto |
 
 Baseline de testes: `./scripts/verify-backend-gates.sh` → **470** passed, **0** ignored (2026-09-27). PG script **22/22**. Auditoria: [modules-completeness-audit.md](../planning/modules-completeness-audit.md).

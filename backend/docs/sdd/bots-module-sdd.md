@@ -71,7 +71,7 @@ modules/bots/
 
 ## 6. Pendências
 
-- Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
+- Evidência PG: `pg_catalog_store_round_trip` no manifesto `run-pg-integration-tests.sh` (skip sem `DATABASE_URL` via `pg_integration`; execução não registrada) (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
 - [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): checklist **Critérios de fechamento G2**; promoção HTTP + `evaluate_for_kind` (SMA/EMA) feitos; paridade `serve` documentada em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial) (linha checklist **Parcial**); pendem auth owner e Critic.
-- Baseline: `./scripts/verify-backend-gates.sh` verde; bin `bot` **470** testes (promote SMA/EMA em `monitor_strategy.rs`; catálogo HTTP `monitor_*_period` incl. `bots_catalog_http_lists_monitor_registry_v2_periods` em `http_integration_tests.rs`).
+- Baseline: `./scripts/verify-backend-gates.sh` verde localmente; bin `bot` **519** testes (promote SMA/EMA em `monitor_strategy.rs`; catálogo HTTP `monitor_*_period` incl. `bots_catalog_http_lists_monitor_registry_v2_periods` em `http_integration_tests.rs`).
 - Auth owner humano (IdP); com bootstrap PG, promoção runtime amarrada ao owner verificado (`verify_promoted_by_product_owner`).
