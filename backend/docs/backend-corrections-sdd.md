@@ -32,7 +32,7 @@ Estes descrevem o estado observado no commit `6a103fa`; são evidência da imple
 
 ## Segurança e limites conhecidos
 
-O allowlist verifica a origem inicial configurada; **não há hoje uma política que impeça o cliente HTTP `ccxt` de seguir redirects para outra origem**. Assim, redirect cross-origin continua risco residual de rede. Não declarar redirect externo bloqueado. Um SDD separado T-05 propõe resolver isso por alteração/patch do cliente HTTP, mas permanece proposto, aguardando G1 e acordo de seams.
+O allowlist verifica a origem inicial configurada; **não há hoje uma política que impeça o cliente HTTP `ccxt` de seguir redirects para outra origem**. Assim, redirect cross-origin continua risco residual de rede. Não declarar redirect externo bloqueado. Um SDD separado T-05 propõe resolver isso por alteração/patch do cliente HTTP; seu G1 está tecnicamente aprovado por Crítico independente, enquanto o acordo do usuário sobre os seams e G3 permanecem pendentes.
 
 A requisição atual de OHLCV é pública. O caminho de ordem permanece bloqueado e nenhuma alteração nesta implementação concede permissão para ordens, saldo privado ou uso de credentials para OHLCV. A presença de chaves Binance de testnet em `backend/.env` não significa que o monitor as utilize nesse caminho público.
 
@@ -50,9 +50,9 @@ O teste de persistência `persistence::integration_tests::persist_dataset_round_
 
 ## Situação de G1 e seams
 
-As mensagens disponíveis nesta conversa não estabelecem acordo explícito do usuário aos sete seams propostos nas versões anteriores deste SDD, nem fornecem evidência verificável de aprovação anterior de G1. Portanto, este documento não declara G1 aprovado, acordo de seams, C0–C8 concluídas/revisadas, nem remoção de arquivos legados. G1 permanece pendente para trabalho futuro que dependa de decisões ainda não confirmadas.
+O usuário aprovou explicitamente as sete interfaces propostas neste SDD na resposta “Aprovo as 7 interfaces propostas (recomendado)”. Esse acordo autoriza os seams para os testes correspondentes, mas não fornece evidência verificável de aprovação histórica de G1 nem, por si só, comprova a conclusão ou revisão de C0–C8. A implementação C0–C8 não incluiu remoção de arquivos legados, e este documento não declara os gates de C0–C8 aprovados; G1 permanece pendente de comprovação ou revisão própria. A remoção posterior é registrada separadamente como T-13 abaixo.
 
-Os arquivos `backend/exchanges/config/binance.toml`, `backend/migrations/0001_market_data.sql` e `backend/src/config/profiles.toml` permanecem presentes na árvore atual. Suas relações com as fontes ativas devem ser verificadas num cleanup separado; este SDD não pede sua remoção.
+Os arquivos legados `backend/exchanges/config/binance.toml`, `backend/migrations/0001_market_data.sql` e `backend/src/config/profiles.toml` foram removidos na entrega T-13, com design aprovado em `backend/docs/legacy-file-cleanup-sdd.md`. Permanecem como fontes ativas `backend/src/config/exchanges/binance.toml`, `backend/src/persistence/migrations/0001_market_data.sql` e os presets definidos em Rust. A limpeza documental não altera o estado dos demais gates deste SDD.
 
 ## Entregas possíveis após revisão
 
@@ -67,4 +67,4 @@ Os arquivos `backend/exchanges/config/binance.toml`, `backend/migrations/0001_ma
 - Implementar o harness de agentes descrito no SDD de runtime separado.
 - Habilitar provider LLM/9Router, agentes 24/7, memória de agente, bot training ou autonomia financeira.
 - Habilitar ordens de testnet/produção, leitura de saldo privado, futures ou HFT.
-- Remover duplicatas de configuração/migração sem análise e revisão separadas.
+- Alterar a configuração de contas, os presets em Rust ou a migração ativa como parte da limpeza T-13.

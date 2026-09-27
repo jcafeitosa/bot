@@ -2,8 +2,8 @@
 
 - **ID:** T-07 (design para implementação posterior)
 - **Autor:** System Designer Builder T-07
-- **Revisor:** Crítico de Arquitetura independente, pendente
-- **Estado:** Proposto; G1 e acordo dos seams públicos pendentes
+- **Revisor:** Crítico de Arquitetura independente
+- **Estado:** G1 aprovado e seams públicos aprovados pelo usuário em 2026-09-26; C12 implementado, revisão G3 pendente; C13 pendente
 - **Data:** 2026-09-26
 
 ## Contexto e problema
@@ -26,7 +26,7 @@ O objetivo é tornar o exemplo determinístico e corrigir a contabilização da 
 2. `pub fn run_sma_crossover(&HistoricalDataset, &StrategyDefinition, Timeframe, OperationMode, BacktestConfig, RunId) -> Result<BacktestReport, BacktestError>`: mesma assinatura. Um `Sell` detectado no fechamento da barra `i-1` encerra uma posição na abertura da barra `i`, com preço de venda `open[i] * (1 - slippage_rate)`, taxa sobre proceeds e custo de slippage contabilizado. `BacktestReport` permanece o contrato de observação (trades, custos, lucro e curva).
 3. `BacktestConfig`/`ExitPolicy`/`BacktestError`: sem novos campos ou variantes para a correção comum. Falhas de tamanho da fixture no CLI usam `BotError::Configuration`; `run_sma_crossover` preserva seus erros públicos para dados/aritmética inválidos.
 
-`synthetic_dataset` e a função de cálculo de tamanho continuam privadas em `backtest_cli.rs`; seu desenho interno pode mudar sem introduzir um novo seam público. Estes três seams são propostas, ainda não autorização para escrever testes.
+`synthetic_dataset` e a função de cálculo de tamanho continuam privadas em `backtest_cli.rs`; seu desenho interno pode mudar sem introduzir um novo seam público. O usuário aprovou as interfaces deste e dos outros três SDDs em 2026-09-26; os seams acima passaram a autorizar os testes de C12/C13.
 
 ## Desenho
 
@@ -71,3 +71,10 @@ Cada CL tem Builder e Crítico independentes, até três ciclos, conforme `AGENT
 ## Rollout e rollback
 
 O rollout é apenas código local do subcomando e documentação; não há serviço nem deploy previsto. Reverter C12 restaura a fixture anterior e seu `dataset_id`; reverter C13 restaura os cálculos antigos, portanto regressa o erro de custo na venda por sinal. Não há migração de banco nem mudança de formato persistido; datasets sintéticos antigos e novos podem coexistir por hash. Executar backtest com config padrão após ambos para registrar `trades`, `wins`, `losses` e custos reais antes de considerar a entrega concluída.
+
+## Evidência de C12 (aguardando crítica G3)
+
+- O teste do binário `backtest --config` falhou em red com `scalper/1m` e `trades: 0`; após a mudança passou nos oito pares permitidos de operação e timeframe, com `trades >= 1` e `wins + losses == trades`.
+- A fixture final tem `(slow + fast + 3) * timeframe.minutes()` candles de 1m. A análise e o teste observam Buy no open da barra 22 e Sell no open da barra 27 para SMA 5/20; sem taxas, slippage ou stops, `run_sma_crossover` fecha exatamente um trade com P&L zero, mostrando preenchimento no open da barra seguinte. Sem a última barra agregada, nenhum trade é fechado.
+- O teste de limite cobre 17.520 candles para 4h/SMA 20/50, o teto inclusivo de 20.000 e erro de configuração acima dele ou em overflow. O comando padrão 15m retornou `trades: 1`, `wins: 0`, `losses: 1`, `dataset_id: fnv1a64:4c0b6491c373e08c`.
+- C13 ainda deve corrigir o slippage da venda por sinal; esta evidência não o aprova nem representa teste de persistência PostgreSQL.
