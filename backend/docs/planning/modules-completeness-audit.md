@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (232 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (235 unitários + integração).
 
 ## Resumo executivo
 
@@ -61,7 +61,7 @@ Evidência (2026-09-27): **235** testes no binário `bot`, **5** ignorados (`per
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN`; opcional `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`; não substitui auth owner completo) |
 | Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge` (incl. `bots_runtime`), `ApiState` + enrich monitor/bot runtime, headless `publish_snapshot` via `monitor_snapshot_from_dashboard`, [layer-mapping.md](../architecture/layer-mapping.md) | **Feito** (sem loop de estratégia por bot promovido) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 232 + clippy/fmt/import (2026-09-27) | **Feito** |
+| Build/testes verdes | 235 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -72,7 +72,7 @@ Evidência (2026-09-27): **235** testes no binário `bot`, **5** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 232 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 235 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
