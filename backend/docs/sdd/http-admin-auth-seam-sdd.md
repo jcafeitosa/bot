@@ -26,7 +26,7 @@ status: partial
 - `admin_auth.rs:143-152`: `constant_time_eq` sai cedo quando os tamanhos diferem (vaza tamanho). `admin_auth.rs:7` deriva `Debug` com o token.
 - `backend/src/presentation/http/routes/mod.rs:25-93`: rotas montadas uma a uma, sem layer de auth; cada handler chama `state.require_http_admin` à mão (`state.rs:800`). Rota nova sem a chamada fica aberta.
 - `backend/src/presentation/http/server.rs:16-73`: `serve` sobe sem auth e só registra `http_admin_auth_enabled` em log. `cli.rs:9-10`: `--bind` padrão loopback, aceita qualquer endereço.
-- Contradições ainda abertas: `cli-and-config.md:138` diz "fail-closed" (o título deste SDD já foi corrigido para "opcional"); `admin_auth.rs:1` diz "Optional fail-closed"; `HttpApiSeams::disabled_fail_closed()` (`state.rs:47`) usa auth admin **desligada** (aberta).
+- Contradições ainda abertas: (`cli-and-config.md:138` e o título deste SDD já descrevem o comportamento como opcional/aberto sem token); `admin_auth.rs:1` diz "Optional fail-closed"; `HttpApiSeams::disabled_fail_closed()` (`state.rs:47`) usa auth admin **desligada** (aberta).
 
 ### A1 — escopo obrigatório e follow-ups
 

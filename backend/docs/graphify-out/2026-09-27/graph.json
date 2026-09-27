@@ -1475,14 +1475,14 @@
       "source_location": "L55"
     },
     {
-      "id": "sdd_graph_projection_outbox_sdd_8_f2_1_3_partial_enqueue_na_mesma_tx_fatia_orders",
-      "label": "8. F2.1.3+ (*partial* \u2014 enqueue na mesma TX, fatia orders)",
+      "id": "sdd_graph_projection_outbox_sdd_8_f2_1_3_partial_enqueue_na_mesma_tx",
+      "label": "8. F2.1.3+ (*partial* \u2014 enqueue na mesma TX)",
       "_origin": "ast",
       "community": 46,
       "community_name": "SDD \u2014 Outbox PG para proje\u00e7\u00e3o Neo4j (fatia F2.1)",
       "file_type": "document",
       "node_kind": "heading",
-      "norm_label": "8. f2.1.3+ (*partial* \u2014 enqueue na mesma tx, fatia orders)",
+      "norm_label": "8. f2.1.3+ (*partial* \u2014 enqueue na mesma tx)",
       "source_file": "sdd/graph-projection-outbox-sdd.md",
       "source_location": "L65"
     },
@@ -13211,7 +13211,7 @@
     },
     {
       "source": "sdd_graph_projection_outbox_sdd_sdd_outbox_pg_para_proje\u00e7\u00e3o_neo4j_fatia_f2_1",
-      "target": "sdd_graph_projection_outbox_sdd_8_f2_1_3_partial_enqueue_na_mesma_tx_fatia_orders",
+      "target": "sdd_graph_projection_outbox_sdd_8_f2_1_3_partial_enqueue_na_mesma_tx",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -23430,5 +23430,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "2550967f7ef8bcfd8da360280bb178f9b97c235a"
+  "built_at_commit": "ffdab5807a3ae0dace57316a44355407d83d499c"
 }
