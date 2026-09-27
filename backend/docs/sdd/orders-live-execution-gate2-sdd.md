@@ -111,7 +111,7 @@ Revisão Critic e hardening de produção permanecem **pendentes** antes de fech
 3. `confirm_exchange_order` ou `mark_divergent` (memória + `upsert_state` PG).
 4. Job opcional no `serve` (intervalo configurável; default desligado).
 
-Hoje: confirmação síncrona no submit wired + hidratação PG no boot; poller **não** implementado.
+Implementado (recording): `run_reconciliation_poll_once`, `SpotOrderReconciliationQuery` + `recording_bind_client_exchange` no submit HTTP wired; job periódico no `serve` e consulta testnet **pendentes**.
 
 ### Critérios para sair de “rascunho” (threat model)
 
