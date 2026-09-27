@@ -71,17 +71,17 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-328 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+331 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 6 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, pg identity, pg order idempotency, market, neo4j)
 ```
 
-Bin `bot`: **328** aprovados, **6** ignorados. PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **331** aprovados, **6** ignorados. PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ## Lacunas explícitas
 
 - Não há teste end-to-end contra Binance real; isso é intencional para evitar dependência de rede e credenciais.
-- Não há teste de ordem REST testnet real: `BOT_ORDERS_EXCHANGE_SUBMIT=testnet` + `BINANCE_TESTNET_*` abre `authorize_rest_use` (`credentials_env` + `rest.rs`), mas `live_exchange_submit_backend` permanece unwired; recording + paper ledger são os caminhos determinísticos em CI.
+- CI não envia ordem testnet real (sem credenciais em pipeline): `recording` + `paper` são determinísticos; `binance_spot_testnet_submit` coberto por testes de contrato (sell rejeitado; buy exige rede manual).
 - Não há teste de saldo privado ou produção porque esses caminhos são bloqueados.
 - A integração Jev externa é validada por contrato/configuração; disponibilidade do serviço e qualidade da recomendação não são gates operacionais.
 - O listener HTTP local requer permissão de loopback no ambiente de execução.

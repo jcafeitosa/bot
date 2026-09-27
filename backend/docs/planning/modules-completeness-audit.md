@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**328** no bin `bot` + integração workspace).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**331** no bin `bot` + integração workspace).
 
 ## Resumo executivo
 
@@ -42,7 +42,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
-Evidência (2026-09-27): **328** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
+Evidência (2026-09-27): **331** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
 
 ## Documentação relacionada
 
@@ -63,7 +63,7 @@ Evidência (2026-09-27): **328** testes no binário `bot`, **6** ignorados (`per
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
 | Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `config/active` + catálogo com `evaluator`/`monitor_evaluator`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` snapshot; PG hydrate | **Parcial** (auth owner, exchange REST real) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | **328** + clippy/fmt/import; PG 5/5 opcional (`verify-backend-full.sh`) | **Feito** |
+| Build/testes verdes | **331** + clippy/fmt/import; PG 5/5 opcional (`verify-backend-full.sh`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -74,7 +74,7 @@ Evidência (2026-09-27): **328** testes no binário `bot`, **6** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots (`MonitorEvaluatorKind`, catálogo/config HTTP), orders seams, agents PG + promote capability | **Parcial** (auth owner; adapter exchange orders) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → **328** ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → **331** ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
@@ -83,13 +83,13 @@ Evidência (2026-09-27): **328** testes no binário `bot`, **6** ignorados (`per
 |------|--------|-----|--------------|
 | G1 PG scaffold | agents + bots catálogo | [bots-catalog-persistence-gate1-sdd.md](../sdd/bots-catalog-persistence-gate1-sdd.md) | **Parcial** (adapters + `run-pg-integration-tests.sh` + CI `postgres-integration`; default `cargo test` ignora PG) |
 | G1 HTTP admin seam | presentation/http | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | **Sim** (não é auth owner produto) |
-| G2 orders live | orders + idempotência HTTP `client_order_id` (memória) | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`paper` + portfolio; `recording` → `live_exchange_wired`; `testnet`+`BINANCE_TESTNET_*` abre política REST, submit unwired; threat model rascunho) |
+| G2 orders live | orders + idempotência HTTP `client_order_id` (memória) | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`paper`; `recording`/`testnet`+credenciais → `live_exchange_wired`; testnet market buy ccxt; sell/reconciliação/threat model pendentes) |
 | G2 bots runtime | bots + monitor + agents `promote_runtime_bot` quando `BOT_HTTP_AGENCY_ID` | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | **Parcial** (`MonitorEvaluatorKind` SMA/EMA no supervisor + `run_sma_crossover`; catálogo `monitor_evaluator`) |
 | Auth owner produto | agents | [agents-module-sdd.md](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [agents-capability-research.md](../research/agents-capability-research.md) | **Bloqueado** (seam `BOT_HTTP_*` ok; owner humano não) |
 
 ## Fechamento do goal (pendente)
 
-Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **328** testes bin `bot`, **6** ignorados; OpenAPI **34** paths.
+Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **331** testes bin `bot`, **6** ignorados; OpenAPI **34** paths.
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
