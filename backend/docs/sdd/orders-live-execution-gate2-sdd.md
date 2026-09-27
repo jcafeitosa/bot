@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: execução de orders (exchange)
 
-- **Estado:** **parcial** — G1 + `HttpOrderExecutor` (`disabled`, `dev_accept`, `live_exchange`/`paper` → `ReservedLiveExchangeExecutor` / HTTP `live_exchange_not_wired`); dedupe `client_order_id` (memória + `PgOrderIdempotencyStore` / `0004`). Adapter exchange real pendente.
+- **Estado:** **parcial** — G1 + `HttpOrderExecutor` (`disabled`, `dev_accept`, `paper` → `PaperLedgerExecutor` **200** após risco; `live_exchange` → `ReservedLiveExchangeExecutor` / HTTP `live_exchange_not_wired`); dedupe `client_order_id` (memória + `PgOrderIdempotencyStore` / `0004`). Adapter exchange Spot/testnet pendente.
 - **Referências:** [SDD orders G1](./orders-module-sdd.md), [auditoria de completude](../planning/modules-completeness-audit.md), `modules/exchanges/rest`, `modules/risk`.
 
 ## Contexto
@@ -41,7 +41,8 @@ status: draft
 | `ApiState::order_executor` | `HttpOrderExecutor` via `HttpApiSeams::from_env()` no `for_http_server`; default fail-closed. |
 | `HttpOrderExecutor::live_exchange_wired` / `ApiState::live_exchange_wired` | Fonte única para `GET /meta` e `GET /orders/execution-status`; `true` somente após adapter exchange real. |
 | `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
-| `ReservedLiveExchangeExecutor` | `BOT_ORDERS_EXECUTION=live_exchange|paper` → `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired` até adapter real. |
+| `PaperLedgerExecutor` | `BOT_ORDERS_EXECUTION=paper` → ledger in-process após risco; `live_exchange_wired` permanece `false`. |
+| `ReservedLiveExchangeExecutor` | `BOT_ORDERS_EXECUTION=live_exchange` → `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired` até adapter real. |
 | `RecordingExecutor` | Double in-process (contagem de chamadas); `submit_invokes_recording_executor_once_after_risk` + `submit_order_http_records_execution_with_recording_executor` (sem rede). |
 
 ## Validação (baseline G1 antes de Gate 2)
@@ -50,7 +51,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **305** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`live_exchange`/`paper` → `LiveExchangeNotWired`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência G1 (2026-09-27): **310** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_paper_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange` → `LiveExchangeNotWired`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
@@ -66,7 +67,7 @@ Evidência G1 (2026-09-27): **305** testes bin `bot`, **6** ignorados; `orders_s
 
 ## Pendências de decisão
 
-- Escopo inicial: paper ledger vs testnet Spot apenas.
+- Escopo inicial: **paper ledger** implementado (`PaperLedgerExecutor`); testnet Spot via adapter exchange ainda pendente.
 - Store de idempotência: memória vs PostgreSQL (`0002` ou migração nova).
 - Autorização owner/agency além de `BOT_HTTP_ADMIN_TOKEN` (Gate 1 auth).
 
@@ -78,7 +79,8 @@ Evidência G1 (2026-09-27): **305** testes bin `bot`, **6** ignorados; `orders_s
 | Idempotência `client_order_id` (memória + PG opcional) | `PgOrderIdempotencyStore`, `duplicate_client_order_id_*` | Sim |
 | `live_exchange_not_wired` até adapter real | `ReservedLiveExchangeExecutor`, meta + execution-status | Sim (seam) |
 | `RecordingExecutor` / test double sem rede | `orders/tests.rs`, `http_bridge/orders.rs` | Sim |
+| `PaperLedgerExecutor` (modo `paper`) | `paper_ledger_executor.rs`, `orders_submit_paper_executor_returns_200` | Sim |
 | Adapter `OrderExecutionPort` com exchange/testnet | — | **Não** |
 | `live_exchange_wired == true` com prova determinística | permanece `false` em `/meta` | **Não** |
 | Threat model + revisão Critic | — | **Não** |
-| `./scripts/verify-backend-gates.sh` verde | **305** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **310** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |

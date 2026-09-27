@@ -66,7 +66,7 @@ flowchart LR
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly`; registry em memória compartilhado; rotas HTTP `/api/v1/agents/*`; write-through e cold-start via `PgAgentIdentityStore` + `load_agent_identity_snapshot` no `serve`. **Não** é o módulo `bots`. | `modules/agents/tests.rs`, `http_bridge/agents.rs`. |
 | `modules` | `bots` | `BotIdentity`, `MonitorEvaluatorKind`, `MonitorStrategyRegistry` | Catálogo/ranking; runtime promote; catálogo HTTP `monitor_*_period` + `monitor_evaluator`; supervisor/backtest via `strategy_evaluation_binding` + `evaluate_for_kind`. | `monitor_strategy.rs`, `http_bridge/bots.rs`, `evaluation_binding.rs`, `pg_catalog.rs`. |
-| `modules` | `orders` | `submit_order`, `ReservedLiveExchangeExecutor`, `OrderIdempotencyStore`, `HttpOrderExecutor` | Risk → port; HTTP `GET /orders/execution-status`, `POST /submit`; `live_exchange`/`paper` → `live_exchange_not_wired`; idempotência memória/PG. | `orders/tests.rs`, `http_bridge/orders.rs`, `order_execution.rs`, `server.rs`. |
+| `modules` | `orders` | `submit_order`, `PaperLedgerExecutor`, `ReservedLiveExchangeExecutor`, `exchange_order_gate`, idempotência | Risk → port; HTTP execution-status/submit; `paper` **200**; `live_exchange` → `live_exchange_not_wired`. | `orders/tests.rs`, `http_bridge/orders.rs`, `order_execution.rs`, `server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
 | `presentation` | `http` | API Axum + `ApiState` composition root | OpenAPI/Scalar; `serve` + `bootstrap_http_api` + hydrate agents; rotas stateful via `ApiState`, stateless via `http_bridge`; `HttpAdminAuth`. Ver [layer-mapping.md](./layer-mapping.md). | `server.rs`, `state.rs`, `admin_auth.rs`. |
@@ -113,9 +113,9 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 |---|---|
 | `models` | `SubmitOrderRequest`, `OrderSide`, `OrdersError` (`ExecutionDisabled`, `LiveExchangeNotWired`, …). |
 | `controllers` | `submit_order` — valida request e `risk::validate_intent`; dedupe `client_order_id` via `OrderIdempotencyStore`. |
-| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor` (`dev_accept`), `RecordingExecutor` (test double Gate 2), `ReservedLiveExchangeExecutor` (placeholder exchange); idempotência memória/PG. |
+| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor` (`dev_accept`), `PaperLedgerExecutor` (`paper`), `RecordingExecutor` (test double Gate 2), `ReservedLiveExchangeExecutor` (`live_exchange`); idempotência memória/PG. |
 
-**HTTP:** `GET /api/v1/orders/execution-status` (modo `HttpOrderExecutor` / `live_exchange_wired`); `POST /api/v1/orders/submit` (**503** `execution_disabled` ou `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`) via `presentation/http/routes/orders.rs` → `ApiState::submit_order_http`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido; `BOT_ORDERS_EXECUTION` resolvido em `HttpApiSeams::from_env`.
+**HTTP:** `GET /api/v1/orders/execution-status` (modo `HttpOrderExecutor` / `live_exchange_wired`); `POST /api/v1/orders/submit` (**503** `execution_disabled` ou `live_exchange_not_wired`, **422** risco, **200** com `dev_accept` ou `paper`) via `presentation/http/routes/orders.rs` → `ApiState::submit_order_http`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido; `BOT_ORDERS_EXECUTION` resolvido em `HttpApiSeams::from_env`.
 
 ## 3d. Camada `presentation::http`
 
