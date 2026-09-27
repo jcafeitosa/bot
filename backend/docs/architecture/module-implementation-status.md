@@ -20,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --all-targets -- -D warnings` | PASS | exit 0 |
-| `cargo test --locked` | PASS | 257 testes (bin `bot`); 6 ignorados (dataset PG, scaffold, pg catalog, pg identity, pg order idempotency, Neo4j) |
+| `cargo test --locked` | PASS | 258 testes (bin `bot`); 6 ignorados (dataset PG, scaffold, pg catalog, pg identity, pg order idempotency, Neo4j) |
 | `./scripts/verify-backend-gates.sh (fmt, clippy, import-direction, tests)` | PASS | `OK: import direction heuristics passed` |
 
 ## Critério de linha

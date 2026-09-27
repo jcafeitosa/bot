@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (257 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (258 unitários + integração).
 
 ## Resumo executivo
 
@@ -62,7 +62,7 @@ Evidência (2026-09-27): **258** testes no binário `bot`, **6** ignorados (`per
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth`, `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando `BOT_HTTP_AGENCY_ID` | **Parcial** (seam admin; não substitui auth owner completo) |
 | Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge` (`assert_bot_promotion_allowed`), boot PG catálogo + hydrate agents, monitor + `strategy_evaluation_binding` | **Parcial** (auth owner, orders exchange) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 257 + clippy/fmt/import (2026-09-27) | **Feito** |
+| Build/testes verdes | 258 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -73,7 +73,7 @@ Evidência (2026-09-27): **258** testes no binário `bot`, **6** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 257 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 258 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)

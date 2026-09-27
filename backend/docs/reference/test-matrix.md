@@ -36,7 +36,7 @@ tags:
 | `http_bridge/orders` | `submit_order_http` com `FailClosedExecutor` → `ExecutionDisabled`; com `AcceptingExecutor` → `accepted: true`; `client_order_id` duplicado não reexecuta o port (`duplicate_client_order_id_replays_without_second_execute`). |
 | `http_bridge/bots` | `assert_catalog_contains_bot`, `assert_bot_promotion_allowed` (catálogo + `bot_id_matches_market`); testes em `catalog_gate_tests`. |
 | `orders` | `submit_order` rejeita acima do cap de risco; após risco OK retorna `ExecutionDisabled`; `AcceptingExecutor` cobre caminho aceito no port; `InMemoryOrderIdempotencyStore` + `pg_order_idempotency_round_trip` (ignorado). |
-| `bots` | Identidade, ranking, catálogo por modo, `BotRuntimePort` + `shared_bot_runtime()` (fail-closed + in-memory), `monitor_strategy` registry (`sma-cross@1`), métricas coerentes com `BotId`. |
+| `bots` | Identidade, ranking, catálogo por modo, `BotRuntimePort` + `shared_bot_runtime()` (fail-closed + in-memory), `monitor_strategy` registry (`sma-cross@1`; `promoted_sma_cross_identity_uses_config_periods`, `promoted_identity_must_match_monitor_strategy_registry`), `strategy_evaluation_binding` com promoção ativa, métricas coerentes com `BotId`. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
 | `backtest` | Fees, next-open, slippage na venda, stop/take-profit, histórico insuficiente e ausência de lookahead. |
 | `domain` | Ranking, métricas, janela de avaliação e tipos de identidade. |
@@ -69,12 +69,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-257 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+258 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 6 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, pg identity, pg order idempotency, market, neo4j)
 ```
 
-Bin `bot`: 257 aprovados, 6 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
+Bin `bot`: 258 aprovados, 6 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
 
 ## Lacunas explícitas
 
