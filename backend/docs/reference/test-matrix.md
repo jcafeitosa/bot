@@ -58,7 +58,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **36** paths; `GET /meta` + `meta_and_*`; agents lifecycle + `GET /agents/audit` (`agents_audit_lists_lifecycle_events_after_mutations_with_admin_bearer`); bots runtime; orders/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **36** paths; `GET /meta` + `meta_and_*`; agents lifecycle + audit; bots runtime; orders/agents HTTP; PG ignorado `pg_hydrate_order_reconciliation_from_pg_after_durable_write` (`state.rs`, `hydrate_order_reconciliation_from_pg`). | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
