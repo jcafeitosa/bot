@@ -78,6 +78,21 @@ O modo `hft` é explicitamente rejeitado pelo backend atual. `testnet` não habi
 
 A validação de período SMA e timeframe é feita junto com a configuração. Combinações inválidas impedem a inicialização.
 
+### Registry de estratégias do monitor (opcional)
+
+Além de `sma-cross@1` derivado de `[strategy].sma_fast` / `sma_slow`, o TOML pode declarar entradas extras para catálogo HTTP e `MonitorStrategyRegistry`:
+
+```toml
+[[strategy.monitor_registry]]
+id = "sma-cross"
+version = 2
+name = "SMA crossover alt"
+fast_period = 3
+slow_period = 15
+```
+
+Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O supervisor ainda só avalia estratégias registradas com evaluator SMA; ids desconhecidos na promoção caem em fallback com log.
+
 ## Variáveis de ambiente
 
 | Variável | Finalidade |
