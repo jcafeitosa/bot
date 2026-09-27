@@ -46,11 +46,11 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **227** testes bin `bot`, **5** ignorados; HTTP `/bots/runtime/*`, `monitor_snapshot_includes_promoted_bot_from_runtime_seam`, `attach_bot_runtime_status` em `http_bridge/monitor.rs`.
+Evidência parcial (2026-09-27): **229** testes bin `bot`, **5** ignorados; HTTP `/bots/runtime/*`, `monitor_snapshot_includes_promoted_bot_from_runtime_seam`, `attach_bot_runtime_status` em `http_bridge/monitor.rs`.
 
 ## Validação Gate 2 (quando implementado)
 
-- Testes de promoção/demote sem rede; `GET /monitor/snapshot` expõe `promoted_bot_id` quando runtime in-memory ativo (supervisor ainda não consome promoção).
+- Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot. Estratégia do supervisor ainda não troca por `BotId` promovido.
 - Nenhuma ordem real sem executor orders Gate 2.
 - Revisão Critic + SDD agents (autorização).
 - `./scripts/verify-backend-gates.sh` verde.

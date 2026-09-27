@@ -10,7 +10,7 @@ status: draft
 ---
 # SDD — Módulo `modules/bots`
 
-- **Estado:** G1 + seam Gate 2 parcial — catálogo/ranking/HTTP; `BotRuntimePort` + rotas `/bots/runtime/*`; snapshot HTTP do monitor expõe promoção ativa (`promoted_bot_id`) sem acoplar o loop do supervisor — [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md).
+- **Estado:** G1 + seam Gate 2 parcial — catálogo/ranking/HTTP; `BotRuntimePort` + rotas `/bots/runtime/*`; `MonitorSnapshot` ganha promoção em `publish_snapshot` (`shared_bot_runtime`); HTTP espelha campos — loop de estratégia do supervisor ainda não usa o `BotId` — [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md).
 - **Referências:** [SDD agents — Relação com bots](./agents-module-sdd.md), [Pesquisa agents](../research/agents-capability-research.md), [Módulos não implementados §1b](../planning/unimplemented-modules-analysis.md), [Convenção MVC](./modules-mvc-convention-sdd.md).
 - **Premissas:** Bots são **variações estratégia × timeframe** (e símbolo de mercado quando aplicável), versionados, avaliados por métricas de simulação. Não são identidades administrativas (`modules/agents`).
 
