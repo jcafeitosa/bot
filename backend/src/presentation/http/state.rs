@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::core::config::Config;
 use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
 use crate::modules::agents::AgentRegistry;
+use crate::modules::config_api::Config;
 use crate::modules::monitor::MonitorHandle;
 
 #[derive(Clone)]
@@ -57,7 +57,11 @@ impl ApiState {
 
     pub async fn with_agents<R>(&self, f: impl FnOnce(&mut AgentRegistry) -> R) -> R {
         let mut guard = self.inner.agents.lock().await;
-        f(&mut *guard)
+        f(&mut guard)
+    }
+
+    pub async fn agents_lock(&self) -> tokio::sync::MutexGuard<'_, AgentRegistry> {
+        self.inner.agents.lock().await
     }
 }
 
@@ -67,7 +71,7 @@ impl Default for ApiState {
             None,
             None,
             None,
-            crate::core::config::Config::default_for_tests(),
+            crate::modules::config_api::Config::default(),
         )
     }
 }

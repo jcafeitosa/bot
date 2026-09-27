@@ -6,13 +6,15 @@ use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
 
+use crate::modules::config_api::Config;
 use crate::core::persistence::Database;
+use crate::core::providers::JevAdvisor;
 use crate::presentation::http::agent_log::agent_debug_log;
 use crate::presentation::http::openapi::ApiDoc;
 use crate::presentation::http::routes;
 use crate::presentation::http::state::ApiState;
 
-pub async fn run(bind: SocketAddr) -> anyhow::Result<()> {
+pub async fn run(bind: SocketAddr, app_config: Config) -> anyhow::Result<()> {
     let database = match std::env::var("DATABASE_URL") {
         Ok(url) => match Database::connect_from_url(&url).await {
             Ok(db) => Some(db),
@@ -24,7 +26,8 @@ pub async fn run(bind: SocketAddr) -> anyhow::Result<()> {
         Err(_) => None,
     };
 
-    let state = ApiState::new(None, database);
+    let jev = JevAdvisor::from_env(app_config.jev.clone()).ok().flatten();
+    let state = ApiState::new(None, database, jev, app_config);
     let app = build_router(state);
 
     agent_debug_log(
@@ -33,15 +36,9 @@ pub async fn run(bind: SocketAddr) -> anyhow::Result<()> {
         "HTTP router mounted",
         serde_json::json!({
             "bind": bind.to_string(),
-            "routes": [
-                "/healthz",
-                "/readyz",
-                "/openapi.json",
-                "/docs",
-                "/api/v1/meta"
-            ]
+            "openapi_paths": ApiDoc::openapi().paths.paths.len(),
         }),
-        "pre-fix",
+        "post-expand",
     );
 
     let listener = TcpListener::bind(bind).await?;
@@ -105,5 +102,45 @@ mod tests {
         let doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(doc["info"]["title"], "Rust Trading Bot API");
         assert!(doc["paths"]["/api/v1/backtest/sma-crossover"].is_object());
+    }
+
+    #[tokio::test]
+    async fn agents_register_and_openapi_lists_new_paths() {
+        let app = build_router(ApiState::default());
+        let body = r#"{"agency":"acme","owner_id":"owner-1","agent_id":"ceo","display_name":"CEO","role":"ceo","supervisor":{"kind":"owner","owner_id":"owner-1"}}"#;
+        let register = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/agents")
+                    .header("content-type", "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(register.status(), StatusCode::CREATED);
+
+        let openapi = app
+            .oneshot(
+                Request::builder()
+                    .uri("/openapi.json")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        let bytes = axum::body::to_bytes(openapi.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        let paths = doc["paths"].as_object().expect("paths").len();
+        assert!(
+            paths >= 24,
+            "expected expanded openapi surface, got {paths}"
+        );
+        assert!(doc["paths"]["/api/v1/agents"].is_object());
+        assert!(doc["paths"]["/api/v1/risk/gate-signal"].is_object());
     }
 }

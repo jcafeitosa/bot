@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_imports)]
+#![allow(unused_imports)]
 //! Administrative agent identities (`IdentityOnly` foundation) and optional Jev advisory seam.
 
 pub mod adapters;

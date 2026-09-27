@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::modules::agents::controllers::registry::AgentRegistry;
 use crate::modules::agents::models::{
     AgencyId, AgentId, AgentLifecycleState, AgentsError, IdentityEventKind,

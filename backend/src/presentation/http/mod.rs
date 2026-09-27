@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod agent_log;
 pub mod cli;
 pub mod error;

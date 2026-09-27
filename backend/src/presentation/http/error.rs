@@ -69,11 +69,44 @@ impl ApiError {
         }
     }
 
+    pub fn from_agents_error(error: crate::modules::agents::AgentsError) -> Self {
+        use crate::modules::agents::AgentsError;
+        match error {
+            AgentsError::NotFound(message) => {
+                ApiError::with_code(StatusCode::NOT_FOUND, "not_found", message)
+            }
+            AgentsError::Duplicate(message) => {
+                ApiError::with_code(StatusCode::CONFLICT, "duplicate", message)
+            }
+            AgentsError::AgencyMismatch { agent } => ApiError::with_code(
+                StatusCode::FORBIDDEN,
+                "agency_mismatch",
+                format!("agency mismatch for agent {agent}"),
+            ),
+            AgentsError::AdvisoryDenied(message) => {
+                ApiError::with_code(StatusCode::FORBIDDEN, "advisory_denied", message)
+            }
+            AgentsError::InvalidId(message)
+            | AgentsError::Hierarchy(message)
+            | AgentsError::Lifecycle(message) => {
+                ApiError::with_code(StatusCode::BAD_REQUEST, "agents", message)
+            }
+        }
+    }
+
     pub fn monitor_unavailable() -> Self {
         ApiError::with_code(
             StatusCode::SERVICE_UNAVAILABLE,
             "monitor_unavailable",
             "monitor is not attached to this API process",
+        )
+    }
+
+    pub fn jev_unavailable() -> Self {
+        ApiError::with_code(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "jev_unavailable",
+            "Jev advisory is disabled or not configured in this API process",
         )
     }
 }

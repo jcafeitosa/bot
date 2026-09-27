@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use utoipa::ToSchema;
 
 pub const BASE_TIMEFRAME_MS: i64 = 60_000;
 
@@ -35,7 +36,7 @@ impl Timeframe {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct Candle {
     pub timestamp_ms: i64,
     pub open: f64,

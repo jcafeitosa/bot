@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::core::error::BotResult;
 use crate::core::providers::{JevAdvisor, JevReviewInput};
 

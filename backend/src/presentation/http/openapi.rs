@@ -1,10 +1,17 @@
 use utoipa::OpenApi;
 
-use super::routes::{application, backtest, exchanges, health, meta, monitor, portfolio};
+use super::routes::{
+    agents, application, backtest, config, exchanges, health, meta, monitor, portfolio, providers,
+    strategy,
+};
 use crate::modules::application_contracts::Signal;
-use crate::modules::config_api::{OperationMode, RiskProfile};
+use crate::modules::config_api::{OperationMode, RiskProfile, RunMode};
 use crate::modules::exchanges::capabilities::{Capability, ExchangeCapability};
-use crate::modules::http_bridge::{risk, strategy};
+use crate::modules::http_bridge::{
+    agents as agents_bridge, config as config_bridge, providers as providers_bridge, risk,
+    strategy as strategy_bridge,
+};
+use crate::modules::market::models::Candle;
 use crate::presentation::http::error::ApiErrorBody;
 
 #[derive(OpenApi)]
@@ -14,11 +21,23 @@ use crate::presentation::http::error::ApiErrorBody;
         health::readyz,
         meta::meta,
         application::list_signals,
+        config::config_snapshot,
+        providers::provider_status,
         exchanges::catalog,
         exchanges::routing_matrix,
+        agents::list_agents,
+        agents::register_agent,
+        agents::audit_log,
+        agents::get_agent,
+        agents::pause_agent,
+        agents::resume_agent,
+        agents::retire_agent,
+        agents::run_advisory,
         crate::presentation::http::routes::risk::compute_profile_limits,
         crate::presentation::http::routes::risk::validate_order_intent,
-        crate::presentation::http::routes::strategy::sma_periods,
+        crate::presentation::http::routes::risk::gate_signal,
+        strategy::sma_periods,
+        strategy::evaluate_sma,
         portfolio::paper_wallet,
         backtest::run_sma_backtest,
         monitor::snapshot,
@@ -32,20 +51,40 @@ use crate::presentation::http::error::ApiErrorBody;
         application::SignalDescriptor,
         application::SignalsResponse,
         Signal,
+        config::ConfigSnapshotQuery,
+        config_bridge::ConfigSnapshotResponse,
+        providers_bridge::ProvidersStatusResponse,
         exchanges::ExchangeCatalogResponse,
         exchanges::ExchangeRoutingResponse,
         exchanges::RoutingRow,
         ExchangeCapability,
         Capability,
+        agents_bridge::AgencyQuery,
+        agents_bridge::RegisterAgentRequest,
+        agents_bridge::AgentRoleBody,
+        agents_bridge::SupervisorRefBody,
+        agents_bridge::AgentResponse,
+        agents_bridge::AgentListResponse,
+        agents_bridge::AuditLogResponse,
+        agents_bridge::AuditEventResponse,
+        agents_bridge::LifecycleResponse,
+        agents_bridge::AdvisoryRequest,
+        agents_bridge::AdvisoryResponse,
         risk::ProfileLimitsRequest,
         risk::ProfileLimitsResponse,
         risk::ValidateIntentRequest,
         risk::ValidateIntentResponse,
         risk::RiskLimitsBody,
         risk::OrderIntentBody,
+        risk::GateSignalRequest,
+        risk::GateSignalResponse,
         RiskProfile,
-        strategy::StrategyPeriodsResponse,
-        strategy::PeriodsQuery,
+        RunMode,
+        strategy_bridge::StrategyPeriodsResponse,
+        strategy_bridge::PeriodsQuery,
+        strategy_bridge::EvaluateSmaRequest,
+        strategy_bridge::EvaluateSmaResponse,
+        Candle,
         OperationMode,
         portfolio::PaperSnapshotResponse,
         portfolio::PaperSnapshotQuery,
@@ -58,9 +97,12 @@ use crate::presentation::http::error::ApiErrorBody;
     tags(
         (name = "system", description = "Health and metadata"),
         (name = "application", description = "Shared application contracts"),
+        (name = "config", description = "Read-only configuration snapshots"),
+        (name = "providers", description = "External provider configuration flags"),
+        (name = "agents", description = "Identity-only agent registry and lifecycle"),
         (name = "exchanges", description = "Exchange catalog and routing"),
         (name = "risk", description = "Risk limits and validation"),
-        (name = "strategy", description = "Strategy presets"),
+        (name = "strategy", description = "Strategy presets and evaluation"),
         (name = "portfolio", description = "Paper portfolio snapshots"),
         (name = "backtest", description = "Synthetic SMA backtest"),
         (name = "monitor", description = "Live monitor control when attached"),
@@ -68,7 +110,7 @@ use crate::presentation::http::error::ApiErrorBody;
     info(
         title = "Rust Trading Bot API",
         version = "0.1.0",
-        description = "HTTP surface for backend modules. Monitor routes require a monitor handle in the same process."
+        description = "HTTP surface for backend modules. Monitor routes require a monitor handle in the same process; Jev advisory requires jev.enabled and API credentials."
     )
 )]
 pub struct ApiDoc;

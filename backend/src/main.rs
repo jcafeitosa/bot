@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
         Some(BotCommand::Serve(args)) => {
             let config = Config::load(&cli.monitor)?;
             let _logging_guard = crate::core::logging::init(&config.logging)?;
-            presentation::http::run_server(args.bind).await?;
+            presentation::http::run_server(args.bind, config).await?;
         }
         None => {
             let config = Config::load(&cli.monitor)?;

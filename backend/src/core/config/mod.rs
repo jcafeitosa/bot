@@ -102,7 +102,7 @@ impl std::fmt::Display for RiskProfile {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum RunMode {
     Observe,
@@ -191,6 +191,9 @@ pub struct ProviderConfig {
     /// Optional OpenAI-compatible API root (env `NINE_ROUTER_BASE_URL` / `OPENAI_BASE_URL` override this).
     #[serde(default)]
     pub openai_base_url: Option<String>,
+    /// Optional NVIDIA NIM integrate API root (`NVIDIA_NIM_BASE_URL` overrides this).
+    #[serde(default)]
+    pub nim_base_url: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoggingConfig {
@@ -324,6 +327,10 @@ impl Config {
         if let Some(base) = &self.providers.openai_base_url {
             crate::core::providers::openai_compatible::validate_https_or_localhost(base)?;
         }
+        if let Some(base) = &self.providers.nim_base_url {
+            let normalized = crate::core::providers::nvidia_nim::normalize_nim_base_url(base);
+            crate::core::providers::openai_compatible::validate_https_or_localhost(&normalized)?;
+        }
         self.validate_operation_profile()?;
         Ok(())
     }
@@ -450,6 +457,19 @@ mod tests {
         let c = Config {
             providers: ProviderConfig {
                 openai_base_url: Some("http://example.com/v1".into()),
+                nim_base_url: None,
+            },
+            ..Config::default()
+        };
+        assert!(c.validate().unwrap_err().to_string().contains("HTTPS"));
+    }
+
+    #[test]
+    fn rejects_insecure_nim_base_url_in_toml() {
+        let c = Config {
+            providers: ProviderConfig {
+                openai_base_url: None,
+                nim_base_url: Some("http://evil.example/v1".into()),
             },
             ..Config::default()
         };
