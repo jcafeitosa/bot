@@ -24,7 +24,7 @@ status: draft
 Entre `b8370a75` e `d42b71a5`, `postgres.rs` perdeu 2 linhas (as referências abaixo já estão ajustadas) e `run-pg-integration-tests.sh` mudou no revert. As linhas do script são as do HEAD (`git show HEAD:backend/scripts/run-pg-integration-tests.sh`), não as da cópia de trabalho.
 
 - `.github/workflows/backend-ci.yml:33`: o serviço usa `timescale/timescaledb-ha:pg16`, incompatível com o mínimo exigido pelo código (PostgreSQL 18): `backend/src/core/database/postgres.rs:11` (`MIN_SERVER_VERSION_NUM = 180_000`), checado em `:65` (`assert_server_version` dentro de `connect_from_url`) e definido em `:72-81`. Atualizar apenas a imagem do workflow não é suficiente: o helper atualmente converte erros de conexão ou migração em `None`, e o manifesto/runner não comprovam seleção nem execução de todos os testes. A imagem exata aprovada para CI, seu digest e suporte simultâneo a service container, PostgreSQL 18+ e às extensões exigidas permanecem desconhecidos e são gate bloqueante (C4).
-- `backend/src/core/persistence/pg_integration.rs:7-15`: `database_for_integration_test` devolve `None` em erro de conexão **ou** de migração; os testes PG fazem `return` cedo. Com pg16 na CI, todo teste PG "passa" sem executar nada. O módulo só compila em teste (`core/persistence/mod.rs:6-7`, `#[cfg(test)] pub mod pg_integration`).
+- `backend/src/core/persistence/pg_integration.rs:7-15`: `database_for_integration_test` devolve `None` em erro de conexão **ou** de migração; os testes PG fazem `return` cedo. Sob o serviço pg16 incompatível, os testes não alcançam uma integração bem-sucedida; a saída atual pode ainda reportar sucesso por retorno antecipado. O módulo só compila em teste (`core/persistence/mod.rs:6-7`, `#[cfg(test)] pub mod pg_integration`).
 - **Testes que chamam o helper e estão fora do manifesto** (nunca rodam contra PG, nem na CI; conferido com `git grep` das chamadas em `backend/src` × `PG_TESTS` do HEAD):
   - `fetch_stats_returns_zeros_on_empty_outbox` (`core/database/graph_projection_outbox_worker.rs:127`)
   - `pg_order_idempotency_store_unavailable_when_table_missing` (`modules/orders/adapters/pg_idempotency.rs:187`)
@@ -45,12 +45,16 @@ Entre `b8370a75` e `d42b71a5`, `postgres.rs` perdeu 2 linhas (as referências ab
 - `backend-ci.yml:22, 47`: `dtolnay/rust-toolchain@stable` sem `rust-toolchain.toml` no repo; o clippy muda com o toolchain.
 - Imagem de dev pinada por digest: `docker-compose.bot.yml:12` = `timescale/timescaledb-ha@sha256:131bfdf82ec0dfe42eaa3f4a189f8e04b7b1dc2b27705cfd921e55ebef339840` (comentário `:3`: PostgreSQL 18.6 / TimescaleDB 2.30.1). A CI não usa essa imagem. O compose usa `POSTGRES_DB=bot_agents` e `PGDATA` próprio; a CI precisa de `POSTGRES_DB=trading_bot`.
 
-## Contradições doc × código
+## Evidência de validação disponível (baseline desta revisão)
 
-- O comentário de `run-pg-integration-tests.sh:2` cita um número de testes diferente de `EXPECTED_PG_INTEGRATION_TESTS`; o número muda a cada commit, por isso este SDD não o repete.
-- Docs de status já citaram contagens PG; contagem não prova execução (ver C1).
+- `cargo check --all-targets` concluiu com sucesso neste ciclo de verificação.
+- A gate canônica esperava 520 evidências, mas o registro encontrado indicava 519; `verify-backend-gates.sh` falhou na asserção de contagem. Isso não é falha atribuída ao desenho W0-02 nem valida o caminho PG; registrar/destravar a fonte do descompasso antes do G4.
+- Smoke local de API passou para healthz/readyz/OpenAPI, incluindo 42 rotas. É evidência de baseline geral, não de integração PostgreSQL.
+- Não há evidência aqui de que imagem compatível PG 18+ e extensões tenham sido iniciadas como service container GitHub; permanece gate C4. Nenhum destes resultados altera o status draft ou aprova G1.
 
-## Decisão
+## Decisão / desenho proposto (sujeito a aprovação G1)
+
+A entrega de implementação é uma unidade coerente: mudança do workflow GitHub Actions e das Rust helpers/scripts de teste para fazer o job PG realmente exercitar testes e falhar de forma observável. Não alterar outros workflows nem fazer deploy. O runtime deve recusar marcador de teste por segurança de ambiente.
 
 1. **Modo "PG obrigatório":** `BOT_PG_INTEGRATION_REQUIRED=1`, lido em `core/config` (exigido pelo guard de env de `verify-backend-gates.sh`). Nesse modo, o helper **falha o teste** (panic com mensagem estável, sem URL) quando falta `DATABASE_URL`, a conexão falha, a versão é < 18, a migração falha ou o marcador de teste (item 2) não existe; quando tudo dá certo, imprime uma linha estável (nome proposto `PG_INTEGRATION_HELPER_OK`). Sem o modo, o `cargo test` local continua pulando, como hoje. O script e a CI sempre ligam o modo. **Limite conhecido:** o modo obrigatório não faz falhar um teste que retorna cedo **antes** de chamar o helper (ex.: checagem de Neo4j ou de credencial antes do helper); por isso C1 exige a linha estável do helper, e não só "1 passed".
 2. **DB de teste isolado por marcador no banco**, não só pelo nome: tabela `bot_test_database_marker` com uma linha, criada **fora** das migrações e **fora** do binário.
@@ -91,9 +95,9 @@ Critérios de T-CI-01 (toolchain e job `rust`) e T-CI-02 (PG 18 e manifesto), co
 
 - **C0 (manifesto completo).** `assert-pg-integration-manifest.sh` falha se o conjunto de testes que chamam o helper (parser estático acima) diferir de `PG_TESTS`, e falha se alguma chamada ao helper estiver num `fn` sem atributo de teste. Provas registradas na entrega: (a) um teste fora do manifesto faz o script falhar; (b) um wrapper sem atributo de teste faz o script falhar; (c) uma entrada sem função (a fantasma do HEAD) faz o script falhar. Os dez testes listados no Contexto entram no manifesto ou em `PG_TEST_EXCEPTIONS` com justificativa; a recomendação é que os dez entrem, porque todos precisam de PG ligado (os `graph_admin_*` também exigem Neo4j desligado, que é o padrão da CI). As entradas sem função são removidas (Decisão 3).
 - **C1 (T-CI-02).** Cada teste do manifesto roda exatamente uma vez, com `BOT_PG_INTEGRATION_REQUIRED=1`, `--exact`, `--nocapture`, `1 passed; 0 failed; 0 ignored` e a linha `PG_INTEGRATION_HELPER_OK` conferidos por teste; nome que resolve para 0 ou mais de 1 teste falha o script; teste que termina sem a linha do helper (retorno cedo antes do helper) falha o script. Além disso, o total de testes executados com `1 passed` é igual ao número de entradas do manifesto. Prova de RED: no HEAD, a entrada fantasma `persist_dataset_rejects_conflicting_manifest_for_same_id` faz C0 e C1 falharem.
-- **C2.** Em modo obrigatório, sem `DATABASE_URL`, com PG < 18, com migração quebrada ou sem marcador, o job PG falha (prova: execução registrada de cada caso).
+- **C2.** Em modo obrigatório, ausência de `DATABASE_URL`, falha de conexão, PostgreSQL < 18, falha de qualquer migração ou ausência de marcador causam falha do teste/job; mensagem estável não pode revelar URL nem segredo. Demonstrar RED para cada caso de erro e GREEN no caminho válido em ambiente PG 18+ com extensões disponíveis/instaladas e marcador. Guardar logs/assertions reproduzíveis.
 - **C3.** Helper recusa banco sem marcador (teste unitário sem PG real para a decisão; teste PG para o caminho feliz). Runtime recusa banco com marcador: teste PG chama `PostgresDatabase::connect_from_url` contra o banco com marcador e espera `TestDatabaseMarkerPresent`; teste do `serve`/`bootstrap_http_api` contra o mesmo banco espera exit ≠ 0 (não `warn` seguido de "sem PG"). Guard estático: `rg 'PgPoolOptions' backend/src` só em `core/database/postgres.rs`, para que nenhum ponto de entrada novo crie pool sem passar pela checagem.
-- **C4 (T-CI-02).** Job `postgres-integration` com a imagem `timescale/timescaledb-ha@sha256:131bfdf82ec0dfe42eaa3f4a189f8e04b7b1dc2b27705cfd921e55ebef339840`; o log da execução mostra `server_version_num` ≥ 180000 e as extensões exigidas instaladas. Os dois jobs de `backend-ci.yml` verdes em `main`; link da execução registrado na entrega.
+- **C4 (T-CI-02; gate de compatibilidade da imagem).** Antes de escolher/configurar a imagem, documentar evidência para o digest exato de que (a) o GitHub Actions o inicia como service container com variáveis/health check requeridos, (b) `server_version_num` é ≥ 180000, e (c) `CREATE EXTENSION`/`pg_extension` confirma `timescaledb` e `vector`. Não presumir que o digest do compose cumpre qualquer ponto. Após aprovação da imagem e implementação, a execução real de CI deve mostrar versão/extensões e os jobs `rust` e `postgres-integration` verdes; registrar link da execução.
 - **C5 (T-CI-01).** `rust-toolchain.toml` presente; `cargo fmt --check` e `cargo clippy -D warnings` limpos; `verify-backend-gates.sh` verde local e na CI com o mesmo toolchain.
 
 ## Dependências
@@ -115,4 +119,5 @@ Critérios de T-CI-01 (toolchain e job `rust`) e T-CI-02 (PG 18 e manifesto), co
 
 ## Rollout / rollback
 
-- Rollout: só CI e scripts de teste (mais a recusa do runtime com marcador); nenhum deploy. Rollback: reverter workflow/scripts volta ao estado atual (testes PG vazios).
+- Rollout: mudança de CI/scripts/helpers somente após aprovação G1 e autorização de implementação; nenhuma publicação/deploy. Ativar o job com banco descartável, marcador aplicado pelo workflow/setup explícito, e confirmar logs de versão, extensões, manifesto e execução individual. Só aceitar quando ambos jobs de CI estiverem verdes.
+- Rollback: reverter o commit completo workflow + helpers/scripts para o último estado conhecido. Isso remove a nova recusa de marcador em runtime também; até lá, não apontar runtime para o banco marcado. A reversão não deve manter workflow e helper em estados incompatíveis. Nenhuma implantação de aplicação está prevista.
