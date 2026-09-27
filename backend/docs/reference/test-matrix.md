@@ -31,7 +31,7 @@ tags:
 | `strategy` | Períodos por operação; `evaluate` / `evaluate_ema` / `evaluate_for_kind` (SMA e EMA). |
 | `risk` | Limite conservador/agressivo, tamanho, stop/take profit e incompatibilidade de modo. |
 | `agents` | Registry, lifecycle, `assert_runtime_promotion_authorized` (capability + not-active), PG snapshot. |
-| `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
+| `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start); `agent_lifecycle_snapshot_for_persist_reflects_latest_audit_kind` (pause/resume/retire → `snapshot_for_persist` / write-through PG). |
 | `http_bridge/config` | `map_config` expõe `monitor_registry` com `evaluator` (`map_config_preserves_ema_evaluator_on_registry_entry`). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` (paper, live_exchange wired/recording, reserved) em `server.rs`. |
@@ -81,6 +81,19 @@ cargo test --locked
 ```
 
 Bin `bot`: **383** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+
+### Testes `#[ignore]` no bin `bot` (8)
+
+| Teste | Arquivo | Como executar |
+|-------|---------|---------------|
+| `postgres_scaffold_tables_exist_after_migrate` | `core/persistence/mod.rs` | `run-pg-integration-tests.sh` ou `cargo test -- --ignored postgres_scaffold` |
+| `persist_dataset_round_trip` | `modules/market/models.rs` | idem |
+| `pg_identity_snapshot_round_trip` | `modules/agents/adapters/pg_registry.rs` | idem |
+| `pg_catalog_store_round_trip` | `modules/bots/adapters/pg_catalog.rs` | idem |
+| `pg_order_idempotency_round_trip` | `modules/orders/adapters/pg_idempotency.rs` | idem |
+| `pg_order_reconciliation_round_trip` | `modules/orders/adapters/pg_reconciliation.rs` | idem |
+| `ping_and_node_count_against_local_graph` | `core/database/neo4j.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
+| `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | credenciais testnet + rede; `cargo test -- --ignored integration_submits` |
 
 ## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
 

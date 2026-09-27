@@ -96,3 +96,18 @@ Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-executi
 | Threat model G2 fechado (Critic) + purge PG automatizado | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | Critic independente; retenção ops já em [cli-and-config](../reference/cli-and-config.md#pg-orders-retention-gate-2) |
 | Auth owner verificável | [agents-capability-research.md](../research/agents-capability-research.md) | Bootstrap + decisão produto |
 | Revisão Critic pacote G1/G2 | AGENTS.md | Instância separada |
+
+## Pacote para revisão Critic (handoff)
+
+Escopo sugerido para uma instância **independente** (não substitui decisão de auth owner produto):
+
+| Área | Artefatos | Verificação mínima |
+|------|-----------|-------------------|
+| HTTP admin seam | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md), `presentation/http/admin_auth.rs`, matriz em [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token) | `./scripts/verify-backend-gates.sh`; spot-check `agents_advisory_requires_admin_bearer_when_enabled` se flake reaparecer |
+| Orders G2 | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) (checklist + threat model), `modules/orders/`, `order_execution.rs` | Confirmar `authorize_rest_use` / prod REST bloqueado; retenção ops documentada; sem credenciais em CI |
+| Bots runtime G2 | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md), `evaluation_binding.rs`, `runtime_port.rs` | Promote capability + `evaluate_for_kind`; runtime partilhado vs isolado em testes HTTP (linha checklist **Parcial**) |
+| Agents G1 | [agents-module-sdd.md](../sdd/agents-module-sdd.md), `bot_promotion.rs` | Itens **Não** do checklist permanecem bloqueadores de produto |
+
+Comandos canônicos: `./scripts/verify-backend-gates.sh`; opcional `DATABASE_URL=… ./scripts/run-pg-integration-tests.sh` (6 testes); testnet manual `cargo test --locked integration_submits_minimal_market_buy_on_testnet -- --ignored` (fora de CI).
+
+Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** / **REPROVADO** por SDD, com achados ligados a teste ou linha de código; autor do pacote não aprova o próprio artefato (`AGENTS.md`).
