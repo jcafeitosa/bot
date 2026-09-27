@@ -58,7 +58,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **36** paths; `GET /meta` + `meta_and_*`; catálogo/config `monitor_evaluator` / `evaluator` (`config_active_preserves_ema_evaluator_on_monitor_registry`); bots runtime; orders/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **36** paths; `GET /meta` + `meta_and_*` (ledger partilhado isolado com `lock_shared_*` em `meta_includes_http_seams_snapshot`); catálogo/config `monitor_evaluator` / `evaluator`; bots runtime; orders/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
