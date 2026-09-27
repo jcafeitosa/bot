@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: runtime bots (executor live)
 
-- **Estado:** **parcial** — G1 + seam `BotRuntimePort` (`FailClosedBotRuntime` default; `InMemoryBotRuntime` com `BOT_RUNTIME_ENABLED=true`), HTTP `GET /bots/runtime/status`, `POST .../promote|demote` (admin), `shared_bot_runtime()` + enrich em `MonitorHandle::publish_snapshot`, publicação headless via `monitor_snapshot_from_dashboard` no supervisor. **Pendente:** loop do supervisor trocar estratégia/executor pelo `BotId` promovido e autorização agente→bot.
+- **Estado:** **parcial** — G1 + seam `BotRuntimePort` (`FailClosedBotRuntime` default; `InMemoryBotRuntime` com `BOT_RUNTIME_ENABLED=true`), HTTP `GET /bots/runtime/status`, `POST .../promote|demote` (admin), `shared_bot_runtime()` + enrich em `MonitorHandle::publish_snapshot`, publicação headless via `monitor_snapshot_from_dashboard` no supervisor. **Parcial (loop):** `strategy_evaluation_binding` + `run_evaluation_cycle` propagam `promoted_bot_id` em `BotSignal` quando promoção casa com mercado; SMA ainda vem do config global. **Pendente:** parâmetros por `strategy@version`, autorização agente→bot.
 - **Referências:** [SDD bots G1](./bots-module-sdd.md), [Gate 1 PG](./bots-catalog-persistence-gate1-sdd.md), [auditoria](../planning/modules-completeness-audit.md), `modules/monitor`, `modules/agents` (governança).
 
 ## Contexto
@@ -46,11 +46,11 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **232** testes bin `bot`, **5** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*`, `bots_runtime_promote_http_visible_on_status_and_monitor_snapshot`, `apply_bot_runtime_to_monitor_snapshot_copies_promotion`.
+Evidência parcial (2026-09-27): **234** testes bin `bot`, **5** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*`, `bots_runtime_promote_http_visible_on_status_and_monitor_snapshot`, `apply_bot_runtime_to_monitor_snapshot_copies_promotion`.
 
 ## Validação Gate 2 (quando implementado)
 
-- Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot. Estratégia do supervisor ainda não troca por `BotId` promovido.
+- Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot; supervisor usa `strategy_evaluation_binding` + `BotSignal.bot_id` quando promoção casa com mercado. **Pendente:** parâmetros SMA/estratégia por definição de catálogo (hoje permanecem no `Config` global).
 - Nenhuma ordem real sem executor orders Gate 2.
 - Revisão Critic + SDD agents (autorização).
 - `./scripts/verify-backend-gates.sh` verde.
