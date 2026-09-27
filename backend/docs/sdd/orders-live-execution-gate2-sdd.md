@@ -52,7 +52,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **319** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_paper_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange` → `LiveExchangeNotWired`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência G1 (2026-09-27): **320** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_paper_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange` → `LiveExchangeNotWired`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
@@ -83,5 +83,17 @@ Evidência G1 (2026-09-27): **319** testes bin `bot`, **6** ignorados; `orders_s
 | `PaperLedgerExecutor` (modo `paper`) | `paper_ledger_executor.rs`, `orders_submit_paper_executor_returns_200` | Sim |
 | Adapter `OrderExecutionPort` com exchange/testnet REST | ccxt/testnet pendente | **Não** (recording seam ok) |
 | `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording; não testnet REST) |
-| Threat model + revisão Critic | — | **Não** |
-| `./scripts/verify-backend-gates.sh` verde | **319** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
+| Threat model + revisão Critic | seção rascunho neste SDD; Critic instância separada | **Parcial** |
+| `./scripts/verify-backend-gates.sh` verde | **320** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
+
+## Threat model (rascunho)
+
+| Risco | Mitigação atual | Gap |
+|-------|-----------------|-----|
+| Envio acidental de ordem live | Default `BOT_ORDERS_EXECUTION` fail-closed; `authorize_rest_use` bloqueia `OrderSubmit` exceto seam `recording` em dev Spot | REST testnet/prod ainda desabilitado |
+| Replay de `client_order_id` | `OrderIdempotencyStore` memória + PG `0004` | TTL/expiração operacional não definida |
+| Credenciais testnet em log | Sem adapter REST de ordem em CI; recording não usa rede | Revisar logging ao ligar ccxt |
+| Bypass de risco | `submit_order` sempre chama `risk::validate_intent` antes do port | — |
+| Admin token vazado | `BOT_HTTP_ADMIN_TOKEN` em rotas mutantes; não substitui auth owner | [agents G1](./agents-module-sdd.md) |
+
+Revisão Critic e hardening de produção permanecem **pendentes** antes de fechar G2.

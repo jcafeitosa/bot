@@ -97,7 +97,7 @@ tags:
 
 O script executa `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh` e `cargo test --locked` (bin `bot` + testes de integração do workspace).
 
-Evidência observada: **319** testes unitários no binário `bot` (inclui HTTP OpenAPI 34 paths, `GET /meta` (`http_seams` + contratos `meta_and_*`), `RecordingExecutor` (orders), bots catalog `monitor_evaluator` + runtime/`evaluate_for_kind`, orders fail-closed/`dev_accept` + dedupe, agents `assert_runtime_promotion_authorized`), **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j), integração redirect/config/fixture **ok**, gates **ok**.
+Evidência observada: **320** testes unitários no binário `bot` (inclui HTTP OpenAPI 34 paths, `GET /meta` (`http_seams` + contratos `meta_and_*`), `RecordingExecutor` (orders), bots catalog `monitor_evaluator` + runtime/`evaluate_for_kind`, orders fail-closed/`dev_accept` + dedupe, agents `assert_runtime_promotion_authorized`), **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j), integração redirect/config/fixture **ok**, gates **ok**.
 
 ## Gates de aceitação
 
