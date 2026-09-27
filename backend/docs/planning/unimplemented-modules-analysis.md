@@ -11,7 +11,7 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (http_bridge v1 completo; `presentation/http/http_integration_tests.rs` para bearer/orders/portfolio HTTP; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Baseline verde: `./scripts/verify-backend-gates.sh` (**437** / **0** ignored; PG **21/21** opcional). Auditoria do goal: [modules-completeness-audit](./modules-completeness-audit.md). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; Gate 2 runtime **parcial** (`BotRuntimePort`, HTTP promote/demote, supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`, `evaluate_for_kind` SMA/EMA); auth owner e ciclo de promoção live completo pendentes. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
+> Revisão: 2026-09-27 (http_bridge v1 completo; `presentation/http/http_integration_tests.rs` para bearer/orders/portfolio HTTP; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Baseline verde: `./scripts/verify-backend-gates.sh` (**441** / **0** ignored; PG **21/21** opcional). Auditoria do goal: [modules-completeness-audit](./modules-completeness-audit.md). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; Gate 2 runtime **parcial** (`BotRuntimePort`, HTTP promote/demote, supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`, `evaluate_for_kind` SMA/EMA); auth owner e ciclo de promoção live completo pendentes. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
 
 ## Resumo
 
@@ -188,7 +188,7 @@ C17 depende de C14, C15 e C16 e permanece pendente.
 
 ### V18 — PostgreSQL
 
-A persistência base existe; round-trips PG estão no script **20/20** (`run-pg-integration-tests.sh`). V18 formal ainda exige banco `trading_bot` descartável para evidência auditada de rollback após erro e limpeza operacional além dos testes automatizados.
+A persistência base existe; round-trips PG estão no script **21/21** (`run-pg-integration-tests.sh`). V18 formal ainda exige banco `trading_bot` descartável para evidência auditada de rollback após erro e limpeza operacional além dos testes automatizados.
 
 ## 8. Observabilidade operacional
 

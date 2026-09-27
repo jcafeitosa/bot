@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: runtime bots (executor live)
 
-- **Estado:** **parcial** — G1 + seam `BotRuntimePort` (`FailClosedBotRuntime` default; `InMemoryBotRuntime` com `BOT_RUNTIME_ENABLED=true`), HTTP `GET /bots/runtime/status`, `POST .../promote|demote` (admin), `shared_bot_runtime()` + enrich em `MonitorHandle::publish_snapshot`, publicação headless via `monitor_snapshot_from_dashboard` no supervisor. **Parcial (loop):** `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross` default, `ema_cross` via `[[strategy.monitor_registry]]`); `strategy_evaluation_binding` + `run_evaluation_cycle` → `evaluate_for_kind`; catálogo HTTP expõe `monitor_fast_period`/`monitor_slow_period`/`monitor_evaluator`. **Parcial (auth seam):** com `BOT_HTTP_AGENCY_ID`, `promoted_by` exige agente ativo com `promote_runtime_bot` (capability persistida em PG via migração `0005`). **Pendente:** auth owner produto.
+- **Estado:** **parcial** — G1 + seam `BotRuntimePort` (`FailClosedBotRuntime` default; `InMemoryBotRuntime` com `BOT_RUNTIME_ENABLED=true`), HTTP `GET /bots/runtime/status`, `POST .../promote|demote` (admin), `shared_bot_runtime()` + enrich em `MonitorHandle::publish_snapshot`, publicação headless via `monitor_snapshot_from_dashboard` no supervisor. **Parcial (loop):** `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross` default, `ema_cross` via `[[strategy.monitor_registry]]`); `strategy_evaluation_binding` + `run_evaluation_cycle` → `evaluate_for_kind`; catálogo HTTP expõe `monitor_fast_period`/`monitor_slow_period`/`monitor_evaluator`. **Parcial (auth seam):** com `BOT_HTTP_AGENCY_ID`, `promoted_by` exige agente ativo com `promote_runtime_bot` (capability persistida em PG via migração `0005`). **Parcial (owner bootstrap PG):** com `VerifiedProductOwner` ativo, `POST /bots/runtime/promote` exige `promoted_by` = owner bootstrapped (sem agency) ou agente cujo `owner_id` coincide (com `BOT_HTTP_AGENCY_ID`); **403** `owner_mismatch`. **Pendente:** auth owner humano (IdP).
 - **Referências:** [SDD bots G1](./bots-module-sdd.md), [Gate 1 PG](./bots-catalog-persistence-gate1-sdd.md), [auditoria](../planning/modules-completeness-audit.md), `modules/monitor`, `modules/agents` (governança).
 
 ## Contexto
@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **432** testes bin `bot`, **0** ignorados; `shared_bot_runtime`, `evaluate_for_kind` no supervisor e em `run_sma_crossover`, HTTP `/bots/runtime/*`, `MonitorEvaluatorKind` + catálogo `monitor_evaluator`, testes `strategy_evaluation_binding_uses_ema_evaluator_from_registry`, `ema_crossover_backtest_uses_strategy_evaluator`, `promoted_ema_cross_from_registry_uses_configured_periods`, `bots_runtime_promote_*`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`, `router_after_build_api_state_meta_agrees_with_http_seam_endpoints` (`server.rs`, boot `build_api_state_for_http_serve`; meta ↔ runtime + orders execution-status).
+Evidência parcial (2026-09-27): **441** testes bin `bot`, **0** ignorados; `shared_bot_runtime`, `evaluate_for_kind` no supervisor e em `run_sma_crossover`, HTTP `/bots/runtime/*`, `MonitorEvaluatorKind` + catálogo `monitor_evaluator`, testes `strategy_evaluation_binding_uses_ema_evaluator_from_registry`, `ema_crossover_backtest_uses_strategy_evaluator`, `promoted_ema_cross_from_registry_uses_configured_periods`, `bots_runtime_promote_*`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`, `router_after_build_api_state_meta_agrees_with_http_seam_endpoints` (`server.rs`, boot `build_api_state_for_http_serve`; meta ↔ runtime + orders execution-status).
 
 ## Testes HTTP (isolamento)
 
@@ -79,8 +79,8 @@ Testes de `POST /bots/runtime/promote` em `presentation/http/server.rs` usam `fr
 | `strategy_evaluation_binding` + `BotSignal.bot_id` | `evaluation_binding.rs`, supervisor | Sim |
 | `MonitorEvaluatorKind` (SMA/EMA) monitor + backtest | `evaluate_for_kind`, catálogo/config HTTP | Sim |
 | Capability `promote_runtime_bot` com agency bind | `bot_promotion.rs`, migração `0005` | Sim (seam) |
-| Auth owner produto (não só `BOT_HTTP_*`) | [pesquisa agents](../research/agents-capability-research.md) | **Não** |
+| Auth owner produto (não só `BOT_HTTP_*`) | `verify_promoted_by_product_owner` + `agents_register_rejects_owner_mismatch_when_product_owner_verified`; HTTP `bots_runtime_promote_rejects_promoted_by_mismatch_when_product_owner_verified` | **Parcial** (bootstrap PG; não IdP) |
 | Runtime injetado em testes HTTP = `serve` production | `shared_bot_runtime()` no boot; testes de paridade em `state.rs` + `router_after_build_api_state_*`; matriz [Bot runtime vs serve](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial) | **Parcial** (`InMemoryBotRuntime` isolado na maioria dos `bots_runtime_*` por design; paridade coberta por testes dedicados + PG boot) |
 | Ordens reais / exchange | Monitor+HTTP: paper/recording/testnet ([orders G2](./orders-live-execution-gate2-sdd.md)); prod REST bloqueado | **Parcial** |
 | Revisão Critic | — | **Não** |
-| `./scripts/verify-backend-gates.sh` verde | **432** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **441** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |

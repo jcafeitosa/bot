@@ -124,6 +124,8 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `NVIDIA_API_KEY` / `NGC_API_KEY` | Bearer para NVIDIA NIM (`core::providers::nvidia_nim`); `NGC_API_KEY` é fallback. |
 | `BOT_AGENCY` | Quando definida, `serve --with-monitor` usa `RegistryMonitorAgentHook` para a agência (registry compartilhado com HTTP agents). |
 | `BOT_HTTP_OWNER_ID` | Com `BOT_HTTP_ADMIN_TOKEN`, restringe `owner_id` no registro de agentes ao valor configurado. |
+| `BOT_PRODUCT_OWNER_BOOTSTRAP_ID` | Com `DATABASE_URL` e `BOT_PRODUCT_OWNER_BOOTSTRAP_ACK`, grava owner singleton em PG (`0010_product_owner_bootstrap`); boot HTTP carrega `VerifiedProductOwner` e `GET /meta` → `product_owner_bootstrap_active`. |
+| `BOT_PRODUCT_OWNER_BOOTSTRAP_ACK` | Deve ser `1`/`true`/`yes` junto com `BOT_PRODUCT_OWNER_BOOTSTRAP_ID` para mutar PG (fail-closed sem ACK). |
 | `BOT_HTTP_AGENCY_ID` | Restringe rotas `/api/v1/agents*` ao `agency` configurado (query ou body); falha **403** `http_agency_mismatch`. `GET /meta` → `http_agency_binding_active` (booleano, sem expor o ID). |
 | `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes exigem `Authorization: Bearer <token>` (fail-closed; não substitui auth do owner). |
 | `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**503** em promote). |
@@ -170,8 +172,8 @@ Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live
 
 ```sh
 cd backend
-./scripts/verify-backend-gates.sh          # → 432 passed, 0 ignored (bin bot)
-./scripts/verify-backend-full.sh         # gates + PG 20/20 quando DATABASE_URL → trading_bot
+./scripts/verify-backend-gates.sh          # → 441 passed, 0 ignored (bin bot)
+./scripts/verify-backend-full.sh         # gates + PG 21/21 quando DATABASE_URL → trading_bot
 ```
 
 Matriz e manifesto PG: [test-matrix](../reference/test-matrix.md). Auditoria do goal: [modules-completeness-audit](../planning/modules-completeness-audit.md).

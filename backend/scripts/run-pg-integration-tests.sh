@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs 20 PostgreSQL domain integration tests in the bot binary (CI job postgres-integration).
+# Runs 21 PostgreSQL domain integration tests in the bot binary (CI job postgres-integration).
 # Requires DATABASE_URL → database `trading_bot` on PostgreSQL 18+ with TimescaleDB + pgvector
 # (see docs/operations/postgres-and-graph-dev.md and docker-compose.bot.yml).
 set -euo pipefail
