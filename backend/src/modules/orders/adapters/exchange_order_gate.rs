@@ -65,4 +65,23 @@ mod tests {
             std::env::remove_var("BINANCE_TESTNET_SECRET");
         });
     }
+
+    #[test]
+    fn order_submit_gate_rejects_prod_spot_even_when_recording_seam_enabled() {
+        with_env_test_lock(|| {
+            std::env::set_var("BOT_ORDERS_EXCHANGE_SUBMIT", "recording");
+            let account = ExchangeAccountId::new(
+                ExchangeId::Binance,
+                MarketType::Spot,
+                "order-gate",
+                Environment::Prod,
+            )
+            .expect("valid prod spot account id");
+            assert_eq!(
+                gate_order_submit(&account).unwrap_err(),
+                OrdersError::LiveExchangeNotWired
+            );
+            std::env::remove_var("BOT_ORDERS_EXCHANGE_SUBMIT");
+        });
+    }
 }

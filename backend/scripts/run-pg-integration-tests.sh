@@ -31,6 +31,7 @@ PG_TESTS=(
   pg_order_reconciliation_round_trip
   pg_hydrate_order_reconciliation_from_pg_after_durable_write
   pg_order_reconciliation_lookup_reads_pg_when_memory_empty
+  pg_reconcile_pending_orders_once_confirms_after_hydrate_and_mirrors_pg
   pg_bot_catalog_snapshot_round_trip_via_api_state
   pg_bot_catalog_and_graph_projection_same_transaction
   pg_submit_order_idempotency_reads_pg_when_memory_empty
@@ -44,7 +45,7 @@ PG_TESTS=(
 )
 
 # Keep in sync with docs (test-matrix, modules-completeness-audit, README).
-EXPECTED_PG_INTEGRATION_TESTS=25
+EXPECTED_PG_INTEGRATION_TESTS=26
 if [[ ${#PG_TESTS[@]} -ne ${EXPECTED_PG_INTEGRATION_TESTS} ]]; then
   echo "error: PG_TESTS manifest drift: expected ${EXPECTED_PG_INTEGRATION_TESTS}, got ${#PG_TESTS[@]}" >&2
   exit 1

@@ -55,7 +55,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência (2026-09-27): `./scripts/verify-backend-gates.sh` → **470** testes bin `bot`, **0** ignorados; PG script **22/22**; `orders_submit_fail_closed_returns_503` (`server.rs`); `orders_submit_*` em `http_integration_tests.rs` (paper, live_exchange, admin bearer); `orders_submit_pg_idempotency_store_unavailable_returns_order_store_unavailable` → **503** `order_store_unavailable` (`pg_store_error` + `ApiError::from_orders_error`); `store_unavailable_maps_to_service_unavailable` (`error.rs`); portfolio paper HTTP; reconciliação GET/POST poll; `GET /orders/execution-status`.
+Evidência (2026-09-27): `./scripts/verify-backend-gates.sh` → **492** testes bin `bot`, **0** ignorados; PG script **22/22**; `orders_submit_fail_closed_returns_503` (`server.rs`); `orders_submit_*` em `http_integration_tests.rs` (paper, live_exchange, admin bearer); `orders_submit_pg_idempotency_store_unavailable_returns_order_store_unavailable` → **503** `order_store_unavailable` (`pg_store_error` + `ApiError::from_orders_error`); `store_unavailable_maps_to_service_unavailable` (`error.rs`); portfolio paper HTTP; reconciliação GET/POST poll; `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
@@ -89,7 +89,7 @@ Evidência (2026-09-27): `./scripts/verify-backend-gates.sh` → **470** testes 
 | Reconciliação pós-submit | Memória + PG `0006`; GET/POST reconciliation; `LiveExchangeSpotOrderReconciliationQuery` (binding + `observe_testnet_spot_order_by_client_id`); job poll opcional | **Parcial** (prod REST; Critic) |
 | `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording determinístico; testnet exige credenciais/rede) |
 | Threat model + revisão Critic | Tabela de riscos + retenção ops ([cli-and-config](../reference/cli-and-config.md#pg-orders-retention-gate-2)); Critic instância separada | **Parcial** (ops doc ok; Critic + purge PG automatizado pendentes) |
-| `./scripts/verify-backend-gates.sh` verde | **470** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **492** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
 
 ## Threat model (rascunho)
 
@@ -112,12 +112,12 @@ Revisão Critic e hardening de produção permanecem **pendentes** antes de fech
 3. `confirm_exchange_order` ou `mark_divergent` (memória + `upsert_state` PG).
 4. Job opcional no `serve` (intervalo configurável; default desligado).
 
-Implementado (recording): `run_reconciliation_poll_once`, `SpotOrderReconciliationQuery` + `recording_bind_client_exchange` no submit HTTP wired; job periódico no `serve` (`BOT_ORDERS_RECONCILIATION_POLL_SECS`); `LiveExchangeSpotOrderReconciliationQuery` (recording + testnet via binding map); `observe_testnet_spot_order_by_client_id` no adapter testnet (unitário local; poll testnet fora de CI sem credenciais).
+Implementado (recording + PG): `pg_reconcile_pending_orders_once_confirms_after_hydrate_and_mirrors_pg` (hydrate boot → poll → `upsert_state` PG); `run_reconciliation_poll_once`, `SpotOrderReconciliationQuery` + `recording_bind_client_exchange` no submit HTTP wired; job periódico no `serve` (`BOT_ORDERS_RECONCILIATION_POLL_SECS`); `LiveExchangeSpotOrderReconciliationQuery` (recording + testnet via binding map); `observe_testnet_spot_order_by_client_id` no adapter testnet (unitário local; poll testnet fora de CI sem credenciais).
 
 ### Critérios para sair de “rascunho” (threat model)
 
 - [ ] Critic independente registra LGTM com achados tratados ou aceitos.
 - [x] TTL/retenção de `order_idempotency_keys` e `order_reconciliation` definidos (ops) — ver recomendação abaixo e [cli-and-config](../reference/cli-and-config.md#pg-orders-retention-gate-2); purge automatizado permanece fora do código até decisão SRE.
-- [x] Prod REST permanece bloqueado em `authorize_rest_use` até decisão explícita — evidência: `modules/exchanges/rest.rs` (`only_public_spot_dev_backfill_is_allowed` com `Environment::Prod`; `order_rest_paths_stay_disabled` sem seam).
+- [x] Prod REST permanece bloqueado em `authorize_rest_use` até decisão explícita — evidência: `modules/exchanges/rest.rs` (`only_public_spot_dev_backfill_is_allowed` com `Environment::Prod`; `order_submit_stays_disabled_for_prod_spot_even_with_recording_seam`; `order_rest_paths_stay_disabled` sem seam); `exchange_order_gate::order_submit_gate_rejects_prod_spot_even_when_recording_seam_enabled`.
 
 **Recomendação ops (não automatizada no código):** retenção sugerida `order_idempotency_keys` **90 dias**; linhas `order_reconciliation` em estado terminal (`reconciled`/`divergent`) **180 dias**; pendências além de **7 dias** devem acionar alerta + poll manual (`POST /orders/reconciliation/poll`). Job `BOT_ORDERS_RECONCILIATION_POLL_SECS` ≥ **60** em ambientes com submit live wired.

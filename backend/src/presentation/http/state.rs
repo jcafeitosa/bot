@@ -2195,6 +2195,72 @@ mod state_tests {
     }
 
     #[tokio::test]
+    async fn pg_reconcile_pending_orders_once_confirms_after_hydrate_and_mirrors_pg() {
+        use crate::core::test_env_lock::EnvTestGuard;
+        use crate::modules::agents::AgentRegistry;
+        use crate::modules::orders::adapters::clear_recording_client_bindings;
+        use crate::modules::orders::{
+            recording_bind_client_exchange, OrderSide, ReconciliationState,
+        };
+        use crate::presentation::http::order_execution::HttpOrderExecutor;
+        use std::sync::{Arc, Mutex};
+
+        let _env = EnvTestGuard::acquire();
+        let _ledger_guard = lock_shared_live_order_reconciliation_ledger_for_test();
+        clear_recording_client_bindings();
+        std::env::set_var("BOT_ORDERS_EXCHANGE_SUBMIT", "recording");
+
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
+        let store = PgOrderReconciliationStore::new(db.as_postgres());
+        let key = format!(
+            "recon-poll-pg-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        );
+        store
+            .mark_pending(&key, "BTC/USDT", OrderSide::Buy)
+            .await
+            .expect("pending in PG");
+
+        let state = ApiState::with_order_executor(
+            None,
+            AppDatabases {
+                postgres: Some(db),
+                neo4j: None,
+            },
+            None,
+            crate::modules::config_api::Config::default(),
+            Arc::new(Mutex::new(AgentRegistry::new())),
+            HttpAdminAuth::disabled(),
+            HttpOrderExecutor::live_exchange(),
+        );
+        state
+            .hydrate_order_reconciliation_from_pg()
+            .await
+            .expect("hydrate pending from PG");
+        recording_bind_client_exchange(&key, "recording-pg-poll-1");
+
+        let summary = state.reconcile_pending_orders_once().await.expect("poll");
+        assert_eq!(summary.confirmed, 1);
+
+        match store.state(&key).await.expect("pg lookup") {
+            Some(ReconciliationState::Reconciled { exchange_order_id }) => {
+                assert_eq!(exchange_order_id, "recording-pg-poll-1");
+            }
+            other => panic!("expected PG reconciled after poll, got {other:?}"),
+        }
+
+        clear_recording_client_bindings();
+        std::env::remove_var("BOT_ORDERS_EXCHANGE_SUBMIT");
+    }
+
+    #[tokio::test]
     async fn run_order_reconciliation_poll_once_confirms_stuck_pending_on_live_wired() {
         use crate::core::test_env_lock::EnvTestGuard;
         let _env = EnvTestGuard::acquire();

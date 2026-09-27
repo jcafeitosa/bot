@@ -58,7 +58,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **39** paths; orders OpenAPI **503** `order_store_unavailable` (`routes/orders.rs`); `store_unavailable_maps_to_service_unavailable` (`error.rs`); `router_after_build_api_state_*`; `GET /meta` + `meta_and_*` (`server.rs`); admin bearer + orders + F3 graph admin (`http_integration_tests.rs` — [rotas mutantes](#rotas-mutantes-com-bot_http_admin_token)); portfolio HTTP; PG em `state.rs` via `pg_integration` + script PG **25/25**. | `server.rs`, `http_integration_tests.rs`, `state.rs`, `routes/*`, `error.rs`, `admin_auth.rs`, `order_execution.rs`, `routes/graph_admin.rs`. |
+| `presentation/http` | OpenAPI **39** paths; orders OpenAPI **503** `order_store_unavailable` (`routes/orders.rs`); `store_unavailable_maps_to_service_unavailable` (`error.rs`); `router_after_build_api_state_*`; `GET /meta` + `meta_and_*` (`server.rs`); admin bearer + orders + F3 graph admin (`http_integration_tests.rs` — [rotas mutantes](#rotas-mutantes-com-bot_http_admin_token)); portfolio HTTP; PG em `state.rs` via `pg_integration` + script PG **26/26**. | `server.rs`, `http_integration_tests.rs`, `state.rs`, `routes/*`, `error.rs`, `admin_auth.rs`, `order_execution.rs`, `routes/graph_admin.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
@@ -79,9 +79,9 @@ cargo test --locked --test redirect_policy_test
 
 O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS` = **22**), depois `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default), depois as cinco suítes acima — **não** `cargo test --locked` completo (reexecutaria o bin `bot` em paralelo e pode flake). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
 
-**CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**25/25** testes de domínio com `DATABASE_URL`).
+**CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**26/26** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **489** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **25/25** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **492** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **26/26** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -104,6 +104,9 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `pg_order_reconciliation_round_trip` | `modules/orders/adapters/pg_reconciliation.rs` | idem |
 | `pg_hydrate_order_reconciliation_from_pg_after_durable_write` | `presentation/http/state.rs` | boot `serve`: `hydrate_order_reconciliation_from_pg` após linhas só em PG |
 | `pg_order_reconciliation_lookup_reads_pg_when_memory_empty` | `presentation/http/state.rs` | `GET /orders/reconciliation/{id}` fallback PG sem hydrate |
+| `pg_reconcile_pending_orders_once_confirms_after_hydrate_and_mirrors_pg` | `presentation/http/state.rs` | poll HTTP/job espelha `reconciled` no PG após hydrate |
+| `order_submit_stays_disabled_for_prod_spot_even_with_recording_seam` | `modules/exchanges/rest.rs` | prod REST `OrderSubmit` fail-closed mesmo com `BOT_ORDERS_EXCHANGE_SUBMIT=recording` |
+| `order_submit_gate_rejects_prod_spot_even_when_recording_seam_enabled` | `modules/orders/adapters/exchange_order_gate.rs` | gate orders alinhado à política REST prod |
 | `pg_http_boot_sequence_mirrors_serve_wiring` | `presentation/http/state.rs` | cold-start + `build_api_state_for_http_serve`; carrega owner bootstrap PG (`product_owner_bootstrap_active`) |
 | `loads_credentials_from_postgres` | `core/providers/credentials/pg_integration.rs` | `run-pg-integration-tests.sh` (migração `0007`) |
 | `pg_graph_projection_outbox_enqueue_and_drain_mock` | `core/database/graph_projection_outbox.rs` | F2.1 outbox enqueue + drain mock port |
@@ -145,7 +148,7 @@ Checklist [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-
 |------|------|-----------|
 | **Produção / boot** | `server::run`, `ApiState::build_api_state_for_http_serve`, `HttpApiSeams::from_env` | `shared_bot_runtime()` — mesmo `Arc` process-wide |
 | **Paridade explícita (unit)** | `presentation/http/state.rs` | `for_http_server_wires_process_wide_bot_runtime_like_serve`; `from_env_shares_process_wide_bot_runtime_with_serve` |
-| **Paridade boot + PG** | `presentation/http/state.rs` | `pg_http_boot_sequence_mirrors_serve_wiring` (script PG **25/25** com `DATABASE_URL`) |
+| **Paridade boot + PG** | `presentation/http/state.rs` | `pg_http_boot_sequence_mirrors_serve_wiring` (script PG **26/26** com `DATABASE_URL`) |
 | **Router após boot canônico** | `presentation/http/server.rs` | `router_after_build_api_state_serves_catalog_and_meta`, `router_after_build_api_state_paper_submit_updates_portfolio`, `router_after_build_api_state_meta_agrees_with_http_seam_endpoints` (meta ↔ runtime + orders execution-status), `router_after_build_api_state_orders_reconciliation_poll_returns_ok` usam `build_api_state_for_http_serve` |
 | **Isolado por teste** | Maioria dos `bots_runtime_*` / promote em `http_integration_tests.rs` e helpers em `state.rs` | `Arc::new(InMemoryBotRuntime::new())` — evita vazamento de estado entre casos; **não** prova sozinho o wiring do `serve` |
 
@@ -172,7 +175,7 @@ Testes abaixo em `presentation/http/http_integration_tests.rs` (**60** passed co
 
 ## Product owner bootstrap (`VerifiedProductOwner`)
 
-Fatia G1: [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md). PG: `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed` (script **25/25**).
+Fatia G1: [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md). PG: `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed` (script **26/26**).
 
 | Comportamento | Teste HTTP (`http_integration_tests.rs`) |
 |---------------|-------------------------------------------|

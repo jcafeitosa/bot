@@ -132,6 +132,25 @@ mod tests {
     }
 
     #[test]
+    fn order_submit_stays_disabled_for_prod_spot_even_with_recording_seam() {
+        with_env_test_lock(|| {
+            std::env::set_var("BOT_ORDERS_EXCHANGE_SUBMIT", "recording");
+            let prod = ExchangeAccountId::new(
+                ExchangeId::Binance,
+                MarketType::Spot,
+                "paper-main",
+                Environment::Prod,
+            )
+            .unwrap();
+            assert_eq!(
+                authorize_rest_use(&prod, RestUse::OrderSubmit).unwrap_err(),
+                ExchangeError::ExecutionDisabled
+            );
+            std::env::remove_var("BOT_ORDERS_EXCHANGE_SUBMIT");
+        });
+    }
+
+    #[test]
     fn only_public_spot_dev_backfill_is_allowed() {
         with_env_test_lock(|| {
             std::env::remove_var("BOT_ORDERS_EXCHANGE_SUBMIT");
