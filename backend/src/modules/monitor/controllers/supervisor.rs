@@ -245,7 +245,7 @@ async fn apply_strategy_snapshot(
                             );
                             let execution_mode =
                                 monitor_submit_execution_mode(config.run_mode, spot_seam);
-                            crate::modules::orders::adapters::best_effort_project_order_intent(
+                            crate::modules::orders::adapters::project_order_intent_after_submit(
                                 GraphProjectionSync {
                                     postgres: postgres.as_ref().map(|db| db.as_postgres()),
                                     neo4j: *neo4j,

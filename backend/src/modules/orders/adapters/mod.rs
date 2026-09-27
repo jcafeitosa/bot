@@ -24,7 +24,7 @@ pub use execution_port::OrderExecutionPort;
 pub use fail_closed::FailClosedExecutor;
 pub use graph_projection::{
     best_effort_project_order_intent, order_graph_projection_outbox_messages,
-    RedactedOrderSubmitSnapshot,
+    project_order_intent_after_submit, RedactedOrderSubmitSnapshot,
 };
 pub use idempotency::{InMemoryOrderIdempotencyStore, OrderIdempotencyStore};
 #[cfg(test)]

@@ -66,6 +66,44 @@ impl PgOrderIdempotencyStore {
         Ok(())
     }
 
+    fn map_graph_outbox_enqueue_error(error: GraphProjectionOutboxError) -> OrdersError {
+        match error {
+            GraphProjectionOutboxError::Store(message) => {
+                OrdersError::StoreUnavailable(format!("graph projection outbox enqueue: {message}"))
+            }
+            GraphProjectionOutboxError::InvalidPayload(message) => {
+                OrdersError::StoreUnavailable(format!("graph projection outbox payload: {message}"))
+            }
+            GraphProjectionOutboxError::Neo4jUnavailable(_) => OrdersError::StoreUnavailable(
+                "graph projection outbox enqueue: neo4j unavailable".into(),
+            ),
+        }
+    }
+
+    /// Enqueues graph outbox rows in one PG transaction (monitor supervisor; no idempotency SoT).
+    pub async fn enqueue_graph_projection_outbox_messages(
+        &self,
+        messages: &[GraphProjectionOutboxMessage],
+    ) -> Result<(), OrdersError> {
+        if messages.is_empty() {
+            return Ok(());
+        }
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|error| orders_pg_store_error("graph outbox tx", error))?;
+        for message in messages {
+            enqueue_graph_projection_outbox_tx(&mut tx, message)
+                .await
+                .map_err(Self::map_graph_outbox_enqueue_error)?;
+        }
+        tx.commit()
+            .await
+            .map_err(|error| orders_pg_store_error("graph outbox tx commit", error))?;
+        Ok(())
+    }
+
     /// Atomically persists idempotency (noop if row already claimed) and enqueues graph outbox rows (F2.1.3+ orders).
     pub async fn persist_idempotency_and_enqueue_graph_projection(
         &self,
@@ -87,21 +125,7 @@ impl PgOrderIdempotencyStore {
         for message in messages {
             enqueue_graph_projection_outbox_tx(&mut tx, message)
                 .await
-                .map_err(|error| match error {
-                    GraphProjectionOutboxError::Store(message) => OrdersError::StoreUnavailable(
-                        format!("graph projection outbox enqueue: {message}"),
-                    ),
-                    GraphProjectionOutboxError::InvalidPayload(message) => {
-                        OrdersError::StoreUnavailable(format!(
-                            "graph projection outbox payload: {message}"
-                        ))
-                    }
-                    GraphProjectionOutboxError::Neo4jUnavailable(_) => {
-                        OrdersError::StoreUnavailable(
-                            "graph projection outbox enqueue: neo4j unavailable".into(),
-                        )
-                    }
-                })?;
+                .map_err(Self::map_graph_outbox_enqueue_error)?;
         }
         tx.commit().await.map_err(|error| {
             orders_pg_store_error("idempotency and graph outbox tx commit", error)
@@ -226,5 +250,55 @@ mod tests {
         .await
         .expect("outbox count");
         assert_eq!(pending, 1);
+    }
+    #[tokio::test]
+    async fn pg_monitor_supervisor_graph_projection_outbox_same_transaction() {
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
+        use crate::modules::orders::adapters::graph_projection::{
+            order_graph_projection_outbox_messages, RedactedOrderSubmitSnapshot,
+        };
+        use crate::modules::orders::OrderSide;
+
+        let store = PgOrderIdempotencyStore::new(db.as_postgres());
+        let key = format!(
+            "mon-outbox-tx-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        );
+        let snapshot = RedactedOrderSubmitSnapshot {
+            client_order_id: key.clone(),
+            symbol: "BTC/USDT".into(),
+            side: OrderSide::Buy,
+            execution_mode: "live_exchange".into(),
+            submitting_bot_id: Some("bot-monitor-1".into()),
+        };
+        let messages = order_graph_projection_outbox_messages(&snapshot);
+        assert_eq!(messages.len(), 2);
+        store
+            .enqueue_graph_projection_outbox_messages(&messages)
+            .await
+            .expect("enqueue tx");
+        let intent_pending: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_projection_outbox WHERE idempotency_key = $1 AND status = 'pending'",
+        )
+        .bind(format!("order:intent:{key}"))
+        .fetch_one(db.pool())
+        .await
+        .expect("intent outbox count");
+        assert_eq!(intent_pending, 1);
+        let edge_pending: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_projection_outbox WHERE idempotency_key = $1 AND status = 'pending'",
+        )
+        .bind(format!("order:submitted:bot-monitor-1:{key}"))
+        .fetch_one(db.pool())
+        .await
+        .expect("edge outbox count");
+        assert_eq!(edge_pending, 1);
     }
 }

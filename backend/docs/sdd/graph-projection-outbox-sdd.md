@@ -71,8 +71,10 @@ Implementação: `core/database/graph_projection_cli.rs`; testes `graph_projecti
 | `PgAgentIdentityStore::persist_identity_and_enqueue_graph_projection` | Uma TX: upsert identity + audit + enqueue hierarchy. |
 | `PgBotCatalogStore::save_catalog` | Uma TX: replace `bot_catalog_entries` + N enqueues `bot_catalog`. |
 | `PgBotCatalogStore::enqueue_bot_promotion_graph_projection` / `enqueue_bot_demotion_graph_projection` | TX só outbox após promote/demote HTTP (runtime sem SoT PG). |
+| `PgOrderIdempotencyStore::enqueue_graph_projection_outbox_messages` | TX só outbox após submit monitor supervisor (sem SoT idempotência PG no loop TUI; reconciliação opcional via mirror assíncrono). |
+| `project_order_intent_after_submit` | Monitor supervisor pós-`submit_order` OK: PG → enqueue TX dedicada + `graph_projection_drain_best_effort`; sem PG → `graph_projection_best_effort` (Neo4j direto). |
 | `graph_projection_drain_best_effort` | Drain inline pós-commit (Neo4j wired), espelhando `graph_projection_best_effort`. |
 
-Evidência PG: `pg_order_idempotency_and_graph_projection_same_transaction`, `pg_agent_identity_and_graph_projection_same_transaction`, `pg_bot_catalog_and_graph_projection_same_transaction` (`run-pg-integration-tests.sh` **24/24**).
+Evidência PG: `pg_order_idempotency_and_graph_projection_same_transaction`, `pg_monitor_supervisor_graph_projection_outbox_same_transaction`, `pg_agent_identity_and_graph_projection_same_transaction`, `pg_bot_catalog_and_graph_projection_same_transaction` (`run-pg-integration-tests.sh` **25/25**).
 
-**Pendente:** monitor supervisor continua pós-commit (`best_effort_project_order_intent`).
+**Pendente F2.1.3+:** nenhum (fatia monitor supervisor fechada); demais domínios fora orders/agents/bots/monitor seguem roadmap.

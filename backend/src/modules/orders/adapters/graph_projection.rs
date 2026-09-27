@@ -86,6 +86,46 @@ pub async fn best_effort_project_order_intent(
     graph_projection_best_effort(sync, &messages).await;
 }
 
+/// After order submit OK: durable outbox in one PG TX when wired (monitor supervisor / HTTP without prior claim), then inline drain; else direct Neo4j best-effort.
+pub async fn project_order_intent_after_submit(
+    sync: GraphProjectionSync<'_>,
+    snapshot: &RedactedOrderSubmitSnapshot,
+) {
+    if snapshot.client_order_id.trim().is_empty() {
+        return;
+    }
+    let messages = order_graph_projection_outbox_messages(snapshot);
+    if messages.is_empty() {
+        return;
+    }
+    if let Some(postgres) = sync.postgres {
+        use super::pg_idempotency::PgOrderIdempotencyStore;
+        let store = PgOrderIdempotencyStore::new(postgres);
+        match store
+            .enqueue_graph_projection_outbox_messages(&messages)
+            .await
+        {
+            Ok(()) => {
+                crate::core::database::graph_projection_drain_best_effort(sync, messages.len())
+                    .await;
+            }
+            Err(error) => {
+                tracing::warn!(
+                    target: "orders",
+                    client_order_id = %snapshot.client_order_id,
+                    %error,
+                    "monitor order graph projection outbox enqueue failed (PostgreSQL)"
+                );
+            }
+        }
+        return;
+    }
+    if sync.neo4j.is_none() {
+        return;
+    }
+    graph_projection_best_effort(sync, &messages).await;
+}
+
 pub async fn project_order_intent_via_port(
     port: &dyn GraphProjectionPort,
     projection: &OrderIntentProjection,
@@ -246,6 +286,25 @@ mod unit_tests {
 }
 
 #[cfg(test)]
+#[tokio::test]
+async fn project_order_intent_after_submit_noop_without_backends() {
+    let snapshot = RedactedOrderSubmitSnapshot {
+        client_order_id: "noop-cid".into(),
+        symbol: "BTC/USDT".into(),
+        side: OrderSide::Buy,
+        execution_mode: "paper".into(),
+        submitting_bot_id: None,
+    };
+    project_order_intent_after_submit(
+        GraphProjectionSync {
+            postgres: None,
+            neo4j: None,
+        },
+        &snapshot,
+    )
+    .await;
+}
+
 mod neo4j_integration_tests {
     use super::*;
     use crate::core::database::{load_agents_stack_from_env, Neo4jGraph};
