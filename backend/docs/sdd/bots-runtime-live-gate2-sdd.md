@@ -36,6 +36,7 @@ status: draft
 | Símbolo | Contrato |
 |---------|----------|
 | `BotRuntimeHandle` | Instância ativa de um `BotId` no processo monitor. |
+| `shared_bot_runtime()` | Singleton por processo (`OnceLock`); `HttpApiSeams::from_env` e futuros hooks do monitor compartilham promoção. |
 | `BotPromotionRecord` | Quem promoveu, quando, métricas de referência, estado (active/paused). |
 | HTTP (opcional) | Rotas de promoção/status sob mesmo seam admin que mutações atuais. |
 
@@ -45,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **226** testes bin `bot`, **5** ignorados; HTTP `/bots/runtime/*`, `monitor_snapshot_includes_promoted_bot_from_runtime_seam`, `attach_bot_runtime_status` em `http_bridge/monitor.rs`.
+Evidência parcial (2026-09-27): **227** testes bin `bot`, **5** ignorados; HTTP `/bots/runtime/*`, `monitor_snapshot_includes_promoted_bot_from_runtime_seam`, `attach_bot_runtime_status` em `http_bridge/monitor.rs`.
 
 ## Validação Gate 2 (quando implementado)
 
