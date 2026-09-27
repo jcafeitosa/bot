@@ -19,6 +19,7 @@ mod spot_order_reconciliation_query;
 mod spot_order_submit;
 
 pub use accepting_executor::AcceptingExecutor;
+pub use exchange_order_gate::gate_order_submit;
 pub use exchange_spot_executor::ExchangeSpotExecutor;
 pub use execution_port::OrderExecutionPort;
 pub use fail_closed::FailClosedExecutor;

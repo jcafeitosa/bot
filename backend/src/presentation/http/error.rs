@@ -278,6 +278,15 @@ mod orders_error_mapping_tests {
         assert_eq!(api.status_code(), StatusCode::SERVICE_UNAVAILABLE);
         assert_eq!(api.error_code(), Some("order_store_unavailable"));
     }
+
+    #[test]
+    fn g2_threat_model_invariant_store_unavailable_maps_to_order_store_unavailable() {
+        let api = ApiError::from_orders_error(OrdersError::StoreUnavailable(
+            "idempotency lookup: simulated".into(),
+        ));
+        assert_eq!(api.status_code(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(api.error_code(), Some("order_store_unavailable"));
+    }
 }
 
 #[cfg(test)]

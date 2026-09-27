@@ -12,7 +12,7 @@ pub mod models;
 pub mod retention_purge;
 
 pub use adapters::{
-    clear_live_reconciliation_pg_mirror, live_exchange_submit_backend,
+    clear_live_reconciliation_pg_mirror, gate_order_submit, live_exchange_submit_backend,
     live_exchange_submit_backend_enabled, recording_bind_client_exchange,
     register_live_reconciliation_pg_mirror, shared_live_order_reconciliation_ledger,
     take_last_spot_submit_ack, try_mirror_reconciliation_upsert, AcceptingExecutor,
@@ -36,3 +36,5 @@ pub use models::{
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod threat_model_invariants;

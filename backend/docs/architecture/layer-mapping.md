@@ -119,7 +119,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, `application/sig
 
 ```text
 ./scripts/verify-backend-gates.sh
-./scripts/verify-backend-full.sh   # gates + PG 27/27 quando DATABASE_URL → trading_bot
+./scripts/verify-backend-full.sh   # gates + manifesto PG 27 quando DATABASE_URL → trading_bot (PG 18+)
 cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-backend-gates.sh
 ```
 
@@ -128,7 +128,7 @@ cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-b
 
 Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×27): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` via `build_api_state_for_http_serve` + `build_router` + `GET /agents`, `GET /bots/catalog`, `GET /config/active`, `GET /orders/reconciliation/{client_order_id}` (mesmo caminho que `server::run`).
 
-Evidência: **507** testes no bin `bot`, **0** ignorados; **62** `http_integration` (incl. F3 graph admin read-only); PG×27 no script + provider credentials PG + outbox F2.1/F2.1.3+; Neo4j; testnet manual; ver [test-matrix](../reference/test-matrix.md).
+Evidência: **512** testes no bin `bot`, **0** ignorados; **62** `http_integration` (incl. F3 graph admin read-only); manifesto PG×27 (contagem estática) + provider credentials PG + outbox F2.1/F2.1.3+; Neo4j; testnet manual; ver [test-matrix](../reference/test-matrix.md).
 
 ## Documentos relacionados
 
