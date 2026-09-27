@@ -55,9 +55,9 @@ Rastreada em [modules-completeness-audit.md](./modules-completeness-audit.md) (g
 | Fatia | Estado (2026-09-27) | Próximo passo |
 |-------|---------------------|---------------|
 | HTTP seams (`/meta`, execution-status, admin bearer) | Implementado + testes `meta_and_*` | Auth owner produto |
-| Bots runtime G2 | Parcial: `MonitorEvaluatorKind`, catálogo `monitor_evaluator`, `evaluate_for_kind`; `serve` usa `shared_bot_runtime()` | Auth owner; orders live no monitor |
-| Orders G2 | Parcial: `RecordingExecutor`, idempotência, `live_exchange_not_wired` | Adapter exchange real + threat model |
-| Agents G1 | Registry + PG + promote capability; checklist [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist) | Owner humano + bootstrap (pesquisa bloqueia) |
+| Bots runtime G2 | Parcial: EMA/SMA + catálogo `monitor_evaluator`; `shared_bot_runtime` / `HttpApiSeams::from_env` (testes paridade); HTTP promote com capability | Auth owner; orders live no monitor; E2E `BOT_RUNTIME_ENABLED` opcional |
+| Orders G2 | Parcial: `PaperLedgerExecutor` + portfolio snapshot; `ExchangeSpotExecutor` (recording) + `live_exchange_wired`; idempotência; threat model rascunho no SDD | REST testnet Spot + Critic |
+| Agents G1 | Registry + PG + promote capability; `BOT_HTTP_OWNER_ID` + `agents_register_rejects_owner_mismatch_when_bound`; checklist [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist) | Owner humano verificável + bootstrap (pesquisa bloqueia) |
 | Evidência | `./scripts/verify-backend-gates.sh` verde; **321** testes bin `bot`, **6** ignorados | Revisão Critic AGENTS.md (instância separada) |
 
 Esta trilha não substitui C17/V18; compartilha apenas o gate de verificação (`verify-backend-gates.sh`).
