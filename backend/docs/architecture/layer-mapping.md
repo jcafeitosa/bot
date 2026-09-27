@@ -118,7 +118,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-backend-gates.sh
 ```
 
-Evidência: **369** testes no bin `bot`, **8** ignorados (PG/Neo4j + testnet manual).
+Evidência: **370** testes no bin `bot`, **8** ignorados (PG/Neo4j + testnet manual).
 
 ## Documentos relacionados
 

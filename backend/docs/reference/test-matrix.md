@@ -35,7 +35,7 @@ tags:
 | `http_bridge/config` | `map_config` expõe `monitor_registry` com `evaluator` (`map_config_preserves_ema_evaluator_on_registry_entry`). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` (paper, live_exchange wired/recording, reserved) em `server.rs`. |
-| `modules/orders` reconciliation | `reconciliation_pending_to_reconciled`, `reconciliation_mark_divergent_from_pending`, `reconciliation_seed_entry_restores_pending_count`; `recording_submit_returns_deterministic_exchange_order_id`. |
+| `modules/orders` reconciliation | `reconciliation_pending_to_reconciled`, `reconciliation_mark_divergent_from_pending`, `reconciliation_seed_entry_restores_pending_count`, `reconciliation_poll_confirms_pending_when_recording_binding_exists`, `reconciliation_seed_hydrated_row_preserves_symbol_for_poll`; `recording_submit_returns_deterministic_exchange_order_id`. |
 | `presentation/http/state` | `submit_order_recording_live_exchange_auto_reconciles_client_order_id`; testes que usam ledger partilhado seguram `lock_shared_live_order_reconciliation_ledger_for_test()` durante o caso; com `EnvTestGuard`, adquirir **env antes** do ledger (ordem fixa evita deadlock em `--test-threads` > 1). |
 | `http_bridge/portfolio` | `paper_wallet_snapshot_reflects_in_process_ledger`; HTTP paper submit + `GET /portfolio/paper-snapshot` em `server.rs`. |
 | `http_bridge/bots` | Catálogo com `monitor_evaluator` (`catalog_for_config_exposes_ema_evaluator_from_registry`); promote/catalog gates v1/v2. |
@@ -75,12 +75,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-369 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+370 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 8 testes ignorados (PG×6, Neo4j, testnet ccxt manual; ver `#[ignore]` no código)
 ```
 
-Bin `bot`: **369** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **370** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ## Lacunas explícitas
 

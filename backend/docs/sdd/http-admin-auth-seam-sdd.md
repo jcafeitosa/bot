@@ -13,7 +13,7 @@ status: draft
 
 ## Contexto
 
-Rotas HTTP mutantes (agents lifecycle, bots catalog persist, bots runtime promote/demote, orders submit, `orders_reconciliation_poll`, monitor commands) precisam de um controle mínimo em ambientes expostos, sem implementar bootstrap verificável do owner (Gate 1 bloqueado na pesquisa).
+Rotas HTTP mutantes (agents lifecycle, bots catalog persist, bots runtime promote/demote, orders submit, `orders_reconciliation_poll` / `orders_reconciliation_poll_succeeds_with_admin_bearer_when_enabled`, monitor commands) precisam de um controle mínimo em ambientes expostos, sem implementar bootstrap verificável do owner (Gate 1 bloqueado na pesquisa).
 
 ## Comportamento
 
