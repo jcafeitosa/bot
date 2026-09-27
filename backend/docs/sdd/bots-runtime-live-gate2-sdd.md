@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **385** testes bin `bot`, **16** ignorados; `shared_bot_runtime`, `evaluate_for_kind` no supervisor e em `run_sma_crossover`, HTTP `/bots/runtime/*`, `MonitorEvaluatorKind` + catálogo `monitor_evaluator`, testes `strategy_evaluation_binding_uses_ema_evaluator_from_registry`, `ema_crossover_backtest_uses_strategy_evaluator`, `promoted_ema_cross_from_registry_uses_configured_periods`, `bots_runtime_promote_*`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`.
+Evidência parcial (2026-09-27): **385** testes bin `bot`, **17** ignorados; `shared_bot_runtime`, `evaluate_for_kind` no supervisor e em `run_sma_crossover`, HTTP `/bots/runtime/*`, `MonitorEvaluatorKind` + catálogo `monitor_evaluator`, testes `strategy_evaluation_binding_uses_ema_evaluator_from_registry`, `ema_crossover_backtest_uses_strategy_evaluator`, `promoted_ema_cross_from_registry_uses_configured_periods`, `bots_runtime_promote_*`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`.
 
 ## Testes HTTP (isolamento)
 
