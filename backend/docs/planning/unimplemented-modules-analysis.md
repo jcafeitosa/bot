@@ -11,13 +11,13 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-26 (bots + orders foundation). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** permanece **IdentityOnly em memória** (Gate 1 auth/PostgreSQL pendente). **`modules/bots`** existe como fundação strategy×timeframe (catálogo, ranking, HTTP); runtime live e persistência continuam fora. **`modules/orders`** existe como seam fail-closed (`submit_order` + `FailClosedExecutor`); execução real permanece bloqueada.
+> Revisão: 2026-09-27 (http_bridge v1 completo; agents+monitor registry; bots catalog in-memory em ApiState). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** permanece **IdentityOnly em memória** (Gate 1 auth/PostgreSQL pendente). **`modules/bots`** existe como fundação strategy×timeframe (catálogo, ranking, HTTP); runtime live e persistência continuam fora. **`modules/orders`** existe como seam fail-closed (`submit_order` + `FailClosedExecutor`); execução real permanece bloqueada.
 
 ## Resumo
 
 O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco, TUI, integrações públicas Binance, persistência básica opcional, logging e Jev consultivo. Os módulos abaixo ainda não existem como capacidade completa:
 
-1. Identidade **persistente** e administração de agentes (registro em memória existe; persistência e API administrativa não).
+1. Identidade **persistente** de agentes (HTTP v1 sem auth owner; PostgreSQL pendente).
 2. **Módulo `bots` além da fundação** — runtime live, promoção automática e PostgreSQL de catálogo (fundação em `src/modules/bots/` já cobre identidade, ranking e HTTP; ver [SDD bots](../sdd/bots-module-sdd.md)).
 3. Autenticação do owner, autorização por agência e bootstrap seguro.
 4. Runtime de execução de agentes, worker, scheduler e recuperação.
@@ -36,7 +36,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Capacidade prevista | Situação no código | Evidência | Próximo gate |
 |---|---|---|---|
 | Identidade de agentes `IdentityOnly` | Módulo `modules/agents` em memória + rotas HTTP v1 (`/api/v1/agents/*`); `MonitorAgentHook` com `shared_agent_registry` quando `BOT_AGENCY` no mesmo processo; sem PostgreSQL nem auth owner. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, persistência e autenticação verificável do owner. |
-| Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` (MVC, `full_ranking`, catálogo por config, HTTP catalog/ranking); `backtest` reexporta tipos. Sem runtime live, promoção ou `BotCatalogStore` PostgreSQL. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência; mapeamento formal com agentes autorizadores; runtime executor. |
+| Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` + `http_bridge/bots`; HTTP catalog/ranking/persist/snapshot; `InMemoryBotCatalogStore` em `ApiState`. Sem runtime live, promoção ou PostgreSQL. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência; mapeamento formal com agentes autorizadores; runtime executor. |
 | Seam `orders` (fail-closed) | `modules/orders` + `http_bridge/orders` + `POST /api/v1/orders/submit` (422 risk / 503 execution disabled). | [SDD orders](../sdd/orders-module-sdd.md). | Adapter exchange real, idempotência e reconciliação — somente após gates de segurança. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
@@ -66,7 +66,7 @@ A primeira etapa descrita na pesquisa é `IdentityOnly`, com:
 
 ### O que existe
 
-`modules/agents` implementa tipos de identidade (`AgentId`, `AgencyId`, papéis, supervisor), `AgentRegistry` em memória, transições de ciclo de vida, eventos de auditoria em memória e `run_advisory_step` via `core::providers::jev`. `MonitorAgentHook` permanece noop até integração futura com o supervisor. **Não há** migração PostgreSQL, repositório durável, autenticação do owner no transporte (HTTP de registro existe sem auth). Os tipos de domínio de trading em `market`/`strategy` permanecem separados da identidade administrativa de agentes.
+`modules/agents` implementa tipos de identidade (`AgentId`, `AgencyId`, papéis, supervisor), `AgentRegistry` em memória, transições de ciclo de vida, eventos de auditoria em memória e `run_advisory_step` via `core::providers::jev`. `RegistryMonitorAgentHook` integra ao monitor quando `BOT_AGENCY` está definido e compartilha `shared_agent_registry` com a API no mesmo processo. **Não há** migração PostgreSQL, repositório durável, autenticação do owner no transporte (HTTP de registro existe sem auth). Os tipos de domínio de trading em `market`/`strategy` permanecem separados da identidade administrativa de agentes.
 
 ### Bloqueios
 
@@ -81,7 +81,7 @@ A primeira etapa descrita na pesquisa é `IdentityOnly`, com:
 
 | | `modules/agents` | `modules/bots` | `backtest::BotId` | `modules/monitor` |
 |---|---|---|---|---|
-| Status | Implementado (memória) | Fundação (memória + HTTP catalog/ranking) | Reexport de `bots::BotId`; simulação em `backtest` | Implementado (mercado live/paper) |
+| Status | Implementado (memória) | Fundação (memória + HTTP catalog/ranking/persist) | Reexport de `bots::BotId`; simulação em `backtest` | Implementado (mercado live/paper) |
 | Papel | Governança e identidade `IdentityOnly` | Executor strategy×timeframe versionado (sem runtime live) | Chave canônica compartilhada com `bots` | Supervisor operacional de candles/sinais |
 
 Cadastrar um **agente** não cria um **bot** executor. Rodar backtest com um **BotId** não registra agente nem bot futuro. O monitor não substitui nenhum dos dois cadastros.
@@ -94,7 +94,7 @@ Bots especializados como **artefatos versionados**, com limites de autoridade, m
 
 ### O que existe hoje
 
-`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, rotas HTTP `GET /api/v1/bots/catalog` e `POST /api/v1/bots/ranking`. `backtest` delega tipos e ranking ao módulo `bots`. **Ainda não há** PostgreSQL de catálogo, promoção automática nem executor em produção.
+`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, `ApiState` com `InMemoryBotCatalogStore`; rotas `GET /catalog`, `POST /ranking`, `POST /catalog/persist`, `GET /catalog/snapshot`. `backtest` delega tipos e ranking ao módulo `bots`. **Ainda não há** PostgreSQL de catálogo, promoção automática nem executor em produção.
 
 ### Decisão
 

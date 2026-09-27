@@ -62,7 +62,7 @@ flowchart LR
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly` em memória; lifecycle e advisory Jev sem worker nem API HTTP. **Não** é o módulo `bots`. | `modules/agents/tests.rs`. |
-| `modules` | `bots` | `BotIdentity`, `full_ranking`, `build_catalog_from_config` | Executores strategy×timeframe versionados; catálogo e ranking em memória; HTTP `GET /api/v1/bots/catalog`, `POST /api/v1/bots/ranking`. Sem runtime live nem PostgreSQL (Gate 1). | `modules/bots/tests.rs`. |
+| `modules` | `bots` | `BotIdentity`, `full_ranking`, `build_catalog_from_config` | Executores strategy×timeframe versionados; catálogo e ranking em memória; HTTP catalog, persist/snapshot em memória (`ApiState`), ranking. Sem runtime live nem PostgreSQL (Gate 1). | `modules/bots/tests.rs`. |
 | `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor` | Valida `OrderIntent` via `risk`; port fail-closed (`ExecutionDisabled`). HTTP `POST /api/v1/orders/submit` (422 risco / 503 execução). Sem exchange live. | `modules/orders/tests.rs`, `presentation/http/server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
@@ -97,7 +97,7 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 | `adapters` | `BotCatalogStore`; `NoopBotCatalogStore`, `InMemoryBotCatalogStore`; PostgreSQL Gate 1 pendente. |
 | `controllers` | `persist_catalog_snapshot` grava catálogo derivado da config no store. |
 
-**HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/ranking` via `presentation/http/routes/bots.rs`.
+**HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking` via `presentation/http/routes/bots.rs` (store compartilhado em `ApiState`).
 
 ## 3c. Módulo `orders` (`src/modules/orders/`)
 
