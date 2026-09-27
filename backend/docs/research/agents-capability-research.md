@@ -5,9 +5,14 @@ tags:
   - research
   - agents
   - backend
+status: provisional
+source_status: external_references_pending_ingest
 ---
 
 # Pesquisa de capacidades para o módulo `agents`
+
+> [!WARNING]
+> Esta pesquisa permanece provisória até que as fontes externas listadas ao final sejam preservadas localmente em `external-sources/` e convertidas em referências internas.
 
 - **Status:** pesquisa inicial — revisão independente pendente
 - **Data:** 2026-09-26
