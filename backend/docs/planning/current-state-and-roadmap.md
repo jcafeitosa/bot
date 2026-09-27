@@ -41,7 +41,7 @@ tags:
 | Item | Estado atual | Documento |
 |---|---|---|
 | T-03 — configuração, mercado e organização | Proposta; Gate 1 não comprovado nesta revisão. | [SDD T-03](../sdd/backend-corrections-sdd.md) |
-| T-05 — redirects REST | Design aprovado; prova HTTP local permanece gate de segurança. | [SDD T-05](../sdd/rest-redirect-sdd.md) |
+| T-05 — redirects REST | Design e prova HTTP observável aprovados; loopback validado fora do sandbox. | [SDD T-05](../sdd/rest-redirect-sdd.md) |
 | T-07 — fixture e slippage | Design e parte da implementação/testes registrados; revisão documental acompanha os gates. | [SDD T-07](../sdd/backtest-trades-and-slippage-sdd.md) |
 | T-10 — pausa/retomada | Design técnico aprovado; acordo/sequência de implementação ainda pendentes. | [SDD T-10](../sdd/monitor-pause-resume-sdd.md) |
 | T-13 — limpeza de arquivos legados | Design e implementação registrados como aprovados, sujeito à verificação do worktree. | [SDD T-13](../sdd/legacy-file-cleanup-sdd.md) |
@@ -50,8 +50,7 @@ tags:
 
 ## Pendências e bloqueios
 
-1. Executar a prova HTTP de redirects em ambiente com loopback permitido.
-2. Fechar T-03 com revisão independente e acordo dos seams públicos.
+1. Fechar T-03 com revisão independente e acordo dos seams públicos.
 3. Confirmar a implementação de T-10 com testes de pausa, retomada, cancelamento e geração.
 4. Completar T-15 com testes de persistência opt-in, falha de escrita, gap e reconciliação.
 5. Confirmar T-13 no estado atual do worktree e garantir que não há caminhos legados ativos.
