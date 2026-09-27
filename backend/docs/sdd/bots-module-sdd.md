@@ -52,7 +52,9 @@ modules/bots/
 | `BotIdentity`, `BotId` | backtest, CLI, futuro HTTP bots | Timeframe ∈ `OperationMode::all_timeframes()`; símbolo `BASE/QUOTE` normalizado. |
 | `BotDefinition` | backtest simulation | Valida timeframe para `OperationMode`. |
 | `BotMetrics` | backtest report, ranking | Campos de identidade coerentes com `BotId`. |
-| `build_catalog_from_config` | testes, futura API | Uma entrada por timeframe suportado no modo da config. |
+| `build_catalog_from_config` | testes legados | Uma estratégia × timeframes do modo. |
+| `build_catalog_from_monitor_registry` | HTTP `GET /bots/catalog`, persist | Uma entrada por (estratégia registrada × timeframe). |
+| `MonitorStrategyRegistry` | monitor + catálogo HTTP | Resolve SMA por `strategy@version`; extensível. |
 | `full_ranking` / `rank_bots` | backtest CLI, agregadores | Escopo único (window, dataset_hash, quote); ordenação PnL ↓, drawdown ↑, bot_id. |
 | `BotCatalogStore` | HTTP, boot API | `InMemoryBotCatalogStore`, `PgBotCatalogStore`, `BotCatalogBackend`; HTTP persist/snapshot usa PG quando disponível. Auth owner Gate 1 pendente. |
 
