@@ -79,17 +79,17 @@ cargo test --locked --test redirect_policy_test
 
 O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default), depois as cinco suítes acima — **não** `cargo test --locked` completo (reexecutaria o bin `bot` em paralelo e pode flake). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
 
-**CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**15/15** testes `#[ignore]` de domínio).
+**CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**15/15** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **389** aprovados + **17** ignorados = **406** casos no bin `bot` (só aprovados na linha `OK:` do gate); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **15/15** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **406** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **15/15** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
-Bin `bot`: **389** aprovados, **17** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
-### Testes `#[ignore]` no bin `bot` (17)
+### Integração opcional no bin `bot` (17 casos, 0 `#[ignore]`)
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|
-| `postgres_scaffold_tables_exist_after_migrate` | `core/persistence/mod.rs` | `run-pg-integration-tests.sh` ou `cargo test -- --ignored postgres_scaffold` |
+| `postgres_scaffold_tables_exist_after_migrate` | `core/persistence/mod.rs` | `run-pg-integration-tests.sh` ou `DATABASE_URL=… cargo test postgres_scaffold` |
 | `persist_dataset_round_trip` | `modules/market/models.rs` | idem |
 | `pg_identity_snapshot_round_trip` | `modules/agents/adapters/pg_registry.rs` | idem |
 | `pg_agent_lifecycle_write_through_round_trip` | `modules/http_bridge/agents.rs` | idem |
@@ -105,7 +105,7 @@ Bin `bot`: **389** aprovados, **17** ignorados (incl. `integration_submits_minim
 | `pg_http_boot_sequence_mirrors_serve_wiring` | `presentation/http/state.rs` | cold-start agents + `for_http_server` + hydrate orders/catálogo (espelha `server::run`) |
 | `loads_credentials_from_postgres` | `core/providers/credentials/pg_integration.rs` | `run-pg-integration-tests.sh` (migração `0007`) |
 | `ping_and_node_count_against_local_graph` | `core/database/neo4j.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
-| `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | credenciais testnet + rede; `cargo test -- --ignored integration_submits` |
+| `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | `BINANCE_TESTNET_*` + rede; `cargo test integration_submits` |
 
 ### Bot runtime no `serve` vs testes HTTP (G2 parcial)
 
@@ -115,7 +115,7 @@ Checklist [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-
 |------|------|-----------|
 | **Produção / boot** | `server::run`, `ApiState::build_api_state_for_http_serve`, `HttpApiSeams::from_env` | `shared_bot_runtime()` — mesmo `Arc` process-wide |
 | **Paridade explícita (unit)** | `presentation/http/state.rs` | `for_http_server_wires_process_wide_bot_runtime_like_serve`; `from_env_shares_process_wide_bot_runtime_with_serve` |
-| **Paridade boot + PG** | `presentation/http/state.rs` | `pg_http_boot_sequence_mirrors_serve_wiring` (`#[ignore]`; script PG **15/15**) |
+| **Paridade boot + PG** | `presentation/http/state.rs` | `pg_http_boot_sequence_mirrors_serve_wiring` (script PG **15/15** com `DATABASE_URL`) |
 | **Router após boot canônico** | `presentation/http/server.rs` | `router_after_build_api_state_serves_catalog_and_meta`, `router_after_build_api_state_paper_submit_updates_portfolio`, `router_after_build_api_state_meta_agrees_with_http_seam_endpoints` (meta ↔ runtime + orders execution-status), `router_after_build_api_state_orders_reconciliation_poll_returns_ok` usam `build_api_state_for_http_serve` |
 | **Isolado por teste** | Maioria dos `bots_runtime_*` / promote em `http_integration_tests.rs` e helpers em `state.rs` | `Arc::new(InMemoryBotRuntime::new())` — evita vazamento de estado entre casos; **não** prova sozinho o wiring do `serve` |
 
