@@ -16,7 +16,7 @@ status: draft
 
 ## 1. Contexto e objetivo
 
-O produto bot define uma hierarquia humana e de agentes (owner → CEO → Level B → Level A → especialistas/workers). Hoje não existe módulo `agents` em `backend/src`. Jev/TypeSafe já opera no monitor como consulta **sem autoridade** via `core::providers`.
+O produto bot define uma hierarquia humana e de agentes (owner → CEO → Level B → Level A → especialistas/workers). O módulo `modules/agents` existe em `backend/src` como fundação IdentityOnly em memória. Jev/TypeSafe já opera no monitor como consulta **sem autoridade** via `core::providers`.
 
 **Objetivo desta fatia:** introduzir `modules/agents` com MVC real, tipos de identidade, registro consultável, validação de hierarquia, ciclo de vida administrativo, trilha de eventos em memória e `run_advisory_step` que reutiliza `JevAdvisor` — sem ordens live, sem substituir `risk`/`monitor`, sem worker, ferramentas, memória semântica ou LLM como “cérebro” do agente.
 

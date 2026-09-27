@@ -70,6 +70,6 @@ modules/bots/
 
 ## 6. Pendências
 
-- Gate 1: implementar `BotCatalogStore` com PostgreSQL.
+- Gate 1 PostgreSQL: [SDD Gate 1 catálogo](./bots-catalog-persistence-gate1-sdd.md) — implementar `BotCatalogStore` com PostgreSQL.
 - HTTP: catalog, catalog/persist, catalog/snapshot (store em ApiState), ranking; evoluir OpenAPI conforme novos campos.
 - Mapeamento formal executor versionado ↔ agentes autorizadores.

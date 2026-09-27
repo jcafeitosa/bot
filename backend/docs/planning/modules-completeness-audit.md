@@ -54,4 +54,4 @@ Evidência: **175** testes no binário `bot`, **1** ignorado (`persist_dataset_r
 
 ## Fechamento do goal (pendente)
 
-Gate 1 PostgreSQL/auth owner, adapter real de orders com SDD aprovado, revisão independente AGENTS.md.
+Gate 1 PostgreSQL/auth owner ([SDD draft](../sdd/bots-catalog-persistence-gate1-sdd.md)), adapter real de orders com SDD aprovado, revisão independente AGENTS.md.

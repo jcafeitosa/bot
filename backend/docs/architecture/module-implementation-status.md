@@ -10,8 +10,9 @@ tags:
 # Status de implementação — MVC mínimo real
 
 **Data da verificação:** 2026-09-27  
-**Escopo:** árvore alvo do objetivo literal (sem PG dedicado, sem live trading, sem `technical_analysis`).  
-**Correção aplicada nesta verificação:** `InMemoryBotCatalogStore` deixou de ser `#[cfg(test)]` para compilar o seam HTTP de catálogo de bots (`presentation/http/state.rs`, `http_bridge/bots.rs`).
+**Escopo:** árvore alvo do objetivo literal (sem PG **wiring** em runtime, sem live trading, sem `technical_analysis`).  
+**Correção aplicada nesta verificação:** `InMemoryBotCatalogStore` deixou de ser `#[cfg(test)]` para compilar o seam HTTP de catálogo de bots (`presentation/http/state.rs`, `http_bridge/bots.rs`).  
+**Fatia pós-goal:** `0002_agents_bots_scaffold.sql` — schema PostgreSQL para agents/bots; memória continua fonte de verdade no processo até Gate 1 auth + repositórios.
 
 ## Gates (G4)
 
@@ -19,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --all-targets -- -D warnings` | PASS | exit 0 |
-| `cargo test --locked` | PASS | 183 testes (175 unit + integração); 1 ignorado (PostgreSQL) |
+| `cargo test --locked` | PASS | 184+ testes; 2 ignorados (PostgreSQL round-trip + scaffold tables) |
 | `./scripts/verify-backend-gates.sh (fmt, clippy, import-direction, tests)` | PASS | `OK: import direction heuristics passed` |
 
 ## Critério de linha
@@ -75,7 +76,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Lacunas conhecidas (não bloqueiam o objetivo literal)
 
-- PostgreSQL Gate 1 para catálogo de bots e identidades de agents: planejado, não exigido pelo objetivo literal atual.
+- PostgreSQL Gate 1 para catálogo de bots e identidades de agents: **schema scaffold** (`0002_agents_bots_scaffold.sql`); wiring `BotCatalogStore` / `AgentRegistry` + auth owner ainda pendente.
 - `core/error` e `core/logging` sem testes dedicados: aceitável como infraestrutura com cobertura indireta.
 
 ## Veredito
