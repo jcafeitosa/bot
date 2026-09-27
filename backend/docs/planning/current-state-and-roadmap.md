@@ -26,7 +26,7 @@ tags:
 - Persistência PostgreSQL opt-in, migração automática e gravação idempotente de datasets.
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
-- Módulos `agents` (IdentityOnly), `bots` (catálogo/ranking + store em memória) e `orders` (seam fail-closed) com testes unitários.
+- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + `BotCatalogBackend` mem/PG) e `orders` (seam fail-closed) com testes unitários.
 - API HTTP Axum com OpenAPI/Scalar: agents, bots, risk, strategy, backtest, portfolio, exchanges, `POST /api/v1/orders/submit` (503 após risco OK — execução desabilitada).
 
 ### Evidência existente
@@ -98,7 +98,7 @@ cargo test --locked
 ./scripts/check-import-direction.sh
 ```
 
-Evidência observada: **186** testes unitários no binário `bot` (inclui HTTP OpenAPI, bots ranking, orders fail-closed), **4** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, Neo4j), integração redirect/config/fixture **ok**, import direction **ok**, clippy **sem warnings**.
+Evidência observada: **187** testes unitários no binário `bot` (inclui HTTP OpenAPI, bots ranking, orders fail-closed), **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, Neo4j), integração redirect/config/fixture **ok**, import direction **ok**, clippy **sem warnings**.
 
 ## Gates de aceitação
 

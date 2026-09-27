@@ -11,13 +11,13 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (http_bridge v1 completo; agents+monitor registry; bots catalog in-memory em ApiState). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** permanece **IdentityOnly em memória** (Gate 1 auth/PostgreSQL pendente). **`modules/bots`** existe como fundação strategy×timeframe (catálogo, ranking, HTTP); runtime live e persistência continuam fora. **`modules/orders`** existe como seam fail-closed (`submit_order` + `FailClosedExecutor`); execução real permanece bloqueada.
+> Revisão: 2026-09-27 (http_bridge v1 completo; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; runtime live e promoção fora. **`modules/orders`** existe como seam fail-closed (`submit_order` + `FailClosedExecutor`); execução real permanece bloqueada.
 
 ## Resumo
 
 O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco, TUI, integrações públicas Binance, persistência básica opcional, logging e Jev consultivo. Os módulos abaixo ainda não existem como capacidade completa:
 
-1. Identidade **persistente** de agentes (HTTP v1 sem auth owner; PostgreSQL pendente).
+1. Identidade de agentes com **auth owner verificável** no HTTP (persistência PG opcional já wired; sem bootstrap seguro).
 2. **Módulo `bots` além da fundação** — runtime live, promoção automática e PostgreSQL de catálogo (fundação em `src/modules/bots/` já cobre identidade, ranking e HTTP; ver [SDD bots](../sdd/bots-module-sdd.md)).
 3. Autenticação do owner, autorização por agência e bootstrap seguro.
 4. Runtime de execução de agentes, worker, scheduler e recuperação.
@@ -35,8 +35,8 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 
 | Capacidade prevista | Situação no código | Evidência | Próximo gate |
 |---|---|---|---|
-| Identidade de agentes `IdentityOnly` | Módulo `modules/agents` em memória + rotas HTTP v1 (`/api/v1/agents/*`); `MonitorAgentHook` com `shared_agent_registry` quando `BOT_AGENCY` no mesmo processo; sem PostgreSQL nem auth owner. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, persistência e autenticação verificável do owner. |
-| Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` + `http_bridge/bots`; HTTP catalog/ranking/persist/snapshot; `BotCatalogBackend` em `ApiState` (PG quando `DATABASE_URL` conecta). Sem runtime live, promoção ou PostgreSQL. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência; mapeamento formal com agentes autorizadores; runtime executor. |
+| Identidade de agentes `IdentityOnly` | Módulo `modules/agents` + rotas HTTP v1; `shared_agent_registry`; write-through PG (`PgAgentIdentityStore`) e cold-start hydrate em `serve`; **sem auth owner**. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, persistência e autenticação verificável do owner. |
+| Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` + `http_bridge/bots`; HTTP catalog/ranking/persist/snapshot; `BotCatalogBackend` em `ApiState` (PG quando `DATABASE_URL` conecta). Sem runtime live ou promoção; catálogo persiste em PG quando `DATABASE_URL` conecta. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência; mapeamento formal com agentes autorizadores; runtime executor. |
 | Seam `orders` (fail-closed) | `modules/orders` + `http_bridge/orders` + `POST /api/v1/orders/submit` (422 risk / 503 execution disabled). | [SDD orders](../sdd/orders-module-sdd.md). | Adapter exchange real, idempotência e reconciliação — somente após gates de segurança. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |

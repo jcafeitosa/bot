@@ -119,3 +119,9 @@ modules/agents/
 
 - [Catálogo de módulos](../architecture/module-catalog.md)
 - [Estado e roadmap](../planning/current-state-and-roadmap.md)
+
+
+## HTTP e PostgreSQL (parcial)
+
+- Mutations: `persist_agent_after_mutation` espelha em PG.
+- Boot: `presentation/http/server.rs` chama `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` quando o registry compartilhado está vazio.

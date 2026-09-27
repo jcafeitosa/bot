@@ -9,10 +9,10 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-27 (core::database dual-store)  
+**Data da verificação:** 2026-09-27 (PG agents/bots write-through + hydrate)  
 **Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
 **Correção aplicada nesta verificação:** `InMemoryBotCatalogStore` deixou de ser `#[cfg(test)]` para compilar o seam HTTP de catálogo de bots (`presentation/http/state.rs`, `http_bridge/bots.rs`).  
-**Fatia pós-goal:** `0002_agents_bots_scaffold.sql` — schema PostgreSQL para agents/bots; memória continua fonte de verdade no processo até Gate 1 auth + repositórios.
+**Fatia pós-goal:** `0002_agents_bots_scaffold.sql` — schema PostgreSQL para agents/bots; runtime em memória com espelho PG opcional (agents hydrate + write-through; bots `BotCatalogBackend`); Gate 1 auth owner ainda pendente.
 
 ## Gates (G4)
 
@@ -20,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --all-targets -- -D warnings` | PASS | exit 0 |
-| `cargo test --locked` | PASS | 181 testes; 4 ignorados (PG round-trip, scaffold, pg catalog, Neo4j) (PostgreSQL round-trip + scaffold tables) |
+| `cargo test --locked` | PASS | 186+ testes no bin `bot`; ignorados PG/Neo4j (PG round-trip, scaffold, pg catalog, Neo4j) (PostgreSQL round-trip + scaffold tables) |
 | `./scripts/verify-backend-gates.sh (fmt, clippy, import-direction, tests)` | PASS | `OK: import direction heuristics passed` |
 
 ## Critério de linha
@@ -53,7 +53,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | backtest | `modules/backtest/` | M+C + `cli` | simulation tests, `tests/backtest_fixture.rs` |
 | exchanges | `modules/exchanges/` | M+A; `controllers` reexporta orquestração | `exchanges::tests`, adapters tests |
 | monitor | `modules/monitor/` | M+C+views | supervisor/handle/startup tests; `main` monitor path |
-| agents | `modules/agents/` | M+C+A (`adapters/jev`) | `modules/agents/tests.rs`, HTTP agents routes |
+| agents | `modules/agents/` | M+C+A (`jev`, `pg_registry`) | hydrate `serve`, HTTP persist | `modules/agents/tests.rs`, HTTP agents routes |
 | bots | `modules/bots/` | M+C+A (`PgBotCatalogStore`, `BotCatalogBackend`) | `modules/bots/tests.rs`, HTTP bots routes |
 | orders | `modules/orders/` | M+C+A (`FailClosedExecutor`) | `modules/orders/tests.rs`, HTTP 503 fail-closed |
 | http_bridge | `modules/http_bridge/` | Facades por domínio | `bridge_tests::persist_catalog_bridge_wires_store_seam` |
