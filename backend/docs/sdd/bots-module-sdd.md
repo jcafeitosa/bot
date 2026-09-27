@@ -71,5 +71,5 @@ modules/bots/
 
 - Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
 - [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): parâmetros por `strategy@version` além de SMA global; mapeamento formal executor versionado ↔ agentes autorizadores.
-- Baseline: `./scripts/verify-backend-gates.sh` verde; bin `bot` **256** testes (`promoted_sma_cross_identity_uses_config_periods` + gates).
+- Baseline: `./scripts/verify-backend-gates.sh` verde; bin `bot` **257** testes (`promoted_sma_cross_identity_uses_config_periods` + gates).
 - Auth owner verificável no transporte (fora do seam `BOT_HTTP_*`).
