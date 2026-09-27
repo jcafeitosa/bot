@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **289** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*` com `assert_bot_promotion_allowed` (catálogo + mercado), `MonitorStrategyRegistry` + `monitor_strategy_from_config`, `strategy_evaluation_binding`; catálogo HTTP expõe `monitor_fast_period` / `monitor_slow_period` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` (incl. `bots_runtime_promote_monitor_registry_v2_bot_in_catalog` para `sma-cross@2`), `meta_and_bot_runtime_status_agree_on_runtime_enabled`, com `BOT_HTTP_AGENCY_ID` e `fresh_agent_registry()` em `server.rs`.
+Evidência parcial (2026-09-27): **290** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*` com `assert_bot_promotion_allowed` (catálogo + mercado), `MonitorStrategyRegistry` + `monitor_strategy_from_config`, `strategy_evaluation_binding`; catálogo HTTP expõe `monitor_fast_period` / `monitor_slow_period` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` (incl. `bots_runtime_promote_monitor_registry_v2_bot_in_catalog` para `sma-cross@2`), `meta_and_bot_runtime_status_agree_on_runtime_enabled`, com `BOT_HTTP_AGENCY_ID` e `fresh_agent_registry()` em `server.rs`.
 
 ## Testes HTTP (isolamento)
 
