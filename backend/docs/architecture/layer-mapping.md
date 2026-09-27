@@ -126,7 +126,7 @@ cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-b
 
 Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×13): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`.
 
-Evidência: **392** testes no bin `bot`, **15** ignorados (PG×13 + Neo4j + testnet manual; ver [test-matrix](../reference/test-matrix.md)).
+Evidência: **393** testes no bin `bot`, **15** ignorados (PG×13 + Neo4j + testnet manual; ver [test-matrix](../reference/test-matrix.md)).
 
 ## Documentos relacionados
 
