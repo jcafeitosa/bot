@@ -12,7 +12,7 @@ tags:
 - **Autor:** System Designer Builder `/root/resume_designer`
 - **Revisor:** Crítico de Arquitetura `/root/resume_design_critic`
 - **Data:** 2026-09-26
-- **Estado:** G1 técnico aprovado por `/root/resume_design_critic`; quatro interfaces SDD aprovadas pelo usuário em 2026-09-26; C14 `APROVADO COM FOLLOW-UP` por `/root/c14_critic`; C15 pendente
+- **Estado:** G1 técnico aprovado por `/root/resume_design_critic`; quatro interfaces SDD aprovadas pelo usuário em 2026-09-26; C14 `APROVADO COM FOLLOW-UP` por `/root/c14_critic`; C15 implementado, revisão independente pendente
 - **Escopo:** monitor TUI do backend Rust em `dev`, `observe`/`paper`; nenhuma ordem é habilitada
 
 ## Contexto e problema
@@ -85,6 +85,10 @@ O limite interno `run_evaluation_cycle` passa a produzir uma candidata canceláv
 
 **C15 — Envio WS sem bloqueio e documentação (Builder Backend; Critic Backend independente).** Teste red do produtor com canal capacidade 1 saturado: enviar segundo candle fechado retorna sem aguardar receiver e mantém capacidade limitada; canal fechado encerra envio; mensagens inválidas seguem ignoradas. Implementação mínima green; atualizar `backend/README.md` e logs do monitor para semântica de pausa/retomada e perda recuperável. O Critic verifica que `try_send` não converte `Full` em encerramento do WS. Cada CL executa `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` e `cargo test`; teste integrado com servidor/clock falso verifica o caminho end-to-end sem Binance real.
 
+**Evidência C15 em revisão:** o teste `saturated_closed_kline_channel_does_not_block_websocket_producer` falhou com `Err(Elapsed(()))` antes da alteração e passou após `try_send`. O produtor agora registra `Full` com símbolo, timestamp, capacidade e contador acumulado, descarta só o evento novo e continua a sessão; `Closed` termina a sessão WS. Teste adicional verifica que canal fechado termina o encaminhamento válido e mensagens inválidas continuam ignoradas. A suíte focada `exchanges::live::tests` passou com 9 testes; `cargo clippy --locked --all-targets -- -D warnings` passou. Esta evidência é do Builder; C15 permanece pendente de veredito do Critic, e não aprova G4/G5.
+
+**Dependência C17:** o contador/log privado de C15 observa overflow para operação, mas ainda não envia o timestamp descartado ao estado de persistência. A entrega C17 do SDD T-15 deve estender o seam interno em `live.rs` e consumi-lo no monitor para marcar a faixa suspeita mesmo quando não houver salto visível entre candles recebidos. Até lá, o log de C15 não é prova de integridade do arquivo.
+
 Na revisão G1 original, o Crítico confrontou as regras de design com `app.rs`, `exchanges/live.rs`, `market_feed.rs` e `ui/mod.rs` antes de qualquer implementação. As evidências de implementação C14 foram acrescentadas após o acordo dos seams e constam acima; C15 ainda não foi executado.
 
 ## Riscos e rollout/rollback
@@ -99,4 +103,4 @@ Na revisão G1 original, o Crítico confrontou as regras de design com `app.rs`,
 
 - **Acordo do usuário registrado:** as interfaces dos quatro SDDs, incluindo os três seams T-10, foram aprovadas em 2026-09-26 antes dos testes C14.
 - **G1 técnico aprovado:** `/root/resume_design_critic` confirmou resolução dos três achados em revisão independente.
-- **G2 atribuído; G3 C14 aprovado com follow-up:** Builder `/root/c14_builder`, Critic `/root/c14_critic`. C15 continua pendente, inclusive `try_send` no produtor WS. G4 e G5 não são declarados aprovados por esta atualização.
+- **G2 atribuído; G3 C14 aprovado com follow-up:** Builder `/root/c14_builder`, Critic `/root/c14_critic`. C15 implementou `try_send` e está em revisão por `/root/c15_critic`; G3 C15, G4 e G5 não são declarados aprovados por esta atualização.
