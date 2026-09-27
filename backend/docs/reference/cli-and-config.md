@@ -115,7 +115,7 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_HTTP_AGENCY_ID` | Restringe rotas `/api/v1/agents*` ao `agency` configurado (query ou body); falha **403** `http_agency_mismatch`. `GET /meta` → `http_agency_binding_active` (booleano, sem expor o ID). |
 | `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes exigem `Authorization: Bearer <token>` (fail-closed; não substitui auth do owner). |
 | `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**503** em promote). |
-| `BOT_ORDERS_EXCHANGE_SUBMIT` | Com `BOT_ORDERS_EXECUTION=live_exchange`, `recording` liga `ExchangeSpotExecutor` (sem rede; dev/test). Futuro: `testnet` para REST Spot. |
+| `BOT_ORDERS_EXCHANGE_SUBMIT` | Com `BOT_ORDERS_EXECUTION=live_exchange`, `recording` liga `ExchangeSpotExecutor` (sem rede; dev/test). `testnet` reconhecido mas **não wired** (reservado para REST Spot + `authorize_rest_use`). |
 | `BOT_ORDERS_EXECUTION` | vazio/`disabled` (fail-closed); `dev_accept` (double local); `paper` (`PaperLedgerExecutor`, ledger in-process); `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → **200** após risco; `live_exchange` sem submit backend — **503** `live_exchange_not_wired`). Outros valores → `disabled`. |
 | `client_order_id` (body HTTP) | Campo opcional em `POST /api/v1/orders/submit`; replays retornam `accepted: true` sem reexecutar (memória; PG quando `DATABASE_URL` + migração `0004`). |
 | `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; ver `docs/operations/postgres-and-graph-dev.md`. |
