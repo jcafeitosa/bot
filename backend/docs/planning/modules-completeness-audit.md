@@ -57,7 +57,7 @@ Evidência (2026-09-27): **246** testes no binário `bot`, **6** ignorados (`per
 | Requisito | Evidência | Status |
 |-----------|-----------|--------|
 | Completude bots | `modules/bots/`, `PgBotCatalogStore`, HTTP `/bots/*` | **Parcial** (sem runtime live) |
-| Completude orders | `submit_order`, HTTP 422/503, `HttpOrderExecutor`, `client_order_id` + dedupe em memória | **Parcial** (fail-closed default; sem exchange; PG idempotência wired com PG) |
+| Completude orders | `submit_order`, HTTP 422/503, `HttpOrderExecutor`, `client_order_id` + memória + `PgOrderIdempotencyStore` | **Parcial** (fail-closed default; sem exchange live) |
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth`, `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando `BOT_HTTP_AGENCY_ID` | **Parcial** (seam admin; não substitui auth owner completo) |
 | Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge`, `ApiState`, monitor snapshot + `strategy_evaluation_binding` no supervisor (`BotSignal.bot_id`, SMA registry `sma-cross@1`) | **Parcial** (auth owner, orders exchange, agente→bot) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
