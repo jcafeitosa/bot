@@ -60,12 +60,11 @@ tags:
 
 ## Plano recomendado
 
-### P0 — Fechar evidência de segurança
+### P0 — Fechado
 
-- Executar os testes HTTP de redirect em ambiente com loopback.
-- Confirmar que o adapter usa a política instalada no `HttpClient`.
-- Revalidar checksum, licença e proveniência do vendor.
-- Atualizar o [runbook](../operations/runbook.md) com o resultado observável.
+- Testes HTTP de redirect executados fora do sandbox: origem externa bloqueada e redirect na mesma origem aceito.
+- Confirmada a política instalada no `HttpClient`.
+- Manter a proveniência, licença e checksum do vendor sob revisão quando a dependência mudar.
 
 ### P1 — Fechar contratos do monitor
 
@@ -91,12 +90,12 @@ tags:
 
 ```text
 CARGO_TARGET_DIR=/private/tmp/bot-backend-target cargo test --locked
-71 unitários + 1 fixture + 2 config CLI + 3 redirect-origin = passaram
+74 testes unitários = passaram
+1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP = passaram
 1 teste PostgreSQL = ignorado; requer DATABASE_URL para trading_bot
-2 redirect-policy HTTP = falharam antes do teste por PermissionDenied ao abrir listener local
 ```
 
-A suíte de lógica e contratos passou. A prova HTTP observável de redirect continua pendente porque o sandbox não permite abrir listeners em loopback; isso mantém P0/T-05 bloqueado. A compilação em target temporário produziu warnings existentes de código não usado em `app.rs` e variantes/campos sem uso; eles não foram alterados nesta tarefa documental.
+A suíte de lógica, contratos e transporte HTTP passou. O teste PostgreSQL continua ignorado por depender de um banco dedicado. A compilação com `cargo check --locked --all-targets` terminou sem warnings.
 
 ## Gates de aceitação
 
