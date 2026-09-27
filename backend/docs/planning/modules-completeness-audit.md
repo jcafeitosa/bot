@@ -74,7 +74,7 @@ Evidência (2026-09-27): **344** testes no binário `bot`, **8** ignorados (PG×
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots (`MonitorEvaluatorKind`, catálogo/config HTTP), orders seams, agents PG + promote capability | **Parcial** (auth owner; adapter exchange orders) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → **340** ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → **344** ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)

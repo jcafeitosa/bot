@@ -85,7 +85,7 @@ Evidência G1 (2026-09-27): **344** testes bin `bot`, **7** ignorados; `orders_s
 | `RecordingExecutor` / test double sem rede | `orders/tests.rs`, `http_bridge/orders.rs` | Sim |
 | `PaperLedgerExecutor` (modo `paper`) | `paper_ledger_executor.rs`, `orders_submit_paper_executor_returns_200` | Sim |
 | Adapter `OrderExecutionPort` com exchange/testnet REST | `binance_spot_testnet_submit.rs` (buy/sell market por quote); CI sem credenciais | **Parcial** |
-| Reconciliação pós-submit | Memória + `PgOrderReconciliationStore` (`order_reconciliation`); HTTP live wired auto-reconcile; poller/status exchange pendente | **Parcial** |
+| Reconciliação pós-submit | Memória + `PgOrderReconciliationStore` (`0006`); HTTP auto-reconcile recording; `GET /orders/reconciliation/{client_order_id}`; `meta.order_reconciliation_pending` (max mem/PG); poller exchange pendente | **Parcial** |
 | `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording determinístico; testnet exige credenciais/rede) |
 | Threat model + revisão Critic | seção rascunho neste SDD; Critic instância separada | **Parcial** |
 | `./scripts/verify-backend-gates.sh` verde | **344** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
