@@ -24,7 +24,7 @@ status: draft
 | Agents boot | `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` | Cold-start quando registry compartilhado vazio |
 | Schema | `0002_agents_bots_scaffold.sql`, `0005_agent_promote_runtime_bot.sql` | `agent_*`, `bot_catalog_entries`, capability `promote_runtime_bot` |
 
-Testes ignorados: `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `postgres_scaffold_tables_exist_after_migrate`.
+Testes ignorados (PG): ver `./scripts/run-pg-integration-tests.sh` (7 testes: scaffold, market dataset, bots catalog, agents identity + lifecycle write-through, orders idempotency/reconciliation).
 
 ## Pendente
 
@@ -36,7 +36,7 @@ Testes ignorados: `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_tri
 
 ```text
 ./scripts/verify-backend-gates.sh
-cargo test pg_catalog_store_round_trip pg_identity_snapshot_round_trip postgres_scaffold_tables_exist_after_migrate --locked --bin bot -- --ignored
+./scripts/run-pg-integration-tests.sh   # requer DATABASE_URL → trading_bot
 ```
 
 ## Rollback
