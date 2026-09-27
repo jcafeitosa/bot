@@ -14,6 +14,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 - [Guia de execução e operação](./operations/runbook.md) — pré-requisitos, inicialização, modos suportados, persistência e diagnóstico.
 - [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente e validações.
+- [API HTTP (OpenAPI + Scalar)](./reference/cli-and-config.md#subcomando-serve-http) — subcomando `serve`, `/openapi.json`, `/docs`, agents e `--with-monitor`.
 - [Referência de módulos do backend](./architecture/backend-module-reference.md) — visão consolidada, interfaces, seams, fluxos e limites.
 - [Catálogo completo de módulos](./architecture/module-catalog.md) — todos os módulos Rust, submódulos de exchange, contratos e invariantes.
 - [Matriz de testes](./reference/test-matrix.md) — cobertura por módulo, integração, evidências e lacunas.
