@@ -152,38 +152,3 @@ async fn pg_persist_dataset_transaction_rollback_and_idempotent_replay() {
         0
     );
 }
-
-#[tokio::test]
-async fn persist_dataset_rejects_conflicting_manifest_for_same_id() {
-    use super::PersistenceError;
-
-    let Some(db) = super::pg_integration::database_for_integration_test().await else {
-        return;
-    };
-    let dataset_id = format!(
-        "v18-manifest-conflict-{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
-            .as_nanos()
-    );
-    let input = v18_dataset(&dataset_id);
-
-    db.persist_dataset(&input).await.expect("initial persist");
-
-    let mut conflicting = input.clone();
-    conflicting.manifest.symbol = "V18/OTHER".to_string();
-
-    let err = db
-        .persist_dataset(&conflicting)
-        .await
-        .expect_err("conflicting manifest must fail");
-    match &err {
-        PersistenceError::DatasetManifestConflict { dataset_id: id } => {
-            assert_eq!(id, &dataset_id);
-        }
-        other => panic!("unexpected error: {other:?}"),
-    }
-
-    delete_v18_fixture(&db, &dataset_id).await;
-}

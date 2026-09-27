@@ -54,30 +54,6 @@ impl Database {
         dataset: &MarketDatasetPersistInput,
     ) -> Result<(), PersistenceError> {
         let mut tx = self.pool().begin().await?;
-        let existing = sqlx::query_as::<_, (String, String, i64, i64, i64, i64, String)>(
-            "SELECT symbol, base_timeframe, start_ms, end_ms, candle_count, gap_count, source \
-             FROM market_datasets WHERE dataset_id = $1",
-        )
-        .bind(&dataset.manifest.dataset_id)
-        .fetch_optional(&mut *tx)
-        .await?;
-        if let Some((symbol, base_timeframe, start_ms, end_ms, candle_count, gap_count, source)) =
-            existing
-        {
-            let m = &dataset.manifest;
-            if symbol != m.symbol
-                || base_timeframe != m.base_timeframe
-                || start_ms != m.start_ms
-                || end_ms != m.end_ms
-                || candle_count != m.candle_count as i64
-                || gap_count != m.gap_count as i64
-                || source != m.source
-            {
-                return Err(PersistenceError::DatasetManifestConflict {
-                    dataset_id: m.dataset_id.clone(),
-                });
-            }
-        }
         sqlx::query(
             "INSERT INTO market_datasets (dataset_id, symbol, base_timeframe, start_ms, end_ms, candle_count, gap_count, source) \
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (dataset_id) DO NOTHING",

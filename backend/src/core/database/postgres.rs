@@ -24,8 +24,6 @@ pub enum DatabaseError {
     Connect(#[from] sqlx::Error),
     #[error("database migration failed: {0}")]
     Migrate(#[from] sqlx::migrate::MigrateError),
-    #[error("market dataset manifest conflict for dataset_id {dataset_id}")]
-    DatasetManifestConflict { dataset_id: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
