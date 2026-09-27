@@ -57,7 +57,7 @@ As regras de redirects e validação da janela REST estão detalhadas no [SDD de
 | Janela REST rejeitada | Corrija a origem dos dados ou aguarde nova janela válida; não persista a janela rejeitada. |
 | Redirect externo rejeitado | Preserve o erro e investigue a origem configurada; não relaxe a política sem revisar o [SDD T-05](../sdd/rest-redirect-sdd.md). |
 | `GET /healthz` com `status: degraded` e `graph_projection_outbox` | Backlog na tabela `graph_projection_outbox` (pending/retry ou idade); confirme Neo4j Bolt, `DATABASE_URL` e worker F2.1.2; drain manual F2.1.3 abaixo. |
-| `graph query` ou admin graph HTTP **503** `graph_query_unavailable` | Stack de grafo desligada ou Neo4j indisponível; não é falha de orders/paper. Ver [postgres-and-graph-dev](./postgres-and-graph-dev.md). |
+| `graph query` ou admin graph HTTP **507** `graph_query_unavailable` | Stack de grafo desligada ou Neo4j indisponível; não é falha de orders/paper. Ver [postgres-and-graph-dev](./postgres-and-graph-dev.md). |
 
 ## Grafo de produto — outbox Neo4j (F2.1.2 / F2.1.3)
 
@@ -84,6 +84,20 @@ cargo run --locked -- graph-projection drain --limit 32
 Saída JSON: `{ "processed", "succeeded", "failed" }`. Fail-closed com mensagem clara se PG ou Neo4j ausentes.
 
 **F3 — leitura advisory (sem mutação):** CLI `cargo run --locked -- graph query agents --limit 32` (também `supervision-chain`, `bots-for-agent`, `code-impact --module-path …`). HTTP admin read-only com bearer: ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). Não habilite `live_exchange` nem prod REST como recuperação de grafo.
+
+
+## Orders PG — retenção Gate 2 (purge)
+
+Pré-requisito: `DATABASE_URL` → `trading_bot`. Não habilita trading live.
+
+```sh
+cd backend
+export DATABASE_URL=postgresql://USER:PASSWORD@127.0.0.1:5432/trading_bot
+cargo run --locked -- orders retention-purge
+cargo run --locked -- orders retention-purge --apply   # somente após revisar JSON e backup
+```
+
+Saída JSON: `dry_run`, `idempotency_rows_deleted`, `reconciliation_terminal_rows_deleted`, `pending_stale`. Política: [cli-and-config § PG orders retention](../reference/cli-and-config.md#pg-orders-retention-gate-2).
 
 ## Encerramento e recuperação
 
@@ -113,4 +127,4 @@ HTTP mutante/bearer (paridade local):
 cargo test --locked --bin bot http_integration -- --test-threads=1
 ```
 
-Baseline esperada (2026-09-27): linha `OK:` do gate → **503** passed, **0** ignored no bin `bot`; `http_integration` → **62** passed; com PG → `run-pg-integration-tests.sh` **26/26**. Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.
+Baseline esperada (2026-09-27): linha `OK:` do gate → **507** passed, **0** ignored no bin `bot`; `http_integration` → **62** passed; com PG → `run-pg-integration-tests.sh` **27/27**. Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.

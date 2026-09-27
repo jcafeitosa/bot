@@ -60,7 +60,7 @@ cargo run -- serve --config src/core/config/bot.toml --bind 127.0.0.1:8080
 | `--with-monitor` | Sobe o monitor headless no mesmo processo; `/api/v1/monitor/*` deixa de retornar 503. |
 | `GET /api/v1/meta` | Metadados + `http_seams` read-only; `order_execution_mode`/`live_exchange_wired` alinham com `GET /orders/execution-status`; `bot_runtime_enabled` alinha com `GET /bots/runtime/status` (`runtime_enabled`). |
 
-Sem `--with-monitor`, rotas `/api/v1/monitor/*` respondem **503**. Com `--with-monitor`, o loop de mercado roda headless (sem Ratatui) e snapshot/comandos HTTP funcionam. Registro de agents, risco, estratégia, backtest e config snapshot funcionam sem monitor anexo. Advisory Jev exige `jev.enabled` e credenciais no ambiente.
+Sem `--with-monitor`, rotas `/api/v1/monitor/*` respondem **507**. Com `--with-monitor`, o loop de mercado roda headless (sem Ratatui) e snapshot/comandos HTTP funcionam. Registro de agents, risco, estratégia, backtest e config snapshot funcionam sem monitor anexo. Advisory Jev exige `jev.enabled` e credenciais no ambiente.
 
 Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 
@@ -68,9 +68,9 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 |---|---|---| - |
 | `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem IdP/autenticação do owner humano (pendente). Seams: `BOT_HTTP_ADMIN_TOKEN` + `BOT_HTTP_OWNER_ID`/`BOT_HTTP_AGENCY_ID`; com owner bootstrap PG (`VerifiedProductOwner`), registro com `owner_id` divergente → **403** `owner_mismatch`. |  |
 | `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `MonitorStrategyRegistry` + `strategy_evaluation_binding` + `BotSignal.bot_id`. Catálogo HTTP inclui `monitor_fast_period` / `monitor_slow_period` / `monitor_evaluator` (`sma_cross` ou `ema_cross` via `[[strategy.monitor_registry]]`). |
-| `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit`, `GET /orders/reconciliation/{client_order_id}`, `POST /orders/reconciliation/poll` | Status: `mode` + `live_exchange_wired` (`recording` ou `testnet`+credenciais). Submit: fail-closed **503**; `paper`/`dev_accept` **200** após risco; `client_order_id` dedupe; corpo opcional `paper_fill_unit_price` (modo paper → portfolio `positions`). |  |
+| `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit`, `GET /orders/reconciliation/{client_order_id}`, `POST /orders/reconciliation/poll` | Status: `mode` + `live_exchange_wired` (`recording` ou `testnet`+credenciais). Submit: fail-closed **507**; `paper`/`dev_accept` **200** após risco; `client_order_id` dedupe; corpo opcional `paper_fill_unit_price` (modo paper → portfolio `positions`). |  |
 | `portfolio` | `GET /portfolio/paper-snapshot?quote=…` | Saldo paper + `positions[]` quando fills têm preço (`paper_fill_unit_price` no submit ou `BOT_PAPER_FILL_UNIT_PRICE`); baseline 1000 na quote. |  |
-| `admin` | `GET/POST /admin/provider-credentials`, `PUT/DELETE /admin/provider-credentials/{provider_id}/{key_name}`; `GET /admin/graph/agents`, `GET /admin/graph/supervision-chain`, `GET /admin/graph/bots-for-agent`, `GET /admin/graph/code-impact` | Bearer quando `BOT_HTTP_ADMIN_TOKEN` ativo. Credentials: **503** sem PG ([provider-credentials-db-sdd](../sdd/provider-credentials-db-sdd.md)). Graph: leitura advisory do Neo4j (PG é SoT); **503** sem PG/Neo4j wired ([graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md)). |  |
+| `admin` | `GET/POST /admin/provider-credentials`, `PUT/DELETE /admin/provider-credentials/{provider_id}/{key_name}`; `GET /admin/graph/agents`, `GET /admin/graph/supervision-chain`, `GET /admin/graph/bots-for-agent`, `GET /admin/graph/code-impact` | Bearer quando `BOT_HTTP_ADMIN_TOKEN` ativo. Credentials: **507** sem PG ([provider-credentials-db-sdd](../sdd/provider-credentials-db-sdd.md)). Graph: leitura advisory do Neo4j (PG é SoT); **507** sem PG/Neo4j wired ([graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md)). |  |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md). Rotas de sistema `GET /healthz` e `GET /readyz` ficam fora de `/api/v1`; lista das rotas documentadas em `/openapi.json`.
 
@@ -136,9 +136,9 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_PRODUCT_OWNER_BOOTSTRAP_ACK` | Deve ser `1`/`true`/`yes`/`on` junto com `BOT_PRODUCT_OWNER_BOOTSTRAP_ID` para mutar PG (fail-closed sem ACK). |
 | `BOT_HTTP_AGENCY_ID` | Restringe rotas `/api/v1/agents*` ao `agency` configurado (query ou body); falha **403** `http_agency_mismatch`. `GET /meta` → `http_agency_binding_active` (booleano, sem expor o ID). |
 | `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes exigem `Authorization: Bearer <token>` (fail-closed; não substitui auth do owner). |
-| `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**503** em promote). |
+| `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**507** em promote). |
 | `BOT_ORDERS_EXCHANGE_SUBMIT` | Com `BOT_ORDERS_EXECUTION=live_exchange`, `recording` liga executor sem rede; `testnet` + `BINANCE_TESTNET_*` liga `ExchangeSpotExecutor` + submit ccxt (market **buy** por `quote_amount`; rede real). Sem credenciais → `live_exchange_reserved`. |
-| `BOT_ORDERS_EXECUTION` | vazio/`disabled` (fail-closed); `dev_accept` (double local); `paper` (`PaperLedgerExecutor`, ledger in-process); `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → **200** após risco; `live_exchange` sem submit backend — **503** `live_exchange_not_wired`). Outros valores → `disabled`. |
+| `BOT_ORDERS_EXECUTION` | vazio/`disabled` (fail-closed); `dev_accept` (double local); `paper` (`PaperLedgerExecutor`, ledger in-process); `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → **200** após risco; `live_exchange` sem submit backend — **507** `live_exchange_not_wired`). Outros valores → `disabled`. |
 | `DATABASE_URL` + migração `0006` | Com HTTP `serve`, `ApiState` registra `register_live_reconciliation_pg_mirror`; submits testnet do monitor espelham `order_reconciliation` via `try_mirror_reconciliation_upsert`. |
 | `BOT_ORDERS_RECONCILIATION_POLL_SECS` | Opcional com `live_exchange` wired: intervalo em segundos para `ApiState::run_order_reconciliation_poll_once` em background no `serve` (LiveExchange query; default desligado se vazio ou `0`). |
 | `BOT_PAPER_FILL_UNIT_PRICE` | Opcional com `paper`: preço quote/base usado no ledger para calcular `positions` no snapshot HTTP (ex.: `50000` para BTC/USDT). |
@@ -182,13 +182,20 @@ A semântica de estados, gaps e recuperação está no [SDD T-15](../sdd/monitor
 
 ### PG orders retention (Gate 2)
 
-Política operacional sugerida (não há purge automático no binário `bot`):
+Política operacional (purge via CLI fail-closed; sem live trading):
 
 | Tabela | Retenção sugerida | Ação se violada |
 |--------|-------------------|-----------------|
-| `order_idempotency_keys` | **90 dias** após `completed_at` | Job SQL/manual de delete; dedupe em memória reinicia com o processo |
-| `order_reconciliation` (terminal `reconciled` / `divergent`) | **180 dias** | Arquivar ou apagar linhas antigas após backup |
-| `order_reconciliation` (`pending`) | alerta se **> 7 dias** | `POST /api/v1/orders/reconciliation/poll` + investigar exchange; manter `BOT_ORDERS_RECONCILIATION_POLL_SECS` ≥ **60** com submit live wired |
+| `order_idempotency_keys` | **90 dias** após `recorded_at` | `bot orders retention-purge` (dry-run default) ou `--apply` após backup |
+| `order_reconciliation` (terminal `reconciled` / `divergent`) | **180 dias** | Mesmo comando CLI; SQL legado em `scripts/pg-orders-retention-purge.sql` |
+| `order_reconciliation` (`pending`) | alerta se **> 7 dias** | Listado no JSON do dry-run; `POST /api/v1/orders/reconciliation/poll` + investigar exchange; manter `BOT_ORDERS_RECONCILIATION_POLL_SECS` ≥ **60** com submit live wired |
+
+```sh
+cd backend
+export DATABASE_URL=postgresql://USER:PASSWORD@127.0.0.1:5432/trading_bot
+cargo run --locked -- orders retention-purge              # dry-run (contagens)
+cargo run --locked -- orders retention-purge --apply     # delete em transação única
+```
 
 Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md#threat-model-rascunho).
 
@@ -197,7 +204,7 @@ Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live
 ```sh
 cd backend
 ./scripts/verify-backend-gates.sh          # → 503 passed, 0 ignored (bin bot); assert-completeness-evidence.sh
-./scripts/verify-backend-full.sh         # gates + PG 26/26 quando DATABASE_URL → trading_bot
+./scripts/verify-backend-full.sh         # gates + PG 27/27 quando DATABASE_URL → trading_bot
 bot graph query agents --limit 32   # read-only Neo4j (fail-closed sem stack)
 bot graph query supervision-chain --agency-id agency-a --agent-id worker-1
 bot graph query bots-for-agent --agency-id agency-a --agent-id agent-promoter --limit 32

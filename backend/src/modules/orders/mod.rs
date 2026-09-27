@@ -6,8 +6,10 @@
 #![allow(unused_imports)]
 
 pub mod adapters;
+pub mod cli;
 pub mod controllers;
 pub mod models;
+pub mod retention_purge;
 
 pub use adapters::{
     clear_live_reconciliation_pg_mirror, live_exchange_submit_backend,

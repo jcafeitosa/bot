@@ -31,6 +31,8 @@ enum BotCommand {
     GraphProjection(crate::core::database::GraphProjectionCli),
     /// Read-only Neo4j graph queries (F3)
     Graph(crate::core::database::GraphCli),
+    /// Orders maintenance (retention purge; no live trading)
+    Orders(modules::orders::cli::OrdersCli),
 }
 
 #[derive(Debug, Parser)]
@@ -55,9 +57,9 @@ fn bot_config_path_for_cli(cli: &TopCli) -> std::path::PathBuf {
             .config
             .clone()
             .unwrap_or_else(|| cli.monitor.config.clone()),
-        Some(BotCommand::GraphProjection(_)) | Some(BotCommand::Graph(_)) => {
-            cli.monitor.config.clone()
-        }
+        Some(BotCommand::GraphProjection(_))
+        | Some(BotCommand::Graph(_))
+        | Some(BotCommand::Orders(_)) => cli.monitor.config.clone(),
         None => cli.monitor.config.clone(),
     }
 }
@@ -78,7 +80,8 @@ async fn main() -> Result<()> {
         }
         Some(BotCommand::Serve(_))
         | Some(BotCommand::GraphProjection(_))
-        | Some(BotCommand::Graph(_)) => {}
+        | Some(BotCommand::Graph(_))
+        | Some(BotCommand::Orders(_)) => {}
     }
     match cli.command {
         Some(BotCommand::Backtest(args)) => {
@@ -89,6 +92,9 @@ async fn main() -> Result<()> {
         }
         Some(BotCommand::Graph(args)) => {
             crate::core::database::graph_cli::run(&args).await?;
+        }
+        Some(BotCommand::Orders(args)) => {
+            modules::orders::cli::run(&args).await?;
         }
         Some(BotCommand::Serve(args)) => {
             let mut monitor_cli = cli.monitor.clone();
