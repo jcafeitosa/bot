@@ -49,7 +49,7 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 | Grupo | Rotas | Notas |
 |---|---|---|
 | `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |
-| `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` usa promoção em memória no **mesmo processo** (`shared_bot_runtime`, compartilhado com HTTP `serve` e enrich do snapshot monitor; `--with-monitor` publica snapshots headless). Com `BOT_HTTP_AGENCY_ID`, promote exige agente com `promote_runtime_bot`. Supervisor preenche `BotSignal.bot_id` via `strategy_evaluation_binding` quando promoção casa com mercado (SMA ainda do config global). |
+| `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `strategy_evaluation_binding` + `BotSignal.bot_id` (SMA do config global). |
 | `orders` | `POST /orders/submit` | Default fail-closed (**503** após risco OK); `BOT_ORDERS_EXECUTION=dev_accept` aceita via double local (sem exchange); **422** se risco rejeita. Campo opcional `client_order_id` (1..=128 bytes): replay retorna `accepted: true` sem reexecutar o port (memória; com `DATABASE_URL` também em `order_idempotency_keys`). |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
@@ -83,7 +83,7 @@ A validação de período SMA e timeframe é feita junto com a configuração. C
 | Variável | Finalidade |
 |---|---|
 | `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_SECRET` | Credenciais opcionais da conta Spot de teste; devem ser fornecidas em conjunto. |
-| `DATABASE_URL` | Ativa a tentativa de conexão e migração do PostgreSQL. |
+| `DATABASE_URL` | Conexão + migração PostgreSQL; no `serve`, hidrata registry de agents (se vazio) e faz write-through best-effort do catálogo de bots; idempotência de orders em `order_idempotency_keys`. |
 | `PERSIST_MARKET_DATA=1` | Ativa a persistência opcional do monitor. |
 | `TYPESAFE_API_KEY` | Credencial para avaliações consultivas do Jev/TypeSafe quando habilitadas. |
 | `TYPESAFE_ENDPOINT` | Endpoint compatível alternativo (URL completa do advisory); HTTP só é aceito para localhost. |
