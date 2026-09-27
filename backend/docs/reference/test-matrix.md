@@ -87,7 +87,7 @@ Bin `bot`: **377** aprovados, **8** ignorados (incl. `integration_submits_minima
 | Rota | 401 sem Bearer | 2xx com Bearer (quando aplicável) |
 |------|----------------|-----------------------------------|
 | `POST /api/v1/agents` | `agents_register_requires_admin_bearer_when_enabled` | mesmo teste (201) |
-| `POST /api/v1/agents/{id}/pause` | `agents_pause_requires_admin_bearer_when_enabled` | — |
+| `POST /api/v1/agents/{id}/pause` | `agents_pause_requires_admin_bearer_when_enabled` | `agents_pause_succeeds_with_admin_bearer_after_register` |
 | `POST /api/v1/agents/{id}/advisory` | `agents_advisory_requires_admin_bearer_when_enabled` | — |
 | `POST /api/v1/bots/catalog/persist` | `bots_catalog_persist_requires_admin_bearer_when_enabled` | mesmo teste (200) |
 | `POST /api/v1/bots/runtime/promote` | `bots_runtime_promote_requires_admin_bearer_when_enabled` | `bots_runtime_promote_and_demote_succeed_with_admin_bearer` |
