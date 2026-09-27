@@ -35,11 +35,12 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 | Símbolo | Contrato |
 |---------|----------|
-| `SubmitOrderRequest` | Campos alinhados a `OrderIntent` + metadados (`symbol`, `side`) sem efeito de exchange. |
+| `SubmitOrderRequest` | Campos alinhados a `OrderIntent` + metadados (`symbol`, `side`); `paper_fill_unit_price` opcional alimenta `PaperLedgerExecutor` → portfolio `positions`. |
 | `OrderExecutionPort::execute` | Único caminho para “enviar” ordem. |
 | `FailClosedExecutor` | Implementação padrão; nunca chama rede. |
 | `AcceptingExecutor` | Double de teste do port. |
-| `HttpOrderExecutor` | Seleção em `ApiState` (`disabled`; `dev_accept`; `paper` → `PaperLedgerExecutor`; `live_exchange` → `ExchangeSpotExecutor` quando wired (`BOT_ORDERS_EXCHANGE_SUBMIT=recording`) ou `ReservedLiveExchangeExecutor`); `live_exchange_wired()` com `GET /meta` e `GET /orders/execution-status`. |
+| `PaperLedgerExecutor` | Modo `paper`; grava fills in-process; preço via body HTTP ou `BOT_PAPER_FILL_UNIT_PRICE`. |
+| `HttpOrderExecutor` | Seleção em `ApiState` (`disabled`; `dev_accept`; `paper` → `PaperLedgerExecutor`; `live_exchange` → `ExchangeSpotExecutor` quando wired (`recording`/`testnet`+credenciais) ou `ReservedLiveExchangeExecutor`); `live_exchange_wired()` com `GET /meta` e `GET /orders/execution-status`. |
 | `ReservedLiveExchangeExecutor` | Placeholder Gate 2; `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired`. |
 | `RecordingExecutor` | Double determinístico para testes de `submit_order` após risco (sem rede). |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
@@ -48,7 +49,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **333** testes bin `bot` (incl. `RecordingExecutor` em `orders` + `http_bridge/orders`, `meta_and_orders_execution_status_agree_on_seams`).
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **334** testes bin `bot` (incl. `RecordingExecutor` em `orders` + `http_bridge/orders`, `meta_and_orders_execution_status_agree_on_seams`).
 
 ## Rollback
 

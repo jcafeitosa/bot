@@ -24,7 +24,7 @@ O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco,
 5. Gateway de ferramentas, permissões, aprovações e sandbox.
 6. Memória de conhecimento, memória entre sessões e grafo.
 7. Canais de conversa, voz, aplicações e interface externa.
-8. Execução financeira live, saldos privados e ambiente de produção (seam `modules/orders` + HTTP submit com paper/recording wired; REST testnet/prod ausente).
+8. Execução financeira live, saldos privados e ambiente de produção (seam `modules/orders` + HTTP submit com paper/recording/testnet parcial; prod REST e reconciliação ausentes).
 9. Observabilidade operacional completa.
 10. Estado de persistência e recuperação do monitor conforme C17.
 11. Round-trip PostgreSQL operacional conforme V18.

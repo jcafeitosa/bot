@@ -60,13 +60,13 @@ flowchart LR
 | `modules` | `market` | candles, `HybridCandleFeed` | Validação, agregação 1m, feed híbrido. | Testes de feed e modelos. |
 | `modules` | `strategy` | SMA/EMA, `evaluate_for_kind` | Sinais sem efeitos colaterais. | Testes de períodos e sinais. |
 | `modules` | `risk` | `gate_signal` | Limites e modo. | Testes de capital e modo. |
-| `modules` | `portfolio` | snapshots paper | `paper_snapshot_with_fills`; HTTP via `http_bridge::portfolio` lê `PaperLedgerExecutor`. | `portfolio/mod.rs`, `http_bridge/portfolio.rs`, `server.rs` (`orders_submit_paper_*`). |
+| `modules` | `portfolio` | snapshots paper | `paper_snapshot_with_fills` + `positions`; HTTP lê ledger in-process. | `controllers.rs`, `http_bridge/portfolio.rs`, `server.rs` (`orders_submit_paper_*` + `positions`). |
 | `modules` | `backtest` | `run_sma_crossover`, CLI | Simulação e fixture sintética. | `tests/backtest_fixture.rs`. |
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly`; registry em memória compartilhado; rotas HTTP `/api/v1/agents/*`; write-through e cold-start via `PgAgentIdentityStore` + `load_agent_identity_snapshot` no `serve`. **Não** é o módulo `bots`. | `modules/agents/tests.rs`, `http_bridge/agents.rs`. |
 | `modules` | `bots` | `BotIdentity`, `MonitorEvaluatorKind`, `MonitorStrategyRegistry` | Catálogo/ranking; runtime promote; catálogo HTTP `monitor_*_period` + `monitor_evaluator`; supervisor/backtest via `strategy_evaluation_binding` + `evaluate_for_kind`. | `monitor_strategy.rs`, `http_bridge/bots.rs`, `evaluation_binding.rs`, `pg_catalog.rs`. |
-| `modules` | `orders` | `submit_order`, `PaperLedgerExecutor`, `ReservedLiveExchangeExecutor`, `exchange_order_gate`, idempotência | Risk → port; HTTP execution-status/submit; `paper` **200**; `live_exchange` → `live_exchange_not_wired`. | `orders/tests.rs`, `http_bridge/orders.rs`, `order_execution.rs`, `server.rs`. |
+| `modules` | `orders` | `submit_order`, `PaperLedgerExecutor`, `ExchangeSpotExecutor`, `exchange_order_gate`, idempotência | Risk → port; HTTP submit + `paper_fill_unit_price`; `paper`/`recording`/`testnet` seams. | `orders/tests.rs`, `spot_order_submit.rs`, `http_bridge/orders.rs`, `server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
 | `presentation` | `http` | API Axum + `ApiState` composition root | OpenAPI/Scalar; `serve` + `bootstrap_http_api` + hydrate agents; rotas stateful via `ApiState`, stateless via `http_bridge`; `HttpAdminAuth`. Ver [layer-mapping.md](./layer-mapping.md). | `server.rs`, `state.rs`, `admin_auth.rs`. |
