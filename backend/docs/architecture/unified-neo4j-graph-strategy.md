@@ -163,7 +163,7 @@ Um grafo por ambiente. Distinção por **labels**, **propriedades estáveis** e 
 
 | Label | `graph_domain` | Chave estável | Origem | Notas |
 |-------|----------------|---------------|--------|-------|
-| `CodeEntity` | `code` | `source_id` (graphify) | graphify MERGE | Funções, módulos, docs; push externo via `sync-code-graph-neo4j.sh` (ressalva: o export do graphify 0.9.66 rotula por `file_type`, não `:CodeEntity` — ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md)) |
+| `CodeEntity` | `code` | `source_id` (graphify) | graphify MERGE | Funções, módulos, docs; já no push |
 | `Module` | `platform` | `module_id` (ex. `agents`, `orders`) | seed + graphify link | Ponte código ↔ domínio |
 | `Agent` | `governance` | `agency_id` + `agent_id` | projeção PG | Papéis, lifecycle; **sem** prompts |
 | `Owner` | `governance` | `owner_id` | projeção PG / config bind | Nó humano lógico |

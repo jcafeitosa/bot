@@ -29,7 +29,7 @@ No domínio do produto bot, **agente** e **bot** são conceitos distintos. No c�
 | **Existe hoje?** | Sim — fundação `IdentityOnly` + PG opcional | Sim — catálogo/ranking/HTTP + PG opcional; runtime [Gate 2](./bots-runtime-live-gate2-sdd.md) | Sim — reexport + simulação em `backtest` | Sim — supervisor de mercado |
 | **Propósito** | Identidade e governança administrativa (owner → CEO → … → worker) | Executores versionados de trading, ciclo de promoção/avaliação, artefatos | Identificar uma **instância simulada** (estratégia@versão:timeframe:símbolo) no ranking/backtest | Loop live/paper: candles, sinais, risco, TUI, persistência opcional |
 | **Executa ordens / worker?** | Não — registrar agente não inicia task nem LLM | Será o lugar previsto para runtime de executor (após gates) | Não — só simulação offline | Não envia ordens reais hoje; não é cadastro de identidade |
-| **Relação com hierarquia do produto** | Fonte de verdade da hierarquia administrativa | Subordinado ao desenho de domínio; **não** substitui `AgentId` | Nenhuma — nome “Bot” é legado de simulação | `MonitorAgentHook` ligado ao monitor quando `BOT_AGENCY` está definido; hoje só log `trace` (não age) |
+| **Relação com hierarquia do produto** | Fonte de verdade da hierarquia administrativa | Subordinado ao desenho de domínio; **não** substitui `AgentId` | Nenhuma — nome “Bot” é legado de simulação | Pode integrar `MonitorAgentHook` no futuro; hoje noop |
 | **Persistência** | `PgAgentIdentityStore` write-through + hydrate (Gate 1) | `PgBotCatalogStore` + [Gate 1](./bots-catalog-persistence-gate1-sdd.md); promoção runtime Gate 2 | Métricas/resultados de backtest em memória/JSON da CLI | Estado de sessão, gaps, datasets |
 
 **Mensagem para implementadores:** `AgentRegistry::register` cria uma **identidade administrativa**, não um executor de mercado. `BotId::new(...)` compõe uma **chave de experimento** no backtest. O módulo **`bots`** concentra bots versionados e ranking; runtime live e promoção seguem em gates posteriores ([pesquisa de capacidades](../research/agents-capability-research.md) — linha “Bots executores de tarefa/mercado”); até lá, não criar `modules/bots` por analogia com `agents` nem renomear `BotId` para “agente”.
@@ -131,7 +131,7 @@ modules/agents/
 - Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `http_integration_tests.rs`).
 - `GET /api/v1/meta` → `http_seams` (bindings owner/agency + `product_owner_bootstrap_active`; ver [HTTP admin](./http-admin-auth-seam-sdd.md), [owner bootstrap](./agents-owner-bootstrap-g1-sdd.md)).
 - `assert_runtime_promotion_authorized`: capability, lifecycle, `promotion_rejects_invalid_bot_id` (`bot_promotion.rs`).
-- Evidência registrada: `./scripts/verify-backend-gates.sh` verde localmente; bin `bot` **519** testes (**0** ignorados: manifesto PG×29 no script incl. `loads_credentials_from_postgres` (0007); Neo4j; testnet manual); PG domínio: manifesto **29** (execução não registrada) via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.
+- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **470** testes (**0** ignorados: PG×22 no script incl. `loads_credentials_from_postgres` (0007); Neo4j; testnet manual); PG domínio **22/22** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.
 - **Gap Gate 1 produto:** IdP/owner humano verificável — ver [pesquisa](../research/agents-capability-research.md). Fatia bootstrap PG: [owner bootstrap G1](./agents-owner-bootstrap-g1-sdd.md) (`VerifiedProductOwner`, registro/promote HTTP).
 
 ## Critérios de fechamento G1 (checklist)
@@ -140,7 +140,7 @@ modules/agents/
 |----------|-----------------|--------|
 | `AgentRegistry` + hierarquia + lifecycle | `modules/agents/tests.rs`, `http_bridge/agents.rs` | Sim |
 | `IdentityOnly` (sem tools/ordens) | SDD + invariantes de módulo | Sim |
-| Espelhamento/hidratação PG | `PgAgentIdentityStore`, `load_agent_identity_snapshot` / `apply_agent_identity_snapshot` no boot `server.rs`; `pg_identity_snapshot_round_trip`; HTTP `http_bridge/agents.rs` (lifecycle + cold-start) + `state.rs` `pg_register_agent_and_persist_cold_start_via_snapshot` | **Parcial** (manifesto PG×29 em `run-pg-integration-tests.sh`; gate default ignora) |
+| Espelhamento/hidratação PG | `PgAgentIdentityStore`, `load_agent_identity_snapshot` / `apply_agent_identity_snapshot` no boot `server.rs`; `pg_identity_snapshot_round_trip`; HTTP `http_bridge/agents.rs` (lifecycle + cold-start) + `state.rs` `pg_register_agent_and_persist_cold_start_via_snapshot` | **Parcial** (PG×22 em `run-pg-integration-tests.sh`; gate default ignora) |
 | Seam HTTP admin (`BOT_HTTP_*`) | [http-admin-auth-seam-sdd.md](./http-admin-auth-seam-sdd.md) | Sim (não é auth owner) |
 | Capability `promote_runtime_bot` + HTTP promote | `bot_promotion.rs`, migração `0005`, `server.rs` | Sim (seam) |
 | Autenticação verificável do owner humano | pesquisa § Etapa 1 item 4 | **Não** |

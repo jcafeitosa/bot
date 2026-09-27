@@ -19,7 +19,7 @@ O binário tem o caminho padrão do monitor (sem subcomando) e os subcomandos `b
 | Backtest | `cargo run -- backtest --config <arquivo>`; gera candles sintéticos e imprime um resumo JSON. |
 | HTTP API | `cargo run -- --config src/core/config/bot.toml serve --bind 127.0.0.1:8080`; OpenAPI em `/openapi.json`, UI Scalar em `/docs`. |
 | Graph query (supervision chain) | `cargo run -- graph query supervision-chain --agency-id <id> --agent-id <id>` — read-only; mesmo pré-requisito Neo4j que agents list; [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). |
-| Graph query (read-only) | `cargo run -- graph query agents --limit 32`; `graph query supervision-chain` / `bots-for-agent` / `code-impact --module-path modules/orders` — requer `BOT_GRAPH_ENABLED` (ou legado `BOT_AGENTS_ENABLED`) + Neo4j; `code-impact` só retorna entidades depois do push externo do grafo de código (`scripts/sync-code-graph-neo4j.sh`, requer CLI `graphify`) — sem isso, lista vazia (`entities: []`); ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). |
+| Graph query (read-only) | `cargo run -- graph query agents --limit 32`; `graph query supervision-chain` / `bots-for-agent` / `code-impact --module-path modules/orders` — requer `BOT_GRAPH_ENABLED` (ou legado `BOT_AGENTS_ENABLED`) + Neo4j; ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). |
 | Graph projection drain | `cargo run -- graph-projection drain --limit 32` — requer `DATABASE_URL` + graph stack habilitado + Neo4j; ver [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md) F2.1.3. |
 
 Exemplo do monitor:
@@ -70,7 +70,7 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 | `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `MonitorStrategyRegistry` + `strategy_evaluation_binding` + `BotSignal.bot_id`. Catálogo HTTP inclui `monitor_fast_period` / `monitor_slow_period` / `monitor_evaluator` (`sma_cross` ou `ema_cross` via `[[strategy.monitor_registry]]`). |
 | `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit`, `GET /orders/reconciliation/{client_order_id}`, `POST /orders/reconciliation/poll` | Status: `mode` + `live_exchange_wired` (`recording` ou `testnet`+credenciais). Submit: fail-closed **503**; `paper`/`dev_accept` **200** após risco; `client_order_id` dedupe; corpo opcional `paper_fill_unit_price` (modo paper → portfolio `positions`). |  |
 | `portfolio` | `GET /portfolio/paper-snapshot?quote=…` | Saldo paper + `positions[]` quando fills têm preço (`paper_fill_unit_price` no submit ou `BOT_PAPER_FILL_UNIT_PRICE`); baseline 1000 na quote. |  |
-| `admin` | `GET/POST /admin/provider-credentials`, `PUT/DELETE /admin/provider-credentials/{provider_id}/{key_name}`; `GET /admin/graph/agents`, `GET /admin/graph/supervision-chain`, `GET /admin/graph/bots-for-agent`, `GET /admin/graph/code-impact` | Bearer quando `BOT_HTTP_ADMIN_TOKEN` ativo; sem token, abertas (lacuna aberta). Credentials: **503** sem PG ([provider-credentials-db-sdd](../sdd/provider-credentials-db-sdd.md)). Graph: leitura advisory do Neo4j (PG é SoT); **503** sem PG/Neo4j wired ([graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md)). |  |
+| `admin` | `GET/POST /admin/provider-credentials`, `PUT/DELETE /admin/provider-credentials/{provider_id}/{key_name}`; `GET /admin/graph/agents`, `GET /admin/graph/supervision-chain`, `GET /admin/graph/bots-for-agent`, `GET /admin/graph/code-impact` | Bearer quando `BOT_HTTP_ADMIN_TOKEN` ativo. Credentials: **503** sem PG ([provider-credentials-db-sdd](../sdd/provider-credentials-db-sdd.md)). Graph: leitura advisory do Neo4j (PG é SoT); **503** sem PG/Neo4j wired ([graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md)). |  |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md). Rotas de sistema `GET /healthz` e `GET /readyz` ficam fora de `/api/v1`; lista das rotas documentadas em `/openapi.json`.
 
@@ -122,24 +122,24 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 |---|---|
 | `BINANCE_TESTNET_API_KEY` / `BINANCE_TESTNET_SECRET` | Credenciais opcionais da conta Spot de teste; devem ser fornecidas em conjunto. |
 | `DATABASE_URL` | Conexão + migração PostgreSQL; no `serve`, hidrata registry de agents (se vazio) e faz write-through best-effort do catálogo de bots; idempotência em `order_idempotency_keys`; reconciliação pós-submit live em `order_reconciliation` (write-through após `POST /orders/submit` com `client_order_id`). |
-| `PERSIST_MARKET_DATA=1` | Ativa a persistência opcional do monitor. Exige `DATABASE_URL` → `trading_bot` e timeframe `1m` (`core/database/monitor_bootstrap.rs:52-54`); o `bot.toml` distribuído usa `15m`, então ligar o flag sem mudar o timeframe falha no boot. |
+| `PERSIST_MARKET_DATA=1` | Ativa a persistência opcional do monitor. |
 | `TYPESAFE_API_KEY` | Credencial para avaliações consultivas do Jev/TypeSafe quando habilitadas. |
 | `TYPESAFE_ENDPOINT` | Endpoint compatível alternativo (URL completa do advisory); HTTP só é aceito para localhost. |
 | `TYPESAFE_MODEL` | Modelo System One enviado ao endpoint TypeSafe; padrão `oc/jev-1.13-free`. |
 | `OPENAI_API_KEY` | Bearer alternativo quando `TYPESAFE_API_KEY` não está definida (proxies OpenAI-compatible). |
 | `OPENAI_BASE_URL` | Raiz OpenAI-compatible para `core::providers::openai_compatible` (ex.: proxy 9router). |
 | `NINE_ROUTER_BASE_URL` | Alias documentado para a mesma raiz; precede `OPENAI_BASE_URL`. |
-| `NVIDIA_API_KEY` / `NGC_API_KEY` | Bearer para NVIDIA NIM (`core::providers::nvidia_nim`); `NGC_API_KEY` é fallback. `NvidiaNimClient` não tem chamador no binário (só testes); hoje nenhuma rota/módulo usa NIM. |
-| `BOT_AGENCY` | Quando definida (fallback `[agents] monitor_agency` em `system.toml`), o monitor (TUI e `serve --with-monitor`; `main.rs:118,165`) usa `RegistryMonitorAgentHook` para a agência (registry em memória compartilhado com HTTP agents no mesmo processo). O hook só emite log `trace` com a contagem de agentes ativos com `consult_jev` (`agents/controllers/supervisor_hook.rs:54-65`); não altera sinal, risco nem ordens. |
+| `NVIDIA_API_KEY` / `NGC_API_KEY` | Bearer para NVIDIA NIM (`core::providers::nvidia_nim`); `NGC_API_KEY` é fallback. |
+| `BOT_AGENCY` | Quando definida, `serve --with-monitor` usa `RegistryMonitorAgentHook` para a agência (registry compartilhado com HTTP agents). |
 | `BOT_HTTP_OWNER_ID` | Com `BOT_HTTP_ADMIN_TOKEN`, restringe `owner_id` no registro de agentes ao valor configurado. |
 | `BOT_PRODUCT_OWNER_BOOTSTRAP_ID` | Com `DATABASE_URL` e `BOT_PRODUCT_OWNER_BOOTSTRAP_ACK`, grava owner singleton em PG (`0010_product_owner_bootstrap`); boot HTTP carrega `VerifiedProductOwner` e `GET /meta` → `product_owner_bootstrap_active`. |
 | `BOT_PRODUCT_OWNER_BOOTSTRAP_ACK` | Deve ser `1`/`true`/`yes`/`on` junto com `BOT_PRODUCT_OWNER_BOOTSTRAP_ID` para mutar PG (fail-closed sem ACK). |
 | `BOT_HTTP_AGENCY_ID` | Restringe rotas `/api/v1/agents*` ao `agency` configurado (query ou body); falha **403** `http_agency_mismatch`. `GET /meta` → `http_agency_binding_active` (booleano, sem expor o ID). |
-| `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes e `/admin/*` exigem `Authorization: Bearer <token>` (**401** sem/errado). **Ausente ou vazio = nenhuma autenticação:** `verify_headers` retorna OK (`presentation/http/admin_auth.rs:91-94`), todas essas rotas (incl. CRUD de `provider_credentials` e `orders/submit`) ficam abertas e o boot não recusa — **lacuna de segurança ABERTA** (não corrigida), ver [admin-http-auth-fail-open](../security/admin-http-auth-fail-open.md). Não substitui auth do owner. |
+| `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes exigem `Authorization: Bearer <token>` (fail-closed; não substitui auth do owner). |
 | `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**503** em promote). |
 | `BOT_ORDERS_EXCHANGE_SUBMIT` | Com `BOT_ORDERS_EXECUTION=live_exchange`, `recording` liga executor sem rede; `testnet` + `BINANCE_TESTNET_*` liga `ExchangeSpotExecutor` + submit ccxt (market **buy** por `quote_amount`; rede real). Sem credenciais → `live_exchange_reserved`. |
 | `BOT_ORDERS_EXECUTION` | vazio/`disabled` (fail-closed); `dev_accept` (double local); `paper` (`PaperLedgerExecutor`, ledger in-process); `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → **200** após risco; `live_exchange` sem submit backend — **503** `live_exchange_not_wired`). Outros valores → `disabled`. |
-| `DATABASE_URL` + migração `0006` | Com HTTP `serve`, `ApiState` registra `register_live_reconciliation_pg_mirror` (`presentation/http/state.rs:324`); o único consumidor fora de testes é `try_mirror_reconciliation_upsert` no ramo testnet do monitor (`supervisor.rs:70-73`), inalcançável porque `--mode testnet` é rejeitado na validação (`core/config/mod.rs:390-393`). |
+| `DATABASE_URL` + migração `0006` | Com HTTP `serve`, `ApiState` registra `register_live_reconciliation_pg_mirror`; submits testnet do monitor espelham `order_reconciliation` via `try_mirror_reconciliation_upsert`. |
 | `BOT_ORDERS_RECONCILIATION_POLL_SECS` | Opcional com `live_exchange` wired: intervalo em segundos para `ApiState::run_order_reconciliation_poll_once` em background no `serve` (LiveExchange query; default desligado se vazio ou `0`). |
 | `BOT_PAPER_FILL_UNIT_PRICE` | Opcional com `paper`: preço quote/base usado no ledger para calcular `positions` no snapshot HTTP (ex.: `50000` para BTC/USDT). |
 | `client_order_id` (body HTTP) | Campo opcional em `POST /api/v1/orders/submit`; replays retornam `accepted: true` sem reexecutar (memória; PG quando `DATABASE_URL` + migração `0004`). Com `live_exchange_wired`, reconciliação `pending`→`reconciled` (memória + PG `0006`); consulta `GET /api/v1/orders/reconciliation/{client_order_id}`; testnet usa `newClientOrderId` no submit; poller testnet pode `fetch_order` sem binding local. |
@@ -204,7 +204,7 @@ Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live
 ```sh
 cd backend
 ./scripts/verify-backend-gates.sh          # → 512 passed, 0 ignored (bin bot; registro em evidence JSON); assert-completeness-evidence.sh
-./scripts/verify-backend-full.sh         # gates + manifesto PG 29 quando DATABASE_URL → trading_bot (PG 18+)
+./scripts/verify-backend-full.sh         # gates + manifesto PG 27 quando DATABASE_URL → trading_bot (PG 18+)
 bot graph query agents --limit 32   # read-only Neo4j (fail-closed sem stack)
 bot graph query supervision-chain --agency-id agency-a --agent-id worker-1
 bot graph query bots-for-agent --agency-id agency-a --agent-id agent-promoter --limit 32
@@ -215,4 +215,4 @@ Matriz e manifesto PG: [test-matrix](../reference/test-matrix.md). Auditoria do 
 
 ## Contratos de segurança
 
-O monitor trabalha com dados públicos de mercado e não envia ordens à exchange: em `paper`, intenções aprovadas vão para `PaperLedgerExecutor` (simulado, sem rede); o ramo testnet do supervisor existe no código mas é inalcançável (`--mode testnet` é rejeitado na validação, `core/config/mod.rs:390-393`). Na API HTTP, `POST /api/v1/orders/submit` é fail-closed por padrão; envio só com opt-in explícito (`paper`/`dev_accept` locais, `live_exchange` + `recording` sem rede, ou `live_exchange` + `testnet` + `BINANCE_TESTNET_*` na Spot testnet); produção permanece bloqueada. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).
+O monitor trabalha com dados públicos de mercado e não envia ordens (`--mode testnet` é rejeitado na validação). Na API HTTP, `POST /api/v1/orders/submit` é fail-closed por padrão; envio só com opt-in explícito (`paper`/`dev_accept` locais, `live_exchange` + `recording` sem rede, ou `live_exchange` + `testnet` + `BINANCE_TESTNET_*` na Spot testnet); produção permanece bloqueada. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).
