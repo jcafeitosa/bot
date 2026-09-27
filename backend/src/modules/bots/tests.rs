@@ -100,8 +100,8 @@ fn catalog_lists_strategy_timeframe_combos_for_mode() {
     );
 }
 
-#[test]
-fn in_memory_catalog_store_round_trip() {
+#[tokio::test]
+async fn in_memory_catalog_store_round_trip() {
     let strategy = StrategyDefinition {
         id: StrategyId::new("sma-cross").unwrap(),
         version: StrategyVersion(1),
@@ -116,8 +116,10 @@ fn in_memory_catalog_store_round_trip() {
     config.market.timeframe = "15m".into();
     config.validate().unwrap();
     let mut store = InMemoryBotCatalogStore::new();
-    let built = persist_catalog_snapshot(&config, &strategy, &mut store).unwrap();
-    let loaded = store.load_catalog().unwrap();
+    let built = persist_catalog_snapshot(&config, &strategy, &mut store)
+        .await
+        .unwrap();
+    let loaded = store.load_catalog().await.unwrap();
     assert_eq!(built.len(), loaded.len());
     assert_eq!(built[0].id, loaded[0].id);
 }

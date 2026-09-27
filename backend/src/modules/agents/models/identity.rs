@@ -95,4 +95,6 @@ pub enum AgentsError {
     AdvisoryDenied(String),
     #[error("duplicate agent id: {0}")]
     Duplicate(String),
+    #[error("identity persistence failed: {0}")]
+    Persistence(String),
 }

@@ -22,12 +22,14 @@ pub mod strategy;
 mod bridge_tests {
     use crate::core::config::Config;
 
-    #[test]
-    fn persist_catalog_bridge_wires_store_seam() {
+    #[tokio::test]
+    async fn persist_catalog_bridge_wires_store_seam() {
         use crate::modules::bots::InMemoryBotCatalogStore;
         let config = Config::default();
         let mut store = InMemoryBotCatalogStore::new();
-        let out = super::bots::persist_catalog_for_config(&config, &mut store).expect("persist");
+        let out = super::bots::persist_catalog_for_config(&config, &mut store)
+            .await
+            .expect("persist");
         assert!(out.persisted);
         assert!(!out.bots.is_empty());
     }

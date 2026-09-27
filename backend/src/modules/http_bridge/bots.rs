@@ -76,12 +76,13 @@ pub struct BotCatalogPersistResponse {
     pub persisted: bool,
 }
 
-pub fn persist_catalog_for_config(
+pub async fn persist_catalog_for_config(
     config: &Config,
     store: &mut impl BotCatalogStore,
 ) -> Result<BotCatalogPersistResponse, BotError> {
     let strategy = strategy_from_config(config)?;
     let defs = persist_catalog_snapshot(config, &strategy, store)
+        .await
         .map_err(|e| BotError::Configuration(e.to_string()))?;
     Ok(BotCatalogPersistResponse {
         bots: defs.into_iter().map(map_bot).collect(),
@@ -89,10 +90,13 @@ pub fn persist_catalog_for_config(
     })
 }
 
-pub fn catalog_from_memory_store(
+pub async fn catalog_from_store(
     store: &impl BotCatalogStore,
 ) -> Result<BotCatalogResponse, BotError> {
-    let defs = store.load_catalog().map_err(BotError::Configuration)?;
+    let defs = store
+        .load_catalog()
+        .await
+        .map_err(BotError::Configuration)?;
     Ok(BotCatalogResponse {
         bots: defs.into_iter().map(map_bot).collect(),
     })

@@ -86,6 +86,11 @@ impl ApiError {
             AgentsError::AdvisoryDenied(message) => {
                 ApiError::with_code(StatusCode::FORBIDDEN, "advisory_denied", message)
             }
+            AgentsError::Persistence(message) => ApiError::with_code(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "persistence_failed",
+                message,
+            ),
             AgentsError::InvalidId(message)
             | AgentsError::Hierarchy(message)
             | AgentsError::Lifecycle(message) => {

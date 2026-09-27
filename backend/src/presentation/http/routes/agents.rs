@@ -42,8 +42,17 @@ pub async fn register_agent(
     State(state): State<ApiState>,
     Json(body): Json<RegisterAgentRequest>,
 ) -> Result<(StatusCode, Json<AgentResponse>), ApiError> {
+    let agency = body.agency.clone();
+    let agent_id = body.agent_id.clone();
+    let postgres = state.database().map(|db| db.as_postgres());
     let response = state
         .with_agents(|registry| agents::register_agent(registry, body))
+        .await
+        .map_err(ApiError::from_agents_error)?;
+    state
+        .with_agents(|registry| {
+            agents::persist_if_postgres(registry, postgres, &agency, &agent_id)
+        })
         .await
         .map_err(ApiError::from_agents_error)?;
     Ok((StatusCode::CREATED, Json(response)))
@@ -101,11 +110,17 @@ pub async fn pause_agent(
     Path(agent_id): Path<String>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<LifecycleResponse>, ApiError> {
-    state
-        .with_agents(|registry| agents::pause(registry, &query.agency, &agent_id))
+    let agency = query.agency.clone();
+    let postgres = state.database().map(|db| db.as_postgres());
+    let response = state
+        .with_agents(|registry| agents::pause(registry, &agency, &agent_id))
         .await
-        .map(Json)
-        .map_err(ApiError::from_agents_error)
+        .map_err(ApiError::from_agents_error)?;
+    state
+        .with_agents(|registry| agents::persist_if_postgres(registry, postgres, &agency, &agent_id))
+        .await
+        .map_err(ApiError::from_agents_error)?;
+    Ok(Json(response))
 }
 
 #[utoipa::path(
@@ -120,11 +135,17 @@ pub async fn resume_agent(
     Path(agent_id): Path<String>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<LifecycleResponse>, ApiError> {
-    state
-        .with_agents(|registry| agents::resume(registry, &query.agency, &agent_id))
+    let agency = query.agency.clone();
+    let postgres = state.database().map(|db| db.as_postgres());
+    let response = state
+        .with_agents(|registry| agents::resume(registry, &agency, &agent_id))
         .await
-        .map(Json)
-        .map_err(ApiError::from_agents_error)
+        .map_err(ApiError::from_agents_error)?;
+    state
+        .with_agents(|registry| agents::persist_if_postgres(registry, postgres, &agency, &agent_id))
+        .await
+        .map_err(ApiError::from_agents_error)?;
+    Ok(Json(response))
 }
 
 #[utoipa::path(
@@ -139,11 +160,17 @@ pub async fn retire_agent(
     Path(agent_id): Path<String>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<LifecycleResponse>, ApiError> {
-    state
-        .with_agents(|registry| agents::retire(registry, &query.agency, &agent_id))
+    let agency = query.agency.clone();
+    let postgres = state.database().map(|db| db.as_postgres());
+    let response = state
+        .with_agents(|registry| agents::retire(registry, &agency, &agent_id))
         .await
-        .map(Json)
-        .map_err(ApiError::from_agents_error)
+        .map_err(ApiError::from_agents_error)?;
+    state
+        .with_agents(|registry| agents::persist_if_postgres(registry, postgres, &agency, &agent_id))
+        .await
+        .map_err(ApiError::from_agents_error)?;
+    Ok(Json(response))
 }
 
 #[utoipa::path(

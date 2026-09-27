@@ -81,9 +81,7 @@ DATABASE_URL='postgresql://user:pass@localhost:5432/trading_bot' \
 
 CI (`.github/workflows/backend-ci.yml`) runs the same test in its PostgreSQL integration job with `DATABASE_URL` pointing at database `trading_bot`.
 
-The Rust backend loads migrations only from `src/core/persistence/migrations/`. The repository-root `docker-compose.bot.yml` provisions `bot_agents` by default, not the required `trading_bot` database; configure a separate `trading_bot` database and `DATABASE_URL` for Rust persistence. The local test suite skips the PostgreSQL integration test unless explicitly run with that database.
-
-When using the SQLx CLI manually from `backend/`, specify the migration source: `sqlx migrate run --source src/core/persistence/migrations`. The old `migrations/0001_market_data.sql` copy was removed; the CLI's default `migrations/` path is no longer present. Keep the active migration in `src/core/persistence/migrations/` unchanged.
+Migrations load from `src/core/database/migrations/` (PostgreSQL 18+, TimescaleDB + pgvector via `0000_extensions.sql`). Optional Neo4j: set `BOT_AGENTS_ENABLED=true` and `BOT_NEO4J_*`; see `docker-compose.bot.yml` service `graph`. HTTP `POST /api/v1/bots/catalog/persist` writes to PostgreSQL when `DATABASE_URL` is healthy, otherwise in-memory.
 
 Supported operation enum values are `hft`, `scalper`, `day-trader`, `swing-trader`; profile values are `conservative`, `moderate`, `aggressive`, `auto`. HFT currently exits with an explicit unsupported-mode error. Select only a timeframe allocated to the operation in `src/core/config/bot.toml`; invalid combinations fail at startup.
 
@@ -127,7 +125,7 @@ For `backtest`, [modules::backtest::cli](src/modules/backtest/cli.rs) drives syn
 
 Administrative agent identities live under [modules/agents](src/modules/agents/mod.rs): in-memory `AgentRegistry`, hierarchy validation (owner → CEO → Level B → Level A → specialist/worker), lifecycle transitions (pause/resume/retire) with an audit trail, and `run_advisory_step` delegating to [`core::providers::jev`](src/core/providers/jev/mod.rs) only when `AgentCapabilities.consult_jev` is set. Registering an agent does not start workers, tools, or LLM calls. Design: [docs/sdd/agents-module-sdd.md](docs/sdd/agents-module-sdd.md). PostgreSQL persistence and owner authentication remain blocked per [agents capability research](docs/research/agents-capability-research.md).
 
-**Agents ≠ bots:** `modules/agents` is product **identity and governance** only. [`modules/bots`](src/modules/bots/mod.rs) holds versioned strategy×timeframe executors (catalog, ranking, HTTP); live runtime and PostgreSQL remain gated. [`modules/orders`](src/modules/orders/mod.rs) is a fail-closed order seam (`submit_order` validates risk then returns `ExecutionDisabled`). Do not confuse `bots`/`backtest::BotId` with [`modules/agents`](src/modules/agents/mod.rs) administrative identity. See [bots-module-sdd.md](docs/sdd/bots-module-sdd.md) and [agents-module-sdd.md](docs/sdd/agents-module-sdd.md).
+**Agents ≠ bots:** `modules/agents` is product **identity and governance** only. [`modules/bots`](src/modules/bots/mod.rs) holds versioned strategy×timeframe executors (catalog, ranking, HTTP); live runtime remains gated; catalog persist uses PostgreSQL when `DATABASE_URL` is healthy (see `PgBotCatalogStore`). [`modules/orders`](src/modules/orders/mod.rs) is a fail-closed order seam (`submit_order` validates risk then returns `ExecutionDisabled`). Do not confuse `bots`/`backtest::BotId` with [`modules/agents`](src/modules/agents/mod.rs) administrative identity. See [bots-module-sdd.md](docs/sdd/bots-module-sdd.md) and [agents-module-sdd.md](docs/sdd/agents-module-sdd.md).
 ### `modules::bots` and `modules::orders`
 
 [`modules/bots`](src/modules/bots/mod.rs): `BotIdentity`, catalog from active config, full PnL ranking, and HTTP routes under `/api/v1/bots/*`. Design: [docs/sdd/bots-module-sdd.md](docs/sdd/bots-module-sdd.md).

@@ -30,7 +30,7 @@ pub fn build_catalog_from_config(
         .collect()
 }
 
-pub fn persist_catalog_snapshot(
+pub async fn persist_catalog_snapshot(
     config: &Config,
     strategy: &impl StrategySpec,
     store: &mut impl BotCatalogStore,
@@ -38,6 +38,7 @@ pub fn persist_catalog_snapshot(
     let entries = build_catalog_from_config(config, strategy)?;
     store
         .save_catalog(&entries)
+        .await
         .map_err(BotsError::CatalogStore)?;
     Ok(entries)
 }

@@ -5,6 +5,9 @@ use utoipa::{IntoParams, ToSchema};
 use crate::core::error::BotResult;
 use crate::core::providers::{JevAdvisor, JevReviewInput};
 use crate::modules::agents::adapters::jev::delegate_jev_review;
+use crate::core::database::PostgresDatabase;
+use crate::modules::agents::adapters::{AgentIdentityStore, PgAgentIdentityStore};
+
 use crate::modules::agents::{
     assert_advisory_eligible, pause_agent, resume_agent, retire_agent, AdvisoryStepInput, AgencyId,
     AgentCapabilities, AgentId, AgentRegistry, AgentRole, AgentsError, NewAgentSpec, OwnerId,
@@ -293,4 +296,44 @@ pub async fn advisory_finish(
         agent_id: input.agent_id.to_string(),
         lines,
     })
+}
+
+pub async fn persist_agent_snapshot(
+    postgres: &PostgresDatabase,
+    registry: &AgentRegistry,
+    agency_raw: &str,
+    agent_raw: &str,
+) -> Result<(), AgentsError> {
+    let agency = parse_agency(agency_raw)?;
+    let id = parse_agent(agent_raw)?;
+    let definition = registry.get(&agency, &id)?.clone();
+    let event = registry
+        .audit_log()
+        .iter()
+        .rev()
+        .find(|event| event.agent_id == id && event.agency == agency)
+        .cloned()
+        .ok_or_else(|| AgentsError::Persistence("missing audit event for agent".into()))?;
+    let store = PgAgentIdentityStore::new(postgres);
+    store
+        .upsert_agent(&definition)
+        .await
+        .map_err(AgentsError::Persistence)?;
+    store
+        .append_event(&event)
+        .await
+        .map_err(AgentsError::Persistence)?;
+    Ok(())
+}
+
+pub async fn persist_if_postgres(
+    registry: &AgentRegistry,
+    postgres: Option<&PostgresDatabase>,
+    agency_raw: &str,
+    agent_raw: &str,
+) -> Result<(), AgentsError> {
+    if let Some(pg) = postgres {
+        persist_agent_snapshot(pg, registry, agency_raw, agent_raw).await?;
+    }
+    Ok(())
 }
