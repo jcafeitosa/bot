@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: execução de orders (exchange)
 
-- **Estado:** **parcial** — G1 + `HttpOrderExecutor` (`disabled`, `dev_accept`, `paper` → `PaperLedgerExecutor` **200** após risco; `live_exchange` → `ReservedLiveExchangeExecutor` / HTTP `live_exchange_not_wired`); dedupe `client_order_id` (memória + `PgOrderIdempotencyStore` / `0004`). Adapter exchange Spot/testnet pendente.
+- **Estado:** **parcial** — G1 + `HttpOrderExecutor` (`disabled`, `dev_accept`, `paper` → `PaperLedgerExecutor`; `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → `ExchangeSpotExecutor` / `live_exchange_wired`; sem submit backend → `live_exchange_not_wired`); dedupe `client_order_id` (memória + `PgOrderIdempotencyStore` / `0004`). Adapter exchange Spot/testnet pendente.
 - **Referências:** [SDD orders G1](./orders-module-sdd.md), [auditoria de completude](../planning/modules-completeness-audit.md), `modules/exchanges/rest`, `modules/risk`.
 
 ## Contexto
@@ -39,10 +39,11 @@ status: draft
 | `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe em processo; replay HTTP. |
 | `PgOrderIdempotencyStore` | Dedupe durável em `order_idempotency_keys` quando PG no `ApiState`; lookup antes de executar + `INSERT ON CONFLICT DO NOTHING` após sucesso. |
 | `ApiState::order_executor` | `HttpOrderExecutor` via `HttpApiSeams::from_env()` no `for_http_server`; default fail-closed. |
-| `HttpOrderExecutor::live_exchange_wired` / `ApiState::live_exchange_wired` | Fonte única para `GET /meta` e `GET /orders/execution-status`; `true` somente após adapter exchange real. |
+| `HttpOrderExecutor::live_exchange_wired` / `ApiState::live_exchange_wired` | Fonte única para `GET /meta` e `GET /orders/execution-status`; `true` no modo `LiveExchange` (hoje via seam `recording`; testnet REST pendente). |
 | `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
 | `PaperLedgerExecutor` | `BOT_ORDERS_EXECUTION=paper` → ledger in-process após risco; `live_exchange_wired` permanece `false`. |
-| `ReservedLiveExchangeExecutor` | `BOT_ORDERS_EXECUTION=live_exchange` → `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired` até adapter real. |
+| `ExchangeSpotExecutor` | `live_exchange` wired: `authorize_rest_use` + `RecordingSpotOrderSubmitPort` (seam determinístico). |
+| `ReservedLiveExchangeExecutor` | `BOT_ORDERS_EXECUTION=live_exchange` sem backend → `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired` até adapter real. |
 | `RecordingExecutor` | Double in-process (contagem de chamadas); `submit_invokes_recording_executor_once_after_risk` + `submit_order_http_records_execution_with_recording_executor` (sem rede). |
 
 ## Validação (baseline G1 antes de Gate 2)

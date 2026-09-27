@@ -113,9 +113,9 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 |---|---|
 | `models` | `SubmitOrderRequest`, `OrderSide`, `OrdersError` (`ExecutionDisabled`, `LiveExchangeNotWired`, …). |
 | `controllers` | `submit_order` — valida request e `risk::validate_intent`; dedupe `client_order_id` via `OrderIdempotencyStore`. |
-| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor` (`dev_accept`), `PaperLedgerExecutor` (`paper`), `RecordingExecutor` (test double Gate 2), `ReservedLiveExchangeExecutor` (`live_exchange`); idempotência memória/PG. |
+| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor` (`dev_accept`), `PaperLedgerExecutor` (`paper`), `RecordingExecutor` (test double Gate 2), `ExchangeSpotExecutor` (`live_exchange` wired), `ReservedLiveExchangeExecutor` (reservado); idempotência memória/PG. |
 
-**HTTP:** `GET /api/v1/orders/execution-status` (modo `HttpOrderExecutor` / `live_exchange_wired`); `POST /api/v1/orders/submit` (**503** `execution_disabled` ou `live_exchange_not_wired`, **422** risco, **200** com `dev_accept` ou `paper`) via `presentation/http/routes/orders.rs` → `ApiState::submit_order_http`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido; `BOT_ORDERS_EXECUTION` resolvido em `HttpApiSeams::from_env`.
+**HTTP:** `GET /api/v1/orders/execution-status` (modo `HttpOrderExecutor` / `live_exchange_wired`); `POST /api/v1/orders/submit` (**503** `execution_disabled` ou `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`, `paper` ou `live_exchange` wired) via `presentation/http/routes/orders.rs` → `ApiState::submit_order_http`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido; `BOT_ORDERS_EXECUTION` resolvido em `HttpApiSeams::from_env`.
 
 ## 3d. Camada `presentation::http`
 

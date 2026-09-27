@@ -39,7 +39,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `OrderExecutionPort::execute` | Único caminho para “enviar” ordem. |
 | `FailClosedExecutor` | Implementação padrão; nunca chama rede. |
 | `AcceptingExecutor` | Double de teste do port. |
-| `HttpOrderExecutor` | Seleção em `ApiState` (`disabled`; `dev_accept`; `paper` → `PaperLedgerExecutor`; `live_exchange` → `ReservedLiveExchangeExecutor` + `exchange_order_gate`); `live_exchange_wired()` com `GET /meta` e `GET /orders/execution-status`. |
+| `HttpOrderExecutor` | Seleção em `ApiState` (`disabled`; `dev_accept`; `paper` → `PaperLedgerExecutor`; `live_exchange` → `ExchangeSpotExecutor` quando wired (`BOT_ORDERS_EXCHANGE_SUBMIT=recording`) ou `ReservedLiveExchangeExecutor`); `live_exchange_wired()` com `GET /meta` e `GET /orders/execution-status`. |
 | `ReservedLiveExchangeExecutor` | Placeholder Gate 2; `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired`. |
 | `RecordingExecutor` | Double determinístico para testes de `submit_order` após risco (sem rede). |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
