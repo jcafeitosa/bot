@@ -57,6 +57,7 @@ tags:
 5. Revisar o contrato de Jev, timeout, telemetria e comportamento quando o endpoint falha.
 6. Definir observabilidade operacional: métricas de WS/REST, estado de persistência, idade do último candle, falhas de Jev e runbook de credenciais.
 7. Ingerir localmente as fontes externas da pesquisa de agentes antes de promovê-la a conhecimento consolidado.
+8. Acompanhar a [análise de módulos ainda não desenvolvidos](./unimplemented-modules-analysis.md) antes de abrir novos SDDs de runtime.
 
 ## Plano recomendado
 
