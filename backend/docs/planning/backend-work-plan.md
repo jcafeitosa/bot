@@ -55,9 +55,9 @@ Rastreada em [modules-completeness-audit.md](./modules-completeness-audit.md) (g
 | Fatia | Estado (2026-09-27) | Próximo passo |
 |-------|---------------------|---------------|
 | HTTP integration (`http_bridge`, `/meta`, execution-status, admin bearer) | Facades [module-catalog §3d](../architecture/module-catalog.md#3d-facade-http_bridge-srcmoduleshttp_bridge); testes `meta_and_*` | Auth owner produto |
-| Bots runtime G2 | Parcial: EMA/SMA + catálogo `monitor_evaluator`; `shared_bot_runtime` / `HttpApiSeams::from_env` (testes paridade); HTTP promote com capability | Auth owner; orders live no monitor; E2E `BOT_RUNTIME_ENABLED` opcional |
+| Bots runtime G2 | Parcial: EMA/SMA + catálogo `monitor_evaluator`; `shared_bot_runtime` + testes paridade ([test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial)); HTTP promote com capability | Auth owner; orders live no monitor; E2E `BOT_RUNTIME_ENABLED` opcional |
 | Orders G2 | Parcial: paper/recording/testnet; reconciliação GET/POST poll + `observe_testnet_spot_order_by_client_id`; idempotência PG `0004`/`0006`; retenção ops em [cli-and-config](../reference/cli-and-config.md#pg-orders-retention-gate-2) | LGTM **Critic** + purge PG automatizado (opcional); prod REST bloqueado |
 | Agents G1 | Registry + PG + promote capability; `BOT_HTTP_OWNER_ID` + `agents_register_rejects_owner_mismatch_when_bound`; checklist [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist) | Owner humano verificável + bootstrap (pesquisa bloqueia) |
-| Evidência | `./scripts/verify-backend-gates.sh` verde; **395** testes bin `bot`, **16** ignorados; PG **14/14** no job CI `postgres-integration` (+ opcional local) | Revisão Critic AGENTS.md (instância separada) |
+| Evidência | `./scripts/verify-backend-gates.sh` verde; **395** testes bin `bot`, **16** ignorados; PG **14/14** via CI `postgres-integration` ou local `./scripts/verify-backend-full.sh` | Revisão Critic AGENTS.md (instância separada) |
 
-Esta trilha não substitui C17/V18; compartilha apenas o gate de verificação (`verify-backend-gates.sh`).
+Esta trilha não substitui C17/V18; compartilha gates (`verify-backend-gates.sh`) e verificação PG opcional (`verify-backend-full.sh`).
