@@ -41,7 +41,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace).
 
-Evidência (2026-09-27): **294** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
+Evidência (2026-09-27): **295** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
 
 ## Documentação relacionada
 
@@ -59,10 +59,10 @@ Evidência (2026-09-27): **294** testes no binário `bot`, **6** ignorados (`per
 |-----------|-----------|--------|
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor binding | **Parcial** (evaluators não-SMA; sem orders live) |
 | Completude orders | `submit_order`, `RecordingExecutor` (fake port), execution-status, `live_exchange_not_wired`, idempotência | **Parcial** (adapter exchange ausente) |
-| Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth`, `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando `BOT_HTTP_AGENCY_ID` | **Parcial** (seam admin; não substitui auth owner completo) |
+| Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
 | Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta` (`http_seams`) + testes `meta_and_*_agree_on_*`; `http_bridge` → domain; orders/bots/agents v1; PG boot hydrate | **Parcial** (auth owner, exchange adapter; evaluators não-SMA) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 294 + clippy/fmt/import (2026-09-27) | **Feito** |
+| Build/testes verdes | 295 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -73,7 +73,7 @@ Evidência (2026-09-27): **294** testes no binário `bot`, **6** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 294 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 295 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
@@ -88,7 +88,7 @@ Evidência (2026-09-27): **294** testes no binário `bot`, **6** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **294** testes bin `bot`, **6** ignorados; OpenAPI **34** paths (`openapi_surface_lists_core_paths` em `server.rs`).
+Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **295** testes bin `bot`, **6** ignorados; OpenAPI **34** paths (`openapi_surface_lists_core_paths` em `server.rs`).
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|

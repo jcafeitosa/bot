@@ -30,7 +30,7 @@ tags:
 | `market_feed` | Uma avaliação por timestamp, upsert WS, catch-up REST, contiguidade, watermark monotônico e preenchimento tardio. |
 | `strategy` | Períodos por operação e sinais de cruzamento. |
 | `risk` | Limite conservador/agressivo, tamanho, stop/take profit e incompatibilidade de modo. |
-| `agents` | Registry, hierarquia, lifecycle, advisory, `assert_runtime_promotion_authorized`, `restore_from_snapshot`, `PgAgentIdentityStore` SQL mapping. |
+| `agents` | Registry, lifecycle, `assert_runtime_promotion_authorized` (`promotion_denied_when_capability_false`), PG snapshot. |
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` em `server.rs`. |
@@ -54,7 +54,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **34** paths (incl. `/api/v1/meta`); `meta_and_*_agree_on_*`; `documented_get_routes_respond` cobre runtime/status; orders/bots/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **34** paths; `meta_and_*_agree_on_*`; bots v2 (`monitor_registry`) em `server.rs` + `state_tests` (`persist_catalog_then_promote_monitor_registry_v2_bot`); orders/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
