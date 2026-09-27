@@ -72,7 +72,7 @@ Evidência (2026-09-27, gate ~10,6s–10,7s): **389** testes no binário `bot`, 
 |---|---|---|
 | Analisar completude (bots, orders, agents, HTTP) | Este documento + `unimplemented-modules-analysis.md` | Feito |
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
-| Expandir/melhorar implementação | Bots runtime/evaluator, orders G2 (testnet+reconciliação+poll+redação credenciais), agents PG + promote; `.env.example` seams HTTP | **Parcial** (auth owner; Critic; prod REST política) |
+| Expandir/melhorar implementação | Bots runtime/evaluator, orders G2 (testnet+reconciliação+poll+redação credenciais), agents PG + promote; `.env.example` seams HTTP (`BOT_ORDERS_EXECUTION` paper vs live_exchange) | **Parcial** (auth owner; Critic; prod REST política) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
 | Build/testes verdes | `./scripts/verify-backend-gates.sh` → **389** ok (bin `bot`) + 5 suítes `tests/`; clippy/fmt/import | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
