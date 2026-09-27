@@ -37,7 +37,7 @@ status: draft
 |---------|----------|
 | `OrderExecutionPort::execute` | Entrada já validada por risco; retorna `OrderAck` ou erro de domínio mapeável a HTTP. |
 | `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe em processo; replay HTTP. |
-| `PgOrderIdempotencyStore` | Dedupe durável em `order_idempotency_keys` quando PG no `ApiState`; lookup antes de executar + `INSERT ON CONFLICT DO NOTHING` após sucesso. |
+| `PgOrderIdempotencyStore` | Dedupe durável em `order_idempotency_keys`; `try_claim` antes de executar o port; `release_claim` se o submit falhar; replay quando a chave já existe. |
 | `ApiState::order_executor` | `HttpOrderExecutor` via `HttpApiSeams::from_env()` no `for_http_server`; default fail-closed. |
 | `HttpOrderExecutor::live_exchange_wired` / `ApiState::live_exchange_wired` | Fonte única para `GET /meta` e `GET /orders/execution-status`; `true` no modo `LiveExchange` (hoje via seam `recording`; testnet REST pendente). |
 | `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
@@ -55,7 +55,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **386** testes bin `bot`, **17** ignorados; `orders_submit_fail_closed_returns_503` (`server.rs`); `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_succeeds_with_admin_bearer_when_paper_executor` em `http_integration_tests.rs`; portfolio paper HTTP em `server.rs` / `state.rs` (+ available **900** após quote 100 em wallet 1000), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência (2026-09-27): `./scripts/verify-backend-gates.sh` → **408+** testes bin `bot`, **0** ignorados; `orders_submit_fail_closed_returns_503` (`server.rs`); `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_succeeds_with_admin_bearer_when_paper_executor` em `http_integration_tests.rs`; portfolio paper HTTP em `server.rs` / `state.rs` (+ available **900** após quote 100 em wallet 1000), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
@@ -80,7 +80,7 @@ Evidência G1 (2026-09-27): **386** testes bin `bot`, **17** ignorados; `orders_
 | Critério | Evidência atual | Fechado |
 |----------|-----------------|--------|
 | `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` | `order_execution.rs`, testes `orders_submit_*` | Sim |
-| Idempotência `client_order_id` (memória + PG opcional) | `PgOrderIdempotencyStore`, `duplicate_client_order_id_*` | Sim |
+| Idempotência `client_order_id` (memória + PG opcional) | `PgOrderIdempotencyStore` (`try_claim`/`release_claim`), `duplicate_client_order_id_*`, `pg_submit_order_idempotency_releases_claim_when_submit_fails` | Sim |
 | `live_exchange_not_wired` até adapter real | `ReservedLiveExchangeExecutor`, meta + execution-status | Sim (seam) |
 | `RecordingExecutor` / test double sem rede | `orders/tests.rs`, `http_bridge/orders.rs` | Sim |
 | `PaperLedgerExecutor` (modo `paper`) | `paper_ledger_executor.rs`, `orders_submit_paper_executor_returns_200` + `portfolio_paper_snapshot_http_reflects_paper_submit` em `http_integration_tests.rs` | Sim |
