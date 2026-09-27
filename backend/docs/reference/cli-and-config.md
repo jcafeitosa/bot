@@ -119,6 +119,7 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_ORDERS_EXECUTION` | vazio/`disabled` (fail-closed); `dev_accept` (double local); `paper` (`PaperLedgerExecutor`, ledger in-process); `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → **200** após risco; `live_exchange` sem submit backend — **503** `live_exchange_not_wired`). Outros valores → `disabled`. |
 | `BOT_PAPER_FILL_UNIT_PRICE` | Opcional com `paper`: preço quote/base usado no ledger para calcular `positions` no snapshot HTTP (ex.: `50000` para BTC/USDT). |
 | `client_order_id` (body HTTP) | Campo opcional em `POST /api/v1/orders/submit`; replays retornam `accepted: true` sem reexecutar (memória; PG quando `DATABASE_URL` + migração `0004`). |
+| `paper_fill_unit_price` (body HTTP) | Opcional em modo `paper`: preço quote/base por ordem para `positions` no snapshot (alternativa a `BOT_PAPER_FILL_UNIT_PRICE`). |
 | `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; ver `docs/operations/postgres-and-graph-dev.md`. |
 | `NVIDIA_NIM_BASE_URL` | Raiz da integrate API (default `https://integrate.api.nvidia.com`); opcional em TOML como `providers.nim_base_url`. |
 

@@ -98,7 +98,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `active_config_snapshot` (incl. `monitor_registry`), `providers_status_snapshot` | Config / providers |
 | `order_execution_mode` + `GET /orders/execution-status` | Orders seam (read-only status) |
 
-Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`portfolio/paper-snapshot`**) chamam `http_bridge` diretamente com body/query. O snapshot paper agrega fills de `PaperLedgerExecutor` (modo `paper`) via `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills`.
+Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`portfolio/paper-snapshot`**) chamam `http_bridge` diretamente com body/query. O snapshot paper agrega fills de `PaperLedgerExecutor` (modo `paper`) via `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (saldos quote + `positions` quando `paper_fill_unit_price` no submit HTTP ou `BOT_PAPER_FILL_UNIT_PRICE`).
 
 ## Lacunas conscientes
 
@@ -112,7 +112,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 cargo test --locked --bin bot
 ```
 
-Evidência: **333** testes no bin `bot`, **6** ignorados (PG/Neo4j).
+Evidência: **334** testes no bin `bot`, **7** ignorados (PG/Neo4j + testnet manual).
 
 ## Documentos relacionados
 
