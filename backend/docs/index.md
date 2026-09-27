@@ -25,6 +25,14 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 - [Pesquisa de capacidades para o módulo `agents`](./research/agents-capability-research.md) — comparação de referências e limites para a primeira etapa `IdentityOnly`.
 
+## Fontes preservadas
+
+- [Grok Bot — overview](./backend/docs/external-sources/grok-bot-overview.md)
+- [Grok Bot — teams and enterprises](./backend/docs/external-sources/grok-bot-teams-and-enterprises.md)
+- [OpenBot — README](./backend/docs/external-sources/openbot-readme.md)
+- [OpenClaw — Security](./backend/docs/external-sources/openclaw-security.md)
+- [Meta Model API — overview](./backend/docs/external-sources/meta-model-api-overview.md)
+
 ## Planejamento
 
 - [Plano de execução das correções pendentes do backend](./planning/backend-work-plan.md) — sequência de entregas, gates, dependências e bloqueios atuais.
