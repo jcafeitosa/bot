@@ -38,4 +38,4 @@ fmt, clippy -D warnings, cargo test --locked, check-import-direction; testes `--
 
 ## Próximo
 
-`PgAgentRegistry` sobre `agent_identities`.
+Auth owner HTTP e hardening de constraints de hierarquia em PG (pós-[agents-pg-registry-sdd](./agents-pg-registry-sdd.md)).

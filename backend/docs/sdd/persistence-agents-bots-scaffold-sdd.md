@@ -37,7 +37,7 @@ Adicionar `0002_agents_bots_scaffold.sql` em `src/core/database/migrations/` com
 | Teste unitário `migration_scaffold_sql_declares_core_tables` | Falha se o SQL scaffold perder nomes de tabela esperados (sem PG). |
 | Teste ignorado `postgres_scaffold_tables_exist_after_migrate` | Opcional em CI com PG; verifica `information_schema` pós-migrate. |
 
-**Fora de escopo (na fatia scaffold):** `PgAgentRegistry`, rotas com auth, live trading, orders reais. `PgBotCatalogStore` foi implementado depois — ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md).
+**Fora de escopo (scaffold original):** rotas com auth owner, live trading, orders reais. Repositórios Rust: [agents-pg-registry-sdd](./agents-pg-registry-sdd.md), [Gate 1 bots](./bots-catalog-persistence-gate1-sdd.md).
 
 ## 4. Mapeamento modelo → coluna
 
