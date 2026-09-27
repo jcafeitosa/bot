@@ -39,7 +39,8 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `OrderExecutionPort::execute` | Único caminho para “enviar” ordem. |
 | `FailClosedExecutor` | Implementação padrão; nunca chama rede. |
 | `AcceptingExecutor` | Double de teste do port. |
-| `HttpOrderExecutor` | Seleção em `ApiState` (`disabled` default; `dev_accept` via `BOT_ORDERS_EXECUTION`). |
+| `HttpOrderExecutor` | Seleção em `ApiState` (`disabled` default; `dev_accept`; `live_exchange`/`paper` → `ReservedLiveExchangeExecutor`); `live_exchange_wired()` fonte única com `GET /meta` e `GET /orders/execution-status`. |
+| `ReservedLiveExchangeExecutor` | Placeholder Gate 2; `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired`. |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
 | `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe síncrono em processo (`http_bridge/orders::submit_order_http`). |
 | `PgOrderIdempotencyStore` | Dedupe durável quando `DATABASE_URL` conecta; `ApiState` consulta PG antes de executar e grava após sucesso. |
