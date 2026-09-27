@@ -21,6 +21,7 @@ impl std::fmt::Debug for Database {
 }
 
 impl Database {
+    #[allow(dead_code)]
     pub async fn connect_from_env() -> Result<Self, PersistenceError> {
         PostgresDatabase::connect_from_env().await.map(Self)
     }
