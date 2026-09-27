@@ -55,7 +55,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência (2026-09-27): `./scripts/verify-backend-gates.sh` → **408+** testes bin `bot`, **0** ignorados; `orders_submit_fail_closed_returns_503` (`server.rs`); `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_succeeds_with_admin_bearer_when_paper_executor` em `http_integration_tests.rs`; portfolio paper HTTP em `server.rs` / `state.rs` (+ available **900** após quote 100 em wallet 1000), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência (2026-09-27): `./scripts/verify-backend-gates.sh` → **409** testes bin `bot`, **0** ignorados; `orders_submit_fail_closed_returns_503` (`server.rs`); `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_succeeds_with_admin_bearer_when_paper_executor` em `http_integration_tests.rs`; portfolio paper HTTP em `server.rs` / `state.rs` (+ available **900** após quote 100 em wallet 1000), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 

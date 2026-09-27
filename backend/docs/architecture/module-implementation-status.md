@@ -9,7 +9,7 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-gates.sh` → **407** passed, **0** ignored; PG **15/15** com `DATABASE_URL` via `run-pg-integration-tests.sh`).  
+**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-gates.sh` → **409** passed, **0** ignored; PG **15/15** com `DATABASE_URL` via `run-pg-integration-tests.sh`).  
 **Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
 **Fatia goal completude (HTTP):** `presentation/http/http_integration_tests.rs` — bearer admin, orders executors, portfolio paper, catálogo `monitor_registry` v2; smoke/meta/OpenAPI em `server.rs`. Baseline docs: linha `OK:` de `verify-backend-gates.sh`.  
 **Fatia PG:** agents/bots write-through + hydrate; orders `0004`/`0006`; `provider_credentials` `0007`; boot `build_api_state_for_http_serve` (**15/15** script). Seam HTTP admin (`BOT_HTTP_*`) — não substitui auth owner. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (auth owner + Critic AGENTS.md).
@@ -20,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --locked --bin bot -- -D warnings` | PASS | mesmo escopo que `verify-backend-gates.sh` |
-| `cargo test --locked` | PASS | **407** testes (bin `bot`), **0** ignorados; integração PG/Neo4j/testnet via `pg_integration` (skip sem env; PG **15/15** no script com `DATABASE_URL`) |
+| `cargo test --locked` | PASS | **409** testes (bin `bot`), **0** ignorados; integração PG/Neo4j/testnet via `pg_integration` (skip sem env; PG **15/15** no script com `DATABASE_URL`) |
 | `./scripts/verify-backend-gates.sh` | PASS | fmt + clippy `--bin bot` + import-direction + `cargo test --bin bot -- --test-threads=1` + 5 suítes `tests/*` (sem `cargo test --locked` completo); linha `OK:` com resumo `test result:` |
 
 ## Critério de linha
@@ -82,7 +82,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Veredito
 
-**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**407** testes bin `bot`, **0** ignorados).
+**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**409** testes bin `bot`, **0** ignorados).
 
 **COMPLETUDE_MODULOS_GOAL=parcial** — fundação bots/orders/agents/HTTP documentada e testada; bots runtime parcial (`MonitorEvaluatorKind`, catálogo `monitor_evaluator`); pendem adapter exchange (orders G2), auth owner de produto e revisão Critic ([auditoria](../planning/modules-completeness-audit.md)).
 
