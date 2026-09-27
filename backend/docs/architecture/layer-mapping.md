@@ -95,7 +95,8 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `bot_runtime_status`, `promote_bot_http`, `demote_bot_http` | Bots runtime seam (Gate 2 parcial) |
 | `submit_order_http` (async) | Orders: risco + `HttpOrderExecutor`; `client_order_id` com memória + `PgOrderIdempotencyStore` opcional |
 | `monitor_snapshot`, `accept_monitor_command` | Monitor |
-| `active_config_snapshot`, `providers_status_snapshot` | Config / providers |
+| `active_config_snapshot` (incl. `monitor_registry`), `providers_status_snapshot` | Config / providers |
+| `order_execution_mode` + `GET /orders/execution-status` | Orders seam (read-only status) |
 
 Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking) chamam `http_bridge` diretamente com body/query.
 
@@ -111,7 +112,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking) chamam 
 cargo test --locked --bin bot
 ```
 
-Evidência: **277** testes no bin `bot`, **6** ignorados (PG/Neo4j).
+Evidência: **278** testes no bin `bot`, **6** ignorados (PG/Neo4j).
 
 ## Documentos relacionados
 
