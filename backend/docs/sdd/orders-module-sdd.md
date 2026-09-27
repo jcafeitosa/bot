@@ -45,6 +45,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `RecordingExecutor` | Double determinístico para testes de `submit_order` após risco (sem rede). |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
 | `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe síncrono em processo (`http_bridge/orders::submit_order_http`). |
+| `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Após submit HTTP com `client_order_id`, `mark_pending` em `ApiState.order_reconciliation` (confirmação exchange pendente). |
 | `PgOrderIdempotencyStore` | Dedupe durável quando `DATABASE_URL` conecta; `ApiState` consulta PG antes de executar e grava após sucesso. |
 | `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Scaffold G2: `Pending` → `Reconciled` / `Divergent` por `client_order_id`; wiring HTTP e poller exchange pendente. |
 
