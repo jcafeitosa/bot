@@ -339,4 +339,5 @@ Gate: `./scripts/verify-backend-gates.sh` se tocar código; doc-only não exige.
 2. Adapter `modules/bots/adapters/graph_projection.rs` após `persist_bot_catalog` e promote/demote HTTP.
 3. Outbox durável **F2.1** (*implemented* slice 1): migração `0009`, `graph_projection_outbox`, enqueue unificado nos `best_effort_*`; [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md).
 4. **F2.1.2** (*implemented*): worker periódico + sinal degradado em `/healthz` quando PG+Neo4j wired.
-5. **F3 next:** `OrderIntent` redigido + memória semântica (strategy §10).
+5. **F2.1.3** (*partial* — CLI drain): `bot graph-projection drain --limit N`; fail-closed sem PG/Neo4j; testes `graph_projection_cli_*` — [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md) §7. Enqueue na mesma TX de domínio permanece pendente.
+6. **F3 next:** `GraphQueryPort` read-only + `OrderIntent` redigido + memória semântica (strategy §10).

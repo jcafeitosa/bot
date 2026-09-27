@@ -128,10 +128,10 @@ modules/agents/
 - Mutations: `ApiState::persist_agent_after_mutation` (snapshot em memória, `persist_identity_rows` em PG quando conectado).
 - Boot: `presentation/http/server.rs` chama `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` quando o registry compartilhado está vazio (`apply_agent_identity_snapshot` não sobrescreve registry já populado — teste `http_bridge/agents.rs`).
 - Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `http_integration_tests.rs`).
-- `GET /api/v1/meta` → `http_seams` (bindings owner/agency booleanos; ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
+- `GET /api/v1/meta` → `http_seams` (bindings owner/agency + `product_owner_bootstrap_active`; ver [HTTP admin](./http-admin-auth-seam-sdd.md), [owner bootstrap](./agents-owner-bootstrap-g1-sdd.md)).
 - `assert_runtime_promotion_authorized`: capability, lifecycle, `promotion_rejects_invalid_bot_id` (`bot_promotion.rs`).
-- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **441** testes (**0** ignorados: PG×21 no script incl. `loads_credentials_from_postgres` (0007); Neo4j; testnet manual); PG domínio **21/21** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.
-- **Gap Gate 1 produto:** autenticação/autorização do owner humano além de `BOT_HTTP_*` — ver [pesquisa de capacidades](../research/agents-capability-research.md); bloqueia fechamento do goal de completude de módulos.
+- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **450** testes (**0** ignorados: PG×21 no script incl. `loads_credentials_from_postgres` (0007); Neo4j; testnet manual); PG domínio **21/21** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.
+- **Gap Gate 1 produto:** IdP/owner humano verificável — ver [pesquisa](../research/agents-capability-research.md). Fatia bootstrap PG: [owner bootstrap G1](./agents-owner-bootstrap-g1-sdd.md) (`VerifiedProductOwner`, registro/promote HTTP).
 
 ## Critérios de fechamento G1 (checklist)
 
@@ -145,4 +145,4 @@ modules/agents/
 | Autenticação verificável do owner humano | pesquisa § Etapa 1 item 4 | **Não** |
 | Bootstrap inicial único e auditado | `0010_product_owner_bootstrap`, `BOT_PRODUCT_OWNER_BOOTSTRAP_*`, [owner bootstrap G1](./agents-owner-bootstrap-g1-sdd.md) | **Parcial** (PG+ACK; não IdP) |
 | Revisão Critic G1 + contrato público acordado | AGENTS.md | **Não** |
-| `./scripts/verify-backend-gates.sh` verde | **441** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **450** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |

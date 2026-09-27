@@ -1,0 +1,28 @@
+{
+  "goal": "COMPLETUDE_MODULOS",
+  "status": "partial",
+  "verified_at": "2026-09-27",
+  "commands": {
+    "verify_backend_gates": "./scripts/verify-backend-gates.sh",
+    "verify_backend_full": "./scripts/verify-backend-full.sh",
+    "http_integration": "cargo test --locked --bin bot http_integration -- --test-threads=1",
+    "pg_integration": "./scripts/run-pg-integration-tests.sh"
+  },
+  "observed": {
+    "bot_tests_passed": 450,
+    "bot_tests_ignored": 0,
+    "http_integration_passed": 47,
+    "pg_script_tests": 21
+  },
+  "blockers": [
+    "agents_md_critic_independent_review",
+    "idp_verifiable_human_owner",
+    "orders_g2_prod_rest_policy_and_threat_model_lgtm"
+  ],
+  "artifacts": [
+    "docs/planning/modules-completeness-audit.md",
+    "docs/reference/test-matrix.md",
+    "docs/sdd/agents-owner-bootstrap-g1-sdd.md",
+    "docs/sdd/provider-credentials-db-sdd.md"
+  ]
+}

@@ -138,6 +138,7 @@ Camada de aplicação fina entre `presentation::http::routes` e os módulos de d
 | `config.rs` | Active config e snapshot para OpenAPI. |
 | `risk.rs` | Corpo de limites + gate de sinal. |
 | `backtest.rs` | Disparo SMA crossover via HTTP. |
+| `provider_credentials.rs` | CRUD mascarado LLM keys (`provider_credentials` / `0007`) para rotas admin. |
 | `strategy.rs` / `application.rs` / `exchanges.rs` / `providers.rs` | Facades auxiliares para rotas stateless. |
 
 Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog persist, agent snapshots, submit fail-closed/accept, runtime promote/demote). Integração HTTP: `presentation/http/http_integration_tests.rs` (admin bearer + orders executors); smoke/OpenAPI/meta em `server.rs`.
@@ -146,6 +147,7 @@ Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog p
 
 | Peça | Comportamento |
 |---|---|
+| `routes/provider_credentials_admin.rs` | GET/POST/PUT/DELETE admin credentials (PG). |
 | `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
 | `state` | `ApiState` (composition root); `graph_projection_sync()` para outbox Neo4j; agents/bots/orders/portfolio (`submit_order_http`, `paper_wallet_snapshot`, catálogo PG); `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); testes PG via `pg_integration` (skip sem `DATABASE_URL`) — [test-matrix](../reference/test-matrix.md). |
 | `server::run` | Bootstrap `AppDatabases`, `ApiState::build_api_state_for_http_serve` (agents PG + env seams + reconciliação hydrate + catálogo), poll reconciliação em background (opcional), Axum + Scalar. |
@@ -219,7 +221,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 
 ## 7. Débitos e limites conhecidos
 
-- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **441** testes no bin `bot`, **0** ignorados; PG **21/21** via `./scripts/verify-backend-full.sh` (`OK: backend full verification passed`) ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); `cargo test --bin bot http_integration -- --test-threads=1` → **45** passed; paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
+- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **450** testes no bin `bot`, **0** ignorados; PG **21/21** via `./scripts/verify-backend-full.sh` (`OK: backend full verification passed`) ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); `cargo test --bin bot http_integration -- --test-threads=1` → **47** passed; paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
 - Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) em testes com skip via `pg_integration` — exercício real exige `DATABASE_URL` → `trading_bot` (PG 18+).
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.

@@ -23,7 +23,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [Integrações do backend](./architecture/integrations.md) — Binance, ccxt, PostgreSQL, Jev, terminal e controles.
 - [Estratégia Neo4j unificado (dual-store)](./architecture/unified-neo4j-graph-strategy.md) — PG SoT transacional + Neo4j grafo complementar pareado em produção alvo.
 - [Estado atual e planejamento](./planning/current-state-and-roadmap.md) — feito, pendências, bloqueios, gates e roadmap.
-- [Auditoria de completude de módulos](./planning/modules-completeness-audit.md) — bots/orders/agents/HTTP; baseline **441**/**0** ignored; PG **21/21**; goal **parcial** (auth owner + Critic).
+- [Auditoria de completude de módulos](./planning/modules-completeness-audit.md) — bots/orders/agents/HTTP; baseline **450**/**0** ignored; PG **21/21**; goal **parcial** (auth owner + Critic).
 - README do backend — visão geral, arquitetura e comandos rápidos.
 
 ## Pesquisa
@@ -41,7 +41,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 ## Planejamento
 
-- [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md) — baseline `./scripts/verify-backend-gates.sh` (**441** passed, **0** ignored; PG **21/21** no CI `postgres-integration` ou local com `DATABASE_URL`); [ENTREGA G4 Builder](./planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) (**PENDENTE** Critic); [pacote Critic (handoff)](./planning/modules-completeness-audit.md#pacote-para-revisão-critic-handoff); checklists [agents G1](./sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [orders G2](./sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](./sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist)
+- [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md) — snapshot JSON: [modules-completeness-evidence.json](./planning/modules-completeness-evidence.json) — baseline `./scripts/verify-backend-gates.sh` (**450** passed, **0** ignored; PG **21/21** no CI `postgres-integration` ou local com `DATABASE_URL`); [ENTREGA G4 Builder](./planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) (**PENDENTE** Critic); [pacote Critic (handoff)](./planning/modules-completeness-audit.md#pacote-para-revisão-critic-handoff); checklists [agents G1](./sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [orders G2](./sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](./sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist)
 - [Status de implementação MVC mínimo](./architecture/module-implementation-status.md) — checklist `core`/`modules`/`presentation` e veredito vs goal de completude
 - [Plano de execução das correções pendentes do backend](./planning/backend-work-plan.md) — sequência de entregas, gates, dependências e bloqueios atuais.
 - [Análise de módulos ainda não desenvolvidos](./planning/unimplemented-modules-analysis.md) — capacidades previstas sem implementação completa, dependências e ordem recomendada.

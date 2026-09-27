@@ -13,7 +13,7 @@ status: partial
 
 ## Gate 1 — fatia HTTP (owner binding verificável no seam)
 
-**Escopo desta fatia:** bearer fail-closed em rotas mutantes; `BOT_HTTP_OWNER_ID` efetivo somente com `BOT_HTTP_ADMIN_TOKEN` (`HttpAdminAuth::from_env`); **403** `owner_mismatch` no registro de agentes; **401** sem bearer; observabilidade em `GET /api/v1/meta` → `http_seams`. **Não** cobre bootstrap do owner humano nem IdP (checklist [agents G1](./agents-module-sdd.md#critérios-de-fechamento-g1-checklist) item “Autenticação verificável do owner humano” permanece **Não**).
+**Escopo desta fatia:** bearer fail-closed em rotas mutantes; `BOT_HTTP_OWNER_ID` efetivo somente com `BOT_HTTP_ADMIN_TOKEN` (`HttpAdminAuth::from_env`); **403** `owner_mismatch` no registro de agentes; **401** sem bearer; observabilidade em `GET /api/v1/meta` → `http_seams`. **Não** cobre IdP do owner humano; bootstrap PG explícito (ACK) é documentado em [owner bootstrap G1](./agents-owner-bootstrap-g1-sdd.md) e complementa `BOT_HTTP_OWNER_ID` (checklist [agents G1](./agents-module-sdd.md#critérios-de-fechamento-g1-checklist) item “Autenticação verificável do owner humano” permanece **Não**).
 
 ## Contexto
 
@@ -28,9 +28,9 @@ Rotas HTTP mutantes (agents lifecycle, bots catalog persist, bots runtime promot
 | `BOT_HTTP_OWNER_ID` definido (com token) | `POST /api/v1/agents` exige `owner_id` igual; falha → **403** `owner_mismatch`. Sem `BOT_HTTP_ADMIN_TOKEN`, o bind de owner é ignorado no boot (fail-closed). |
 | `BOT_HTTP_AGENCY_ID` definido | Rotas `/api/v1/agents*` exigem `agency` igual (query ou body); falha → **403** `http_agency_mismatch`. Com bind ativo, `POST /api/v1/bots/runtime/promote` também exige que `promoted_by` seja agente ativo da agência com capability `promote_runtime_bot` (`assert_runtime_promotion_authorized`). |
 
-Rotas `/api/v1/admin/provider-credentials*` exigem o mesmo bearer quando o token está ativo, mas respondem **501** (CRUD não implementado; sem vazamento de `secret`) — ver [provider-credentials-db-sdd](./provider-credentials-db-sdd.md).
+Rotas `/api/v1/admin/provider-credentials*` exigem o mesmo bearer quando o token está ativo; CRUD mascarado com PG (**503** sem banco) — ver [provider-credentials-db-sdd](./provider-credentials-db-sdd.md).
 
-Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admin`, `require_register_owner_id`, `require_bound_agency` (rotas `routes/agents.rs`); promoção de bot em `ApiState::promote_bot_http`; stub em `routes/provider_credentials_admin.rs`.
+Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admin`, `require_register_owner_id`, `require_bound_agency` (rotas `routes/agents.rs`); promoção de bot em `ApiState::promote_bot_http`; CRUD em `routes/provider_credentials_admin.rs` + `http_bridge/provider_credentials.rs`.
 
 ## Fora de escopo
 
@@ -39,7 +39,7 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 
 ## Observabilidade (read-only)
 
-`GET /api/v1/meta` inclui `http_seams` read-only: `http_admin_auth_enabled` (token admin ativo), `http_owner_binding_active` / `http_agency_binding_active` (booleanos — não expõem IDs; espelham `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`), `order_execution_mode` / `live_exchange_wired` (alinhados com `GET /orders/execution-status`), `bot_runtime_enabled` (alinhado com `GET /bots/runtime/status` → `runtime_enabled`). Não substitui auditoria de rotas mutantes.
+`GET /api/v1/meta` inclui `http_seams` read-only: `http_admin_auth_enabled` (token admin ativo), `http_owner_binding_active` / `http_agency_binding_active` / `product_owner_bootstrap_active` (booleanos — não expõem IDs; espelham `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`), `order_execution_mode` / `live_exchange_wired` (alinhados com `GET /orders/execution-status`), `bot_runtime_enabled` (alinhado com `GET /bots/runtime/status` → `runtime_enabled`). Não substitui auditoria de rotas mutantes. Bootstrap PG verificável: [owner bootstrap G1](./agents-owner-bootstrap-g1-sdd.md) (`VerifiedProductOwner` + `register_owner` / promote).
 
 ## Validação
 
