@@ -4,6 +4,7 @@ cd "$(dirname "$0")/.."
 cargo fmt --check
 CARGO_INCREMENTAL=0 cargo clippy --locked --bin bot -- -D warnings
 bash scripts/check-import-direction.sh
+bash scripts/assert-pg-integration-manifest.sh
 if out=$(rg 'env::var\(|std::env::var\(' src --glob '*.rs' | rg -v '(^|/)config\.rs:|/core/config/|env_parse\.rs|/core/providers/credentials/' || true); then
   if [[ -n "$out" ]]; then
     echo "FAIL: env var reads outside *config.rs / env_parse.rs"
