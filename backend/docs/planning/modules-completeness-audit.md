@@ -40,7 +40,7 @@ Gate canônico (recomendado):
 ./scripts/verify-backend-gates.sh
 ```
 
-Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
+Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1`, depois `cargo test --locked --test <…>` (5 suítes em `tests/`; evita reexecutar bin `bot` em paralelo). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
 Evidência (2026-09-27, gate ~10,6s): **387** testes no binário `bot`, **10** ignorados (contagem na linha final de `verify-backend-gates.sh`: `OK: backend gates passed (bin bot: test result: …)`) (PG×8 incl. `pg_agent_lifecycle_write_through_round_trip` + `pg_cold_start_apply_snapshot_after_write_through` em `http_bridge/agents.rs`; Neo4j; testnet manual). `./scripts/verify-backend-gates.sh` verde; gate canônico usa `cargo test --locked --bin bot -- --test-threads=1` (`verify-backend-gates.sh`); stress local opcional `--test-threads=8` ~5s quando locks env→ledger respeitados. `./scripts/run-pg-integration-tests.sh` **8/8** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste; ledger partilhado de orders: `lock_shared_live_order_reconciliation_ledger_for_test()` (env antes do ledger quando ambos) — [test-matrix](../reference/test-matrix.md).
 

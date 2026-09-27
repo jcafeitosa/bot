@@ -66,7 +66,7 @@ modules/bots/
 
 ## 5. Validação e rollout
 
-- `cargo fmt`, `clippy -D warnings`, `cargo test --locked`, `./scripts/check-import-direction.sh`.
+- `cargo fmt`, `clippy -D warnings`, `cargo test --locked`, `./scripts/check-import-direction.sh`. HTTP: `http_bridge/bots.rs`, `http_bridge/bots_runtime.rs` ([module-catalog §3d](../architecture/module-catalog.md#3d-facade-http_bridge-srcmoduleshttp_bridge)); testes em [test-matrix](../reference/test-matrix.md) (`http_bridge/bots`, `http_bridge/monitor`).
 - Rollback: reverter `pub mod bots` e restaurar tipos monolíticos em `backtest/models.rs` (commit único).
 
 ## 6. Pendências
