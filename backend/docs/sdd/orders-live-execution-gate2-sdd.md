@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **242** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`, `duplicate_client_order_id_replays_without_second_execute`.
+Evidência G1 (2026-09-27): **244** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`, `duplicate_client_order_id_replays_without_second_execute`.
 
 ## Validação Gate 2 (quando implementado)
 
