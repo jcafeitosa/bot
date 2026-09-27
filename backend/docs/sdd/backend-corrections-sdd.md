@@ -66,7 +66,7 @@ Os arquivos legados `backend/exchanges/config/binance.toml`, `backend/migrations
 ## Entregas possíveis após revisão
 
 1. Confirmar os contratos observáveis acima e quaisquer diferenças desejadas.
-2. Concluir a revisão C10/G4 da política de redirect e preservar a prova HTTP ao atualizar o vendor.
+2. Concluir G4 da política de redirect e preservar a prova HTTP ao atualizar o vendor; C10 G3 teve revisão independente com follow-up sobre o teste de regressão já verde no baseline.
 3. Executar integração PostgreSQL em database descartável explícito; não usar `trading_bot` para testes destructive.
 4. Testar uma execução monitor/backtest end-to-end que não dependa de credentials nem realize efeitos de trading.
 5. Só então declarar os gates correspondentes concluídos, com evidência por entrega.
