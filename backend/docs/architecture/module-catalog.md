@@ -145,6 +145,7 @@ Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog p
 | Peça | Comportamento |
 |---|---|
 | `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
+| `state` | `ApiState` (composition root); `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); testes PG ignorados `pg_hydrate_*` / `pg_order_reconciliation_lookup_*` ([test-matrix](../reference/test-matrix.md)). |
 | `server::run` | Bootstrap `AppDatabases`, hydrate agents + reconciliação orders PG, `ApiState::for_http_server` (`HttpApiSeams::from_env`), poll reconciliação em background (opcional), Axum + Scalar. |
 | `routes/*` | Superfície v1: agents, bots (catalog `monitor_evaluator` + runtime), orders, monitor, risk, backtest, `config/active` e `config/snapshot` (`monitor_registry[].evaluator`), health, `GET /meta` (`http_seams`). |
 

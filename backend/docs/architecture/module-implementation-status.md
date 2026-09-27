@@ -20,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --locked --bin bot -- -D warnings` | PASS | mesmo escopo que `verify-backend-gates.sh` |
-| `cargo test --locked` | PASS | 387 testes (bin `bot`); 12 ignorados (PG×10, Neo4j, testnet ccxt manual) |
+| `cargo test --locked` | PASS | 387 testes (bin `bot`); 13 ignorados (PG×11, Neo4j, testnet ccxt manual) |
 | `./scripts/verify-backend-gates.sh` | PASS | fmt + clippy `--bin bot` + import-direction + `cargo test --bin bot -- --test-threads=1` + 5 suítes `tests/*` (sem `cargo test --locked` completo); linha `OK:` com resumo `test result:` |
 
 ## Critério de linha
@@ -82,7 +82,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Veredito
 
-**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**387** testes bin `bot`, **12** ignorados).
+**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**387** testes bin `bot`, **13** ignorados).
 
 **COMPLETUDE_MODULOS_GOAL=parcial** — fundação bots/orders/agents/HTTP documentada e testada; bots runtime parcial (`MonitorEvaluatorKind`, catálogo `monitor_evaluator`); pendem adapter exchange (orders G2), auth owner de produto e revisão Critic ([auditoria](../planning/modules-completeness-audit.md)).
 
