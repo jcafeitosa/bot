@@ -12,7 +12,7 @@ tags:
 - **ID:** T-07 (design para implementação posterior)
 - **Autor:** System Designer Builder T-07
 - **Revisor:** Crítico de Arquitetura independente
-- **Estado:** G1 aprovado e seams públicos aprovados pelo usuário em 2026-09-26; C12 G3 aprovado por /root/c12_critic em 2026-09-26; C13 implementado, revisão G3 pendente
+- **Estado:** G1 aprovado e seams públicos aprovados pelo usuário em 2026-09-26; C12 G3 aprovado por /root/c12_critic em 2026-09-26; C13 G3 aprovado com follow-up documental por /root/c13_critic em 2026-09-26
 - **Data:** 2026-09-26
 
 ## Contexto e problema
@@ -88,9 +88,10 @@ O rollout é apenas código local do subcomando e documentação; não há servi
 - O teste de limite cobre 17.520 candles para 4h/SMA 20/50, o teto inclusivo de 20.000 e erro de configuração acima dele ou em overflow. O comando padrão 15m retornou `trades: 1`, `wins: 0`, `losses: 1`, `dataset_id: fnv1a64:4c0b6491c373e08c`.
 - Na conclusão de C12, o slippage da venda por sinal permanecia para C13; a evidência de C12 não aprova C13 nem representa teste de persistência PostgreSQL.
 
-## Evidência de C13 (revisão G3 pendente)
+## Evidência de C13 (G3 aprovado com follow-up documental por /root/c13_critic)
 
 - O teste público `run_sma_crossover` com Buy no open 101 e Sell no open 95, após fechamento anterior em 100, falhou antes da correção: com slippage de 1%, lucro bruto observado -7,05813155572983 versus -7,9875502401725385 calculado com a venda adversa. A taxa de 0,2% foi calculada sobre proceeds efetivos. Após passar `config.slippage_rate` ao fechamento do ramo Sell, o mesmo teste passou para slippage zero e 1%, conferindo trades, lucro líquido e bruto, custos agregados e equity final por tolerância de 1e-9.
 - Um teste separado de stop loss e take profit forçados na barra 23 confirmou saída na própria barra de trigger, slippage de 1%, taxa sobre proceeds pós-slippage e custo agregado; ambos passaram. O Sell por sinal da fixture continua na barra 27, de modo que esse teste distingue o exit intrabar do ramo corrigido.
 - O resumo JSON do CLI continua sem `total_costs_quote`. O custo está disponível em `BacktestReport`; a correção altera o P&L do comando padrão, sem alterar o contrato JSON nem o identificador da fixture.
 - Após C13, `cargo run --locked -- backtest --config src/config/bot.toml` retornou `trades: 1`, `wins: 0`, `losses: 1`, `net_pnl_quote: -0.09982519980019333`, `dataset_id: fnv1a64:4c0b6491c373e08c`. `cargo fmt --check`, Clippy com `--all-targets -- -D warnings`, `git diff --check` e a suíte sem testes HTTP locais passaram (74 unitários, um de fixture, dois de configuração e três de política de origem; um PostgreSQL ignorado). A suíte completa falhou apenas nos dois testes HTTP locais de C9 porque o sandbox negou a criação de sockets (`Operation not permitted`); esse gate permanece separado de C13.
+- O Crítico independente /root/c13_critic examinou o diff, executou cinco testes `backtest::tests`, `cargo fmt --check` e `git diff --check`, e emitiu `APROVADO COM FOLLOW-UP`. Seu achado importante é corrigir, em item documental global, os links de SDD que ficaram quebrados após a movimentação externa para `docs/sdd/`, antes de G4.
