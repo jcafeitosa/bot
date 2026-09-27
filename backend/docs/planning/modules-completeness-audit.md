@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (193 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (196 unitários + integração).
 
 ## Resumo executivo
 
@@ -41,7 +41,7 @@ cargo test --locked
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência: **193** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
+Evidência: **196** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -57,10 +57,10 @@ Evidência: **193** testes no binário `bot`, **5** ignorados (`persist_dataset_
 |-----------|-----------|--------|
 | Completude bots | `modules/bots/`, `PgBotCatalogStore`, HTTP `/bots/*` | **Parcial** (sem runtime live) |
 | Completude orders | `submit_order`, HTTP 422/503 | **Fundação** (fail-closed) |
-| Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN`; não substitui auth owner de produto) |
+| Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN` + opcional `BOT_HTTP_OWNER_ID` no register; não substitui auth owner completo) |
 | Integração HTTP | OpenAPI 30 paths, `server.rs` testes | **Feito** |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 193 + clippy/fmt/import (2026-09-27) | **Feito** |
+| Build/testes verdes | 196 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -71,7 +71,7 @@ Evidência: **193** testes no binário `bot`, **5** ignorados (`persist_dataset_
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 193 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 196 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Fechamento do goal (pendente)
