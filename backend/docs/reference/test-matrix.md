@@ -55,6 +55,10 @@ tags:
 ## Verificação executada
 
 ```text
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+./scripts/check-import-direction.sh
+
 cargo check --locked --all-targets
 exit 0; sem warnings
 

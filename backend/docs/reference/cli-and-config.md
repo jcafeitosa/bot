@@ -44,6 +44,17 @@ cargo run -- serve --config src/core/config/bot.toml --bind 127.0.0.1:8080
 
 Sem `--with-monitor`, rotas `/api/v1/monitor/*` respondem **503**. Com `--with-monitor`, o loop de mercado roda headless (sem Ratatui) e snapshot/comandos HTTP funcionam. Registro de agents, risco, estratégia, backtest e config snapshot funcionam sem monitor anexo. Advisory Jev exige `jev.enabled` e credenciais no ambiente.
 
+Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
+
+| Grupo | Rotas | Notas |
+|---|---|---|
+| `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |
+| `bots` | `GET /bots/catalog`, `POST /bots/catalog/persist`, `GET /bots/catalog/snapshot`, `POST /bots/ranking` | Snapshot usa store em memória do processo. |
+| `orders` | `POST /orders/submit` | Fail-closed: **503** após risco OK; **422** se risco rejeita. |
+
+Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
+
+
 ## Opções do monitor
 
 | Opção | Valores |

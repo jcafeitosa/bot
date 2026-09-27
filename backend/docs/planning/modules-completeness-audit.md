@@ -40,6 +40,18 @@ Evidência: **175** testes no binário `bot`, **1** ignorado (`persist_dataset_r
 - [unimplemented-modules-analysis.md](./unimplemented-modules-analysis.md)
 - SDDs: [bots](../sdd/bots-module-sdd.md), [orders](../sdd/orders-module-sdd.md), [agents](../sdd/agents-module-sdd.md)
 
+
+## Checklist do objetivo
+
+| Item do goal | Evidência | Status |
+|---|---|---|
+| Analisar completude (bots, orders, agents, HTTP) | Este documento + `unimplemented-modules-analysis.md` | Feito |
+| Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
+| Expandir/melhorar implementação | Store bots em `ApiState`, HTTP orders/bots/agents | **Parcial** (sem PG/auth/live) |
+| Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
+| Build/testes verdes | `cargo test --locked` → 175 ok; clippy/fmt/import check | Feito nesta revisão |
+| Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
+
 ## Fechamento do goal (pendente)
 
 Gate 1 PostgreSQL/auth owner, adapter real de orders com SDD aprovado, revisão independente AGENTS.md.
