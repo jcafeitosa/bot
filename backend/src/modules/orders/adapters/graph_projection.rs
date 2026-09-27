@@ -1,6 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::core::database::{GraphProjectionPort, Neo4jGraph, OrderIntentProjection};
+use crate::core::database::{
+    GraphProjectionPort, Neo4jGraph, OrderIntentProjection, SubmittedEdgeProjection,
+};
 use crate::modules::orders::OrderSide;
 
 pub const ORDER_INTENT_STATUS_SUBMITTED: &str = "submitted";
@@ -11,6 +13,8 @@ pub struct RedactedOrderSubmitSnapshot {
     pub symbol: String,
     pub side: OrderSide,
     pub execution_mode: String,
+    /// Promoted bot from monitor/supervisor when present (F3.1 `SUBMITTED` edge).
+    pub submitting_bot_id: Option<String>,
 }
 
 pub fn redacted_order_submit_to_projection(
@@ -60,6 +64,26 @@ pub async fn best_effort_project_order_intent(
             %error,
             "neo4j order intent projection failed (order already committed)"
         );
+        return;
+    }
+    if let Some(bot_id) = snapshot
+        .submitting_bot_id
+        .as_deref()
+        .filter(|id| !id.trim().is_empty())
+    {
+        let edge = SubmittedEdgeProjection {
+            bot_id: bot_id.to_string(),
+            client_order_id: snapshot.client_order_id.clone(),
+        };
+        if let Err(error) = projector.project_submitted_edge(&edge).await {
+            tracing::warn!(
+                target: "database",
+                client_order_id = %snapshot.client_order_id,
+                bot_id = %bot_id,
+                %error,
+                "neo4j submitted edge projection failed (order already committed)"
+            );
+        }
     }
 }
 
@@ -78,6 +102,7 @@ mod unit_tests {
 
     struct RecordingPort {
         intents: Mutex<Vec<OrderIntentProjection>>,
+        edges: Mutex<Vec<SubmittedEdgeProjection>>,
     }
 
     #[async_trait::async_trait]
@@ -110,6 +135,14 @@ mod unit_tests {
             self.intents.lock().expect("lock").push(projection.clone());
             Ok(())
         }
+
+        async fn project_submitted_edge(
+            &self,
+            projection: &SubmittedEdgeProjection,
+        ) -> Result<(), GraphProjectionError> {
+            self.edges.lock().expect("lock").push(projection.clone());
+            Ok(())
+        }
     }
 
     #[test]
@@ -119,6 +152,7 @@ mod unit_tests {
             symbol: "BTC/USDT".into(),
             side: OrderSide::Buy,
             execution_mode: "dev_accept".into(),
+            submitting_bot_id: None,
         });
         assert_eq!(projection.client_order_id, "cid-1");
         assert_eq!(projection.side, "buy");
@@ -130,17 +164,85 @@ mod unit_tests {
     async fn project_via_port_records_redacted_intent() {
         let port = RecordingPort {
             intents: Mutex::new(Vec::new()),
+            edges: Mutex::new(Vec::new()),
         };
         let projection = redacted_order_submit_to_projection(&RedactedOrderSubmitSnapshot {
             client_order_id: "cid-2".into(),
             symbol: "ETH/USDT".into(),
             side: OrderSide::Sell,
             execution_mode: "paper".into(),
+            submitting_bot_id: None,
         });
         project_order_intent_via_port(&port, &projection)
             .await
             .expect("project");
         assert_eq!(port.intents.lock().expect("lock").len(), 1);
+    }
+
+    #[tokio::test]
+    async fn best_effort_records_submitted_edge_when_bot_id_present() {
+        struct LocalPort {
+            intents: Mutex<Vec<OrderIntentProjection>>,
+            edges: Mutex<Vec<SubmittedEdgeProjection>>,
+        }
+        #[async_trait::async_trait]
+        impl GraphProjectionPort for LocalPort {
+            async fn project_agent_hierarchy(
+                &self,
+                _: &crate::core::database::AgentHierarchyProjection,
+            ) -> Result<(), GraphProjectionError> {
+                Ok(())
+            }
+            async fn project_bot_catalog_entry(
+                &self,
+                _: &crate::core::database::BotCatalogProjection,
+            ) -> Result<(), GraphProjectionError> {
+                Ok(())
+            }
+            async fn project_bot_promotion(
+                &self,
+                _: &crate::core::database::BotPromotionProjection,
+            ) -> Result<(), GraphProjectionError> {
+                Ok(())
+            }
+            async fn project_order_intent(
+                &self,
+                projection: &OrderIntentProjection,
+            ) -> Result<(), GraphProjectionError> {
+                self.intents.lock().expect("lock").push(projection.clone());
+                Ok(())
+            }
+            async fn project_submitted_edge(
+                &self,
+                projection: &SubmittedEdgeProjection,
+            ) -> Result<(), GraphProjectionError> {
+                self.edges.lock().expect("lock").push(projection.clone());
+                Ok(())
+            }
+        }
+        // exercise via same logic as best_effort without Neo4jGraph
+        let snapshot = RedactedOrderSubmitSnapshot {
+            client_order_id: "cid-bot".into(),
+            symbol: "BTC/USDT".into(),
+            side: OrderSide::Buy,
+            execution_mode: "paper".into(),
+            submitting_bot_id: Some("bot-1".into()),
+        };
+        let projection = redacted_order_submit_to_projection(&snapshot);
+        let port = LocalPort {
+            intents: Mutex::new(Vec::new()),
+            edges: Mutex::new(Vec::new()),
+        };
+        project_order_intent_via_port(&port, &projection)
+            .await
+            .expect("intent");
+        port.project_submitted_edge(&SubmittedEdgeProjection {
+            bot_id: snapshot.submitting_bot_id.clone().expect("bot"),
+            client_order_id: snapshot.client_order_id.clone(),
+        })
+        .await
+        .expect("edge");
+        assert_eq!(port.edges.lock().expect("lock").len(), 1);
     }
 }
 
@@ -167,6 +269,7 @@ mod neo4j_integration_tests {
             symbol: "BTC/USDT".into(),
             side: OrderSide::Buy,
             execution_mode: "dev_accept".into(),
+            submitting_bot_id: None,
         };
         best_effort_project_order_intent(Some(&graph), &snapshot).await;
         let nodes = graph
@@ -174,5 +277,35 @@ mod neo4j_integration_tests {
             .await
             .expect("count");
         assert_eq!(nodes, 1);
+    }
+
+    #[tokio::test]
+    async fn neo4j_submitted_edge_after_order_intent_projection() {
+        if !crate::core::persistence::pg_integration::neo4j_stack_enabled() {
+            return;
+        }
+        let config = load_agents_stack_from_env().expect("config");
+        let graph = Neo4jGraph::connect(&config.neo4j).await.expect("connect");
+        let bot_id = format!(
+            "neo4j-bot-edge-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        );
+        let client_order_id = format!("neo4j-coid-{}", bot_id);
+        let snapshot = RedactedOrderSubmitSnapshot {
+            client_order_id,
+            symbol: "ETH/USDT".into(),
+            side: OrderSide::Sell,
+            execution_mode: "paper".into(),
+            submitting_bot_id: Some(bot_id.clone()),
+        };
+        best_effort_project_order_intent(Some(&graph), &snapshot).await;
+        let edges = graph
+            .count_submitted_edges(&bot_id, &snapshot.client_order_id)
+            .await
+            .expect("edges");
+        assert_eq!(edges, 1);
     }
 }

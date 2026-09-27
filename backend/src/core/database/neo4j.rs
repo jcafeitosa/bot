@@ -148,6 +148,33 @@ impl Neo4jGraph {
         Ok(nodes)
     }
 
+    /// Test-only helper for F3.1 `SUBMITTED` edge assertions.
+    #[cfg(test)]
+    pub async fn count_submitted_edges(
+        &self,
+        bot_id: &str,
+        client_order_id: &str,
+    ) -> Result<i64, Neo4jError> {
+        let mut rows = self
+            .inner_graph()
+            .execute(
+                query(
+                    "MATCH (b:Bot {bot_id: $bot_id})-[:SUBMITTED]->(o:OrderIntent {client_order_id: $client_order_id}) RETURN count(*) AS edges",
+                )
+                .param("bot_id", bot_id)
+                .param("client_order_id", client_order_id),
+            )
+            .await?;
+        let row = rows
+            .next()
+            .await?
+            .ok_or_else(|| Neo4jError::Probe("submitted edge count returned no row".into()))?;
+        let edges: i64 = row
+            .get("edges")
+            .map_err(|error| Neo4jError::Probe(error.to_string()))?;
+        Ok(edges)
+    }
+
     #[allow(dead_code)]
     pub async fn node_count(&self) -> Result<u64, Neo4jError> {
         let mut rows = self

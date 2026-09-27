@@ -15,8 +15,8 @@ pub use bundle::AppDatabases;
 pub use config::{load_agents_stack_from_env, postgres_url_from_env, DatabaseConfigError};
 pub use graph_projection::{
     AgentHierarchyProjection, BotCatalogProjection, BotPromotionProjection, GraphProjectionError,
-    GraphProjectionPort, OrderIntentProjection, ProjectedSupervisorKind, AGENTS_GRAPH_DOMAIN,
-    BOTS_GRAPH_DOMAIN, TRADING_GRAPH_DOMAIN,
+    GraphProjectionPort, OrderIntentProjection, ProjectedSupervisorKind, SubmittedEdgeProjection,
+    AGENTS_GRAPH_DOMAIN, BOTS_GRAPH_DOMAIN, TRADING_GRAPH_DOMAIN,
 };
 pub use monitor_bootstrap::{
     bootstrap_monitor_postgres, connect_postgres_for_monitor, postgres_for_cli_persist,

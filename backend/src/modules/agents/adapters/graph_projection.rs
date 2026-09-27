@@ -100,6 +100,13 @@ mod unit_tests {
         ) -> Result<(), GraphProjectionError> {
             Ok(())
         }
+
+        async fn project_submitted_edge(
+            &self,
+            _projection: &crate::core::database::SubmittedEdgeProjection,
+        ) -> Result<(), GraphProjectionError> {
+            Ok(())
+        }
     }
 
     fn sample_definition() -> AgentDefinition {

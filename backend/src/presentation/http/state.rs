@@ -491,6 +491,7 @@ impl ApiState {
                     symbol: symbol.clone(),
                     side: order_side,
                     execution_mode: self.order_execution_mode().as_api_label().to_string(),
+                    submitting_bot_id: None,
                 },
             )
             .await;

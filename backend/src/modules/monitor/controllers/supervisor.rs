@@ -15,6 +15,7 @@ use crate::modules::monitor::views::terminal_dashboard::{AppEvent, Dashboard, Mo
 use crate::modules::monitor::MonitorHandle;
 use crate::{
     core::config::{Config, RunMode},
+    core::database::Neo4jGraph,
     core::error::{BotError, BotResult},
     core::notifications::{LogNotifier, Notification, Notifier, Severity},
     core::persistence::Database,
@@ -56,6 +57,14 @@ fn monitor_spot_client_order_id(symbol: &str, candle_timestamp_ms: i64, side: Or
         OrderSide::Sell => "sell",
     };
     format!("mon:{compact}:{candle_timestamp_ms}:{side_label}")
+}
+
+fn monitor_submit_execution_mode(run_mode: RunMode, spot_seam: bool) -> &'static str {
+    match run_mode {
+        RunMode::Paper => "paper",
+        RunMode::Testnet if spot_seam => "live_exchange",
+        _ => "fail_closed",
+    }
 }
 
 fn record_monitor_spot_submit_reconciliation(client_order_id: &str, symbol: &str, side: OrderSide) {
@@ -133,6 +142,7 @@ struct EvaluationSettings<'a> {
     spot_account_id: &'a ExchangeAccountId,
     event_tx: &'a mpsc::Sender<AppEvent>,
     dashboard_tx: &'a watch::Sender<Dashboard>,
+    neo4j: Option<&'a Neo4jGraph>,
 }
 
 async fn apply_strategy_snapshot(
@@ -150,7 +160,7 @@ async fn apply_strategy_snapshot(
         spot_account_id,
         event_tx,
         dashboard_tx,
-        ..
+        neo4j,
     } = settings;
     info!(
         target: "market",
@@ -161,7 +171,7 @@ async fn apply_strategy_snapshot(
         "Market candle evaluated"
     );
     let bot_signal = BotSignal {
-        bot_id: promoted_bot_id,
+        bot_id: promoted_bot_id.clone(),
         signal: snapshot.signal,
     };
     info!(target: "strategy", bot_signal=?bot_signal, fast_sma=?snapshot.fast_sma, slow_sma=?snapshot.slow_sma, "Strategy state");
@@ -231,6 +241,19 @@ async fn apply_strategy_snapshot(
                                 &config.market.symbol,
                                 side,
                             );
+                            let execution_mode =
+                                monitor_submit_execution_mode(config.run_mode, spot_seam);
+                            crate::modules::orders::adapters::best_effort_project_order_intent(
+                                *neo4j,
+                                &crate::modules::orders::adapters::RedactedOrderSubmitSnapshot {
+                                    client_order_id: client_order_id.clone(),
+                                    symbol: config.market.symbol.clone(),
+                                    side,
+                                    execution_mode: execution_mode.to_string(),
+                                    submitting_bot_id: promoted_bot_id.clone(),
+                                },
+                            )
+                            .await;
                         }
                     }
                     Err(OrdersError::ExecutionDisabled) => info!(
@@ -325,6 +348,7 @@ struct MarketLoop {
     state_tx: watch::Sender<MonitorState>,
     interval: time::Interval,
     now_ms: Clock,
+    neo4j: Option<Neo4jGraph>,
 }
 
 struct EvaluationCandidate {
@@ -744,6 +768,7 @@ async fn run_market_loop(mut inputs: MarketLoop) {
                     spot_account_id: &inputs.account,
                     event_tx: &inputs.events,
                     dashboard_tx: &inputs.dashboard_tx,
+                    neo4j: inputs.neo4j.as_ref(),
                 };
                 if !apply_strategy_snapshot(candidate.snapshot, candidate.note, candidate.source, candidate.promoted_bot_id.clone(), &settings, &mut execution_ctx, &mut dashboard).await {
                     break;
@@ -984,6 +1009,7 @@ async fn run_with_agent_hook_inner(
             }
         })
     });
+    let neo4j = crate::core::database::AppDatabases::optional_neo4j_graph().await;
     let mut market_task = tokio::spawn(run_market_loop(MarketLoop {
         config: config.clone(),
         limits,
@@ -1005,6 +1031,7 @@ async fn run_with_agent_hook_inner(
         state_tx,
         interval,
         now_ms: Arc::new(|| chrono::Utc::now().timestamp_millis()),
+        neo4j,
     }));
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
@@ -1168,6 +1195,7 @@ mod tests {
             state_tx,
             interval: time::interval(poll_interval),
             now_ms: Arc::new(|| 420_000),
+            neo4j: None,
         }));
         (monitor_handle, event_rx, state_rx, handle)
     }
@@ -2472,6 +2500,7 @@ mod tests {
             spot_account_id: &account,
             event_tx: &events,
             dashboard_tx: &dashboard_tx,
+            neo4j: None,
         };
         let mut dashboard = new_dashboard(&config, limits);
         let snapshot = StrategySnapshot {
@@ -2538,6 +2567,7 @@ mod tests {
             spot_account_id: &account,
             event_tx: &events,
             dashboard_tx: &dashboard_tx,
+            neo4j: None,
         };
         let mut dashboard = new_dashboard(&config, limits);
         let snapshot = StrategySnapshot {
@@ -2598,6 +2628,7 @@ mod tests {
             spot_account_id: &account,
             event_tx: &events,
             dashboard_tx: &dashboard_tx,
+            neo4j: None,
         };
         let mut dashboard = new_dashboard(&config, limits);
         dashboard.persistence_status = "GAP · reconciliação externa necessária".into();

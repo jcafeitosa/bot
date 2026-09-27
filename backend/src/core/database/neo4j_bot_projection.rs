@@ -113,6 +113,13 @@ impl GraphProjectionPort for Neo4jBotProjector {
     ) -> Result<(), GraphProjectionError> {
         Ok(())
     }
+
+    async fn project_submitted_edge(
+        &self,
+        _projection: &super::graph_projection::SubmittedEdgeProjection,
+    ) -> Result<(), GraphProjectionError> {
+        Ok(())
+    }
 }
 
 fn validate_catalog_projection(

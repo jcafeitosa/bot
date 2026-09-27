@@ -1,7 +1,8 @@
 use neo4rs::query;
 
 use super::graph_projection::{
-    GraphProjectionError, GraphProjectionPort, OrderIntentProjection, TRADING_GRAPH_DOMAIN,
+    GraphProjectionError, GraphProjectionPort, OrderIntentProjection, SubmittedEdgeProjection,
+    BOTS_GRAPH_DOMAIN, TRADING_GRAPH_DOMAIN,
 };
 use super::neo4j::Neo4jGraph;
 
@@ -13,6 +14,15 @@ SET o.graph_domain = $graph_domain,
     o.status = $status,
     o.execution_mode = $execution_mode,
     o.submitted_at_ms = $submitted_at_ms
+";
+
+const MERGE_SUBMITTED_EDGE: &str = r"
+MERGE (o:OrderIntent {client_order_id: $client_order_id})
+SET o.graph_domain = $graph_domain
+WITH o
+MERGE (b:Bot {bot_id: $bot_id})
+SET b.graph_domain = $bots_graph_domain
+MERGE (b)-[:SUBMITTED]->(o)
 ";
 
 #[derive(Clone)]
@@ -73,6 +83,22 @@ impl GraphProjectionPort for Neo4jOrderIntentProjector {
             .await
             .map_err(|error| GraphProjectionError::Driver(error.to_string()))
     }
+
+    async fn project_submitted_edge(
+        &self,
+        projection: &SubmittedEdgeProjection,
+    ) -> Result<(), GraphProjectionError> {
+        validate_submitted_edge(projection)?;
+        let q = query(MERGE_SUBMITTED_EDGE)
+            .param("client_order_id", projection.client_order_id.as_str())
+            .param("graph_domain", TRADING_GRAPH_DOMAIN)
+            .param("bot_id", projection.bot_id.as_str())
+            .param("bots_graph_domain", BOTS_GRAPH_DOMAIN);
+        self.graph
+            .run_write(q)
+            .await
+            .map_err(|error| GraphProjectionError::Driver(error.to_string()))
+    }
 }
 
 fn validate_projection(projection: &OrderIntentProjection) -> Result<(), GraphProjectionError> {
@@ -83,6 +109,20 @@ fn validate_projection(projection: &OrderIntentProjection) -> Result<(), GraphPr
     }
     if projection.symbol.trim().is_empty() {
         return Err(GraphProjectionError::Invalid("symbol required".into()));
+    }
+    Ok(())
+}
+
+fn validate_submitted_edge(
+    projection: &SubmittedEdgeProjection,
+) -> Result<(), GraphProjectionError> {
+    if projection.bot_id.trim().is_empty() {
+        return Err(GraphProjectionError::Invalid("bot_id required".into()));
+    }
+    if projection.client_order_id.trim().is_empty() {
+        return Err(GraphProjectionError::Invalid(
+            "client_order_id required".into(),
+        ));
     }
     Ok(())
 }

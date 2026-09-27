@@ -156,6 +156,13 @@ mod unit_tests {
             Ok(())
         }
 
+        async fn project_submitted_edge(
+            &self,
+            _projection: &crate::core::database::SubmittedEdgeProjection,
+        ) -> Result<(), GraphProjectionError> {
+            Ok(())
+        }
+
         async fn project_bot_promotion(
             &self,
             projection: &BotPromotionProjection,

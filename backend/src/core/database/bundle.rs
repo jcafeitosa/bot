@@ -79,6 +79,24 @@ impl AppDatabases {
         Self { postgres, neo4j }
     }
 
+    /// Optional Neo4j handle when the agents stack is enabled (monitor / HTTP hooks).
+    pub async fn optional_neo4j_graph() -> Option<Neo4jGraph> {
+        match load_agents_stack_from_env() {
+            Ok(config) if config.enabled => match Neo4jGraph::connect(&config.neo4j).await {
+                Ok(graph) => Some(graph),
+                Err(error) => {
+                    warn!(target: "database", %error, "Neo4j enabled but connection failed");
+                    None
+                }
+            },
+            Ok(_) => None,
+            Err(error) => {
+                warn!(target: "database", %error, "invalid agents stack configuration");
+                None
+            }
+        }
+    }
+
     pub async fn bootstrap_monitor_postgres(
         persist_flag: Option<&str>,
         timeframe: &str,

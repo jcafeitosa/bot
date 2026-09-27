@@ -59,6 +59,13 @@ pub struct OrderIntentProjection {
     pub submitted_at_ms: i64,
 }
 
+/// Lineage edge `(:Bot)-[:SUBMITTED]->(:OrderIntent)` (F3.1); no secrets.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SubmittedEdgeProjection {
+    pub bot_id: String,
+    pub client_order_id: String,
+}
+
 #[derive(Debug, Error)]
 pub enum GraphProjectionError {
     #[error("graph projection driver error: {0}")]
@@ -87,5 +94,10 @@ pub trait GraphProjectionPort: Send + Sync {
     async fn project_order_intent(
         &self,
         projection: &OrderIntentProjection,
+    ) -> Result<(), GraphProjectionError>;
+
+    async fn project_submitted_edge(
+        &self,
+        projection: &SubmittedEdgeProjection,
     ) -> Result<(), GraphProjectionError>;
 }

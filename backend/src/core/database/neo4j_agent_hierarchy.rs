@@ -75,6 +75,13 @@ impl GraphProjectionPort for Neo4jAgentHierarchyProjector {
         Ok(())
     }
 
+    async fn project_submitted_edge(
+        &self,
+        _projection: &super::graph_projection::SubmittedEdgeProjection,
+    ) -> Result<(), GraphProjectionError> {
+        Ok(())
+    }
+
     async fn project_agent_hierarchy(
         &self,
         projection: &AgentHierarchyProjection,
