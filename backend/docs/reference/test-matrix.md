@@ -69,6 +69,8 @@ cargo clippy --locked --all-targets -- -D warnings
 ./scripts/check-import-direction.sh
 ./scripts/verify-backend-gates.sh
 
+O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default).
+
 cargo check --locked --all-targets
 exit 0; sem warnings
 
