@@ -14,7 +14,9 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 - [Guia de execução e operação](./operations/runbook.md) — pré-requisitos, inicialização, modos suportados, persistência e diagnóstico.
 - [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente e validações.
-- [Referência de módulos do backend](./architecture/backend-module-reference.md) — inventário módulo a módulo, interfaces, seams, fluxos e testes.
+- [Referência de módulos do backend](./architecture/backend-module-reference.md) — visão consolidada, interfaces, seams, fluxos e limites.
+- [Catálogo completo de módulos](./architecture/module-catalog.md) — todos os módulos Rust, submódulos de exchange, contratos e invariantes.
+- [Matriz de testes](./reference/test-matrix.md) — cobertura por módulo, integração, evidências e lacunas.
 - [Integrações do backend](./architecture/integrations.md) — Binance, ccxt, PostgreSQL, Jev, terminal e controles.
 - [Estado atual e planejamento](./planning/current-state-and-roadmap.md) — feito, pendências, bloqueios, gates e roadmap.
 - README do backend — visão geral, arquitetura e comandos rápidos.
