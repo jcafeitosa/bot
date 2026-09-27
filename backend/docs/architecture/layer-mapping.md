@@ -93,6 +93,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `persist_agent_after_mutation` | Agents PG write-through |
 | `bot_catalog_for_config`, `persist_bot_catalog`, `bot_catalog_snapshot` | Bots |
 | `bot_runtime_status`, `promote_bot_http`, `demote_bot_http` | Bots runtime seam (Gate 2 parcial) |
+| `GET /portfolio/paper-snapshot` | `ApiState::paper_wallet_snapshot` → `http_bridge/portfolio` + ledger paper |
 | `submit_order_http` (async) | Orders: risco + `HttpOrderExecutor`; reconciliação memória/PG; idempotência memória/PG |
 | `monitor_snapshot`, `accept_monitor_command` | Monitor |
 | `active_config_snapshot` (incl. `monitor_registry`), `providers_status_snapshot` | Config / providers |
