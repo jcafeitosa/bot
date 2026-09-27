@@ -29,6 +29,7 @@ PG_TESTS=(
   pg_submit_order_idempotency_reads_pg_when_memory_empty
   pg_register_agent_and_persist_cold_start_via_snapshot
   pg_http_boot_sequence_mirrors_serve_wiring
+  loads_credentials_from_postgres
 )
 
 for test_name in "${PG_TESTS[@]}"; do
