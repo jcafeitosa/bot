@@ -16,7 +16,7 @@ tags:
 
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
-| `modules/bots` | Fundação + ranking + PG + `BotRuntimePort` + `shared_bot_runtime()` + HTTP catalog/runtime | `modules/bots/tests.rs`, `runtime_port.rs`, `http_bridge/bots_runtime`, `server.rs` | Estratégia supervisor por `BotId` promovido; auth owner |
+| `modules/bots` | Fundação + ranking + PG + `BotRuntimePort` + `shared_bot_runtime()` + HTTP catalog/runtime | `modules/bots/tests.rs`, `runtime_port.rs`, `http_bridge/bots_runtime`, `server.rs` | Registry SMA por strategy@version; auth owner |
 | `modules/orders` | Seam fail-closed + `HttpOrderExecutor` (`BOT_ORDERS_EXECUTION`); HTTP 422/503 | `modules/orders/tests.rs`, `order_execution.rs`, `server.rs` | Adapter exchange, idempotência, auth |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hydrate no `serve` + `require_bound_agency` | `modules/agents/tests.rs`, `server.rs`, rotas agents | Auth owner produto (fora do seam `HttpAdminAuth`) |
 | `presentation/http` | OpenAPI ~33 paths, Scalar `/docs`, `HttpAdminAuth` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
@@ -41,7 +41,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace).
 
-Evidência (2026-09-27): **235** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
+Evidência (2026-09-27): **236** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -59,7 +59,7 @@ Evidência (2026-09-27): **235** testes no binário `bot`, **5** ignorados (`per
 | Completude bots | `modules/bots/`, `PgBotCatalogStore`, HTTP `/bots/*` | **Parcial** (sem runtime live) |
 | Completude orders | `submit_order`, HTTP 422/503, `HttpOrderExecutor` | **Parcial** (fail-closed default; sem exchange) |
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN`; opcional `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`; não substitui auth owner completo) |
-| Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge` (incl. `bots_runtime`), `ApiState` + enrich monitor/bot runtime, headless `publish_snapshot` via `monitor_snapshot_from_dashboard`, [layer-mapping.md](../architecture/layer-mapping.md) | **Feito** (sem loop de estratégia por bot promovido) |
+| Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge`, `ApiState`, monitor snapshot + `strategy_evaluation_binding` no supervisor (`BotSignal.bot_id`, SMA registry `sma-cross@1`) | **Parcial** (auth owner, orders exchange, agente→bot) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | 235 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
@@ -87,4 +87,4 @@ Evidência (2026-09-27): **235** testes no binário `bot`, **5** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **235** testes bin `bot`, **5** ignorados.
+Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **236** testes bin `bot`, **5** ignorados.
