@@ -32,7 +32,11 @@ async fn main() -> Result<()> {
     match cli.command {
         Some(BotCommand::Backtest(args)) => modules::backtest::cli::run(&args).await?,
         Some(BotCommand::Serve(args)) => {
-            let config = Config::load(&cli.monitor)?;
+            let mut monitor_cli = cli.monitor.clone();
+            if let Some(path) = args.config {
+                monitor_cli.config = path;
+            }
+            let config = Config::load(&monitor_cli)?;
             let _logging_guard = crate::core::logging::init(&config.logging)?;
             presentation::http::run_server(args.bind, config).await?;
         }
@@ -77,7 +81,8 @@ async fn main() -> Result<()> {
                 "Starting trading monitor"
             );
 
-            modules::monitor::run(config, database).await?;
+            let agent_hook = modules::agents::monitor_agent_hook_from_env();
+            modules::monitor::run_with_agent_hook(config, database, agent_hook).await?;
         }
     }
     Ok(())

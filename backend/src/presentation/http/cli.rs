@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
 use clap::Parser;
 
@@ -7,4 +8,7 @@ pub struct ServeCli {
     /// Socket address for the HTTP API (OpenAPI + Scalar UI).
     #[arg(long, default_value = "127.0.0.1:8080")]
     pub bind: SocketAddr,
+    /// Override bot.toml path for this API process (same as global `--config`).
+    #[arg(long)]
+    pub config: Option<PathBuf>,
 }

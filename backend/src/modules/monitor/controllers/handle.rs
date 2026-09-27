@@ -1,6 +1,8 @@
 #![allow(dead_code)]
 //! Public handle seam; snapshot publisher wiring follows in supervisor.
 
+use std::sync::Arc;
+
 use tokio::sync::{broadcast, mpsc, watch};
 use tokio_util::sync::CancellationToken;
 
@@ -14,6 +16,7 @@ pub struct MonitorHandle {
     commands: mpsc::Sender<MonitorCommand>,
     events: broadcast::Sender<MonitorEvent>,
     snapshots: watch::Sender<MonitorSnapshot>,
+    _snapshot_guard: Arc<watch::Receiver<MonitorSnapshot>>,
     cancellation: CancellationToken,
 }
 
@@ -35,11 +38,12 @@ impl MonitorHandle {
     ) {
         let (commands, command_rx) = mpsc::channel(command_capacity);
         let (events, event_rx) = broadcast::channel(event_capacity);
-        let (snapshots, _) = watch::channel(MonitorSnapshot::initial());
+        let (snapshots, snapshot_rx) = watch::channel(MonitorSnapshot::initial());
         let handle = Self {
             commands,
             events,
             snapshots,
+            _snapshot_guard: Arc::new(snapshot_rx),
             cancellation: CancellationToken::new(),
         };
         (handle, command_rx, event_rx)

@@ -22,6 +22,7 @@ pub fn v1_routes() -> Router<ApiState> {
     Router::new()
         .route("/meta", get(meta::meta))
         .route("/application/signals", get(application::list_signals))
+        .route("/config/active", get(config::config_active))
         .route("/config/snapshot", get(config::config_snapshot))
         .route("/providers/status", get(providers::provider_status))
         .route("/exchanges/catalog", get(exchanges::catalog))

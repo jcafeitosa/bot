@@ -21,6 +21,7 @@ use crate::presentation::http::error::ApiErrorBody;
         health::readyz,
         meta::meta,
         application::list_signals,
+        config::config_active,
         config::config_snapshot,
         providers::provider_status,
         exchanges::catalog,

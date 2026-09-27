@@ -213,7 +213,7 @@ struct MarketLoop {
     account: ExchangeAccountId,
     source: Arc<dyn MarketDataSource>,
     review: Review,
-    agent_hook: NoopMonitorAgentHook,
+    agent_hook: std::sync::Arc<dyn MonitorAgentHook>,
     persistence_enabled: bool,
     persist_rest: PersistRest,
     persist_ws: PersistWs,
@@ -630,7 +630,8 @@ async fn run_market_loop(mut inputs: MarketLoop) {
                 if candidate.snapshot.signal != Signal::Warmup {
                     feed.mark_evaluated(candidate.timestamp);
                 }
-                inputs.agent_hook.on_evaluation_cycle(&[]);
+                let evaluation_agents = inputs.agent_hook.evaluation_agents();
+                inputs.agent_hook.on_evaluation_cycle(&evaluation_agents);
                 let settings = EvaluationSettings {
                     config: &inputs.config,
                     limits: inputs.limits,
@@ -688,7 +689,17 @@ async fn run_market_loop(mut inputs: MarketLoop) {
     }
 }
 
+/// Monitor entry with default noop agent hook (see `run_with_agent_hook`).
+#[allow(dead_code)] // Public seam re-exported from `modules::monitor`.
 pub async fn run(config: Config, database: Option<Database>) -> BotResult<()> {
+    run_with_agent_hook(config, database, Arc::new(NoopMonitorAgentHook)).await
+}
+
+pub async fn run_with_agent_hook(
+    config: Config,
+    database: Option<Database>,
+    agent_hook: Arc<dyn MonitorAgentHook>,
+) -> BotResult<()> {
     let registry = load_registry(config.environment)
         .map_err(|e| crate::core::error::BotError::Configuration(e.to_string()))?;
     let spot = spot_account_for_symbol(&registry, config.environment, &config.market.symbol)?;
@@ -822,7 +833,7 @@ pub async fn run(config: Config, database: Option<Database>) -> BotResult<()> {
             let advisor = advisor.clone();
             Box::pin(async move { jev_note(&advisor, &snapshot).await })
         }),
-        agent_hook: NoopMonitorAgentHook,
+        agent_hook: agent_hook.clone(),
         persistence_enabled,
         persist_rest,
         persist_ws,
@@ -967,7 +978,8 @@ mod tests {
             account,
             source,
             review,
-            agent_hook: NoopMonitorAgentHook,
+            agent_hook: std::sync::Arc::new(NoopMonitorAgentHook)
+                as std::sync::Arc<dyn MonitorAgentHook>,
             persistence_enabled,
             persist_rest,
             persist_ws,

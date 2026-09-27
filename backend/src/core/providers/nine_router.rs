@@ -29,6 +29,7 @@ mod tests {
         std::env::set_var("NINE_ROUTER_BASE_URL", "https://router.example");
         let resolved = resolve_openai_base_url(&ProviderConfig {
             openai_base_url: Some("https://toml.example".into()),
+            nim_base_url: None,
         });
         std::env::remove_var("NINE_ROUTER_BASE_URL");
         assert_eq!(resolved.as_deref(), Some("https://router.example"));

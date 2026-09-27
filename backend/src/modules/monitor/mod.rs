@@ -16,7 +16,7 @@ pub use controllers::persistence_health::{PersistenceHealth, PersistenceState};
 pub use controllers::startup::{
     bootstrap_monitor, connect_database, persistence_required, MonitorStore, StartupError,
 };
-pub use controllers::supervisor::run;
+pub use controllers::supervisor::{run, run_with_agent_hook};
 pub use views::presentation_contract::{
     validate_bounded_label, validate_snapshot, Decimal, DecimalError, Environment,
     LabelValidationError, MonitorCommand, MonitorEvent, MonitorLogEntry, MonitorMarketSnapshot,

@@ -150,3 +150,28 @@ fn advisory_input_uses_jev_review_shape() {
     };
     assert_eq!(input.candle_timestamp_ms, 42);
 }
+
+#[test]
+fn registry_hook_lists_jev_consultants_only() {
+    use crate::modules::agents::MonitorAgentHook;
+    use std::sync::{Arc, Mutex};
+
+    use crate::modules::agents::RegistryMonitorAgentHook;
+
+    let mut registry = AgentRegistry::new();
+    registry.register(ceo_spec(), 1).unwrap();
+    let analyst = NewAgentSpec {
+        id: AgentId::new("analyst").unwrap(),
+        agency: agency(),
+        owner: owner(),
+        display_name: "Analyst".into(),
+        role: AgentRole::Ceo,
+        supervisor: SupervisorRef::Owner(owner()),
+        capabilities: AgentCapabilities { consult_jev: true },
+    };
+    registry.register(analyst, 2).unwrap();
+    let hook = RegistryMonitorAgentHook::new(Arc::new(Mutex::new(registry)), agency());
+    let ids = hook.evaluation_agents();
+    assert_eq!(ids.len(), 1);
+    assert_eq!(ids[0].as_str(), "analyst");
+}

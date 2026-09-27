@@ -30,3 +30,15 @@ pub async fn config_snapshot(
     .map_err(ApiError::from_bot_error)
     .map(Json)
 }
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/config/active",
+    tag = "config",
+    responses((status = 200, description = "Config loaded at API startup", body = ConfigSnapshotResponse))
+)]
+pub async fn config_active(
+    axum::extract::State(state): axum::extract::State<crate::presentation::http::state::ApiState>,
+) -> Json<ConfigSnapshotResponse> {
+    Json(config::map_config(state.app_config()))
+}

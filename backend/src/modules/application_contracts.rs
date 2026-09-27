@@ -21,6 +21,7 @@ pub fn signal_label(signal: Signal) -> &'static str {
     }
 }
 
+/// Optional simulation/backtest label on a signal — not `agents::AgentId` or future `modules/bots`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BotSignal {
     #[serde(skip_serializing_if = "Option::is_none")]
