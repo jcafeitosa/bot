@@ -25,6 +25,10 @@ pub fn typesafe_endpoint() -> String {
     env_override_string("TYPESAFE_ENDPOINT", &defaults.providers.typesafe_endpoint)
 }
 
+pub fn typesafe_model() -> String {
+    env_override_string("TYPESAFE_MODEL", "oc/jev-1.13-free")
+}
+
 pub fn openai_base_url_from_env() -> Option<String> {
     if let Some(url) =
         env_nonempty("NINE_ROUTER_BASE_URL").or_else(|| env_nonempty("OPENAI_BASE_URL"))
@@ -82,6 +86,23 @@ mod tests {
             });
             std::env::remove_var("NINE_ROUTER_BASE_URL");
             assert_eq!(resolved.as_deref(), Some("https://router.example"));
+        });
+    }
+
+    #[test]
+    fn typesafe_model_defaults_without_env() {
+        crate::core::test_env_lock::with_env_test_lock(|| {
+            std::env::remove_var("TYPESAFE_MODEL");
+            assert_eq!(typesafe_model(), "oc/jev-1.13-free");
+        });
+    }
+
+    #[test]
+    fn typesafe_model_env_override() {
+        crate::core::test_env_lock::with_env_test_lock(|| {
+            std::env::set_var("TYPESAFE_MODEL", "oc/custom-model");
+            assert_eq!(typesafe_model(), "oc/custom-model");
+            std::env::remove_var("TYPESAFE_MODEL");
         });
     }
 }

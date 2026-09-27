@@ -61,7 +61,7 @@ impl JevAdvisor {
             "signal": input.signal_label,
             "notice": "No API credentials, balances, account identifiers, or private order data are included."
         });
-        let body = json!({"state":state,"model":"jev-latest","questions":Value::Object(questions)});
+        let body = json!({"state":state,"model":crate::core::config::providers::typesafe_model(),"questions":Value::Object(questions)});
         let parsed = post_review(&self.client, &self.endpoint, body).await?;
         if let Some(model) = &parsed.model {
             tracing::debug!(target: "jev", model = %model, "TypeSafe response model");

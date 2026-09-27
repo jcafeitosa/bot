@@ -121,6 +121,7 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `PERSIST_MARKET_DATA=1` | Ativa a persistência opcional do monitor. |
 | `TYPESAFE_API_KEY` | Credencial para avaliações consultivas do Jev/TypeSafe quando habilitadas. |
 | `TYPESAFE_ENDPOINT` | Endpoint compatível alternativo (URL completa do advisory); HTTP só é aceito para localhost. |
+| `TYPESAFE_MODEL` | Modelo System One enviado ao endpoint TypeSafe; padrão `oc/jev-1.13-free`. |
 | `OPENAI_API_KEY` | Bearer alternativo quando `TYPESAFE_API_KEY` não está definida (proxies OpenAI-compatible). |
 | `OPENAI_BASE_URL` | Raiz OpenAI-compatible para `core::providers::openai_compatible` (ex.: proxy 9router). |
 | `NINE_ROUTER_BASE_URL` | Alias documentado para a mesma raiz; precede `OPENAI_BASE_URL`. |
@@ -188,4 +189,3 @@ Matriz e manifesto PG: [test-matrix](../reference/test-matrix.md). Auditoria do 
 ## Contratos de segurança
 
 O backend trabalha com dados públicos e não envia ordens no fluxo atual. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).
-

@@ -44,8 +44,11 @@ Não há documentação de **9router** no repositório; o alvo de deploy é conf
 |----------|--------|
 | `TYPESAFE_API_KEY` | Obrigatória com `jev.enabled=true` (fallback `OPENAI_API_KEY` para proxies compatíveis). |
 | `TYPESAFE_ENDPOINT` | URL completa do advisory (default TypeSafe SystemOne). |
+| `TYPESAFE_MODEL` | Modelo System One enviado no payload; default `oc/jev-1.13-free`. |
 | `OPENAI_API_KEY` | Fallback de bearer quando `TYPESAFE_API_KEY` ausente. |
 | `OPENAI_BASE_URL` | Base OpenAI-compatible (`/v1/chat/completions` via cliente). |
 | `NINE_ROUTER_BASE_URL` | Alias documentado para 9router; precede `OPENAI_BASE_URL` na resolução de base. |
+
+Validação: `typesafe_model()` em `core/config/providers/file.rs` (default `oc/jev-1.13-free`; override `TYPESAFE_MODEL`). O payload advisory em `JevAdvisor` usa esse valor no campo `model` (substitui o identificador fixo legado `jev-latest`).
 
 NVIDIA NIM (provider adicional, não usado pelo Jev default): ver [core-providers-nim-sdd.md](./core-providers-nim-sdd.md).
