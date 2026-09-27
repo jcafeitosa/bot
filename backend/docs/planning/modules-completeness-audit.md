@@ -62,7 +62,7 @@ Evidência (2026-09-27): **303** testes no binário `bot`, **6** ignorados (`per
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
 | Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta` (`http_seams`) + testes `meta_and_*_agree_on_*`; `http_bridge` → domain; catálogo `monitor_evaluator`; orders/bots/agents v1; PG boot hydrate | **Parcial** (auth owner, exchange adapter) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 302 + clippy/fmt/import; PG 5/5 opcional (`run-pg-integration-tests.sh`) | **Feito** |
+| Build/testes verdes | 303 + clippy/fmt/import; PG 5/5 opcional (`run-pg-integration-tests.sh`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -73,7 +73,7 @@ Evidência (2026-09-27): **303** testes no binário `bot`, **6** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 302 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 303 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)

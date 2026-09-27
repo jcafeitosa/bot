@@ -47,3 +47,17 @@ O teste PostgreSQL ignorado e V18 requerem database `trading_bot` **descartável
 2. Manter o índice, catálogo, matriz de testes e análise de lacunas sincronizados quando os contratos mudarem.
 3. Preparar V18 em banco PostgreSQL descartável e isolado quando houver ambiente acessível; registrar setup e execução reais.
 4. Consolidar G4 após C17, D19 e V18, sem antecipar lançamento.
+
+## Trilha paralela — completude bots / orders / agents / HTTP
+
+Rastreada em [modules-completeness-audit.md](./modules-completeness-audit.md) (goal ativo, distinto do plano T-05…T-15 acima).
+
+| Fatia | Estado (2026-09-27) | Próximo passo |
+|-------|---------------------|---------------|
+| HTTP seams (`/meta`, execution-status, admin bearer) | Implementado + testes `meta_and_*` | Auth owner produto |
+| Bots runtime G2 | Parcial: `MonitorEvaluatorKind`, catálogo `monitor_evaluator`, `evaluate_for_kind` | Auth owner; runtime injetado vs `serve` |
+| Orders G2 | Parcial: `RecordingExecutor`, idempotência, `live_exchange_not_wired` | Adapter exchange real + threat model |
+| Agents G1 | Registry + PG + `promote_runtime_bot` capability | Auth owner verificável |
+| Evidência | `./scripts/verify-backend-gates.sh` verde; **303** testes bin `bot`, **6** ignorados | Revisão Critic AGENTS.md (instância separada) |
+
+Esta trilha não substitui C17/V18; compartilha apenas o gate de verificação (`verify-backend-gates.sh`).

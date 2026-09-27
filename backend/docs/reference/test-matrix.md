@@ -28,17 +28,17 @@ tags:
 | `config` | Defaults dev/observe, produção fail-closed, presets e rejeição de HFT em feed REST 1m. |
 | `market` | Rejeita barra parcial, gaps, duplicatas e dados incompatíveis; preserva OHLCV no round-trip. |
 | `market_feed` | Uma avaliação por timestamp, upsert WS, catch-up REST, contiguidade, watermark monotônico e preenchimento tardio. |
-| `strategy` | Períodos por operação e sinais de cruzamento. |
+| `strategy` | Períodos por operação; `evaluate` / `evaluate_ema` / `evaluate_for_kind` (SMA e EMA). |
 | `risk` | Limite conservador/agressivo, tamanho, stop/take profit e incompatibilidade de modo. |
 | `agents` | Registry, lifecycle, `assert_runtime_promotion_authorized` (capability + not-active), PG snapshot. |
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` em `server.rs`. |
-| `http_bridge/bots` | `assert_catalog_contains_bot`, `assert_bot_promotion_allowed` (v1/v2 `monitor_registry` + mercado); `catalog_for_config_includes_monitor_strategy_periods`; `catalog_gate_tests`. |
+| `http_bridge/bots` | Catálogo com `monitor_evaluator` (`catalog_for_config_exposes_ema_evaluator_from_registry`); promote/catalog gates v1/v2. |
 | `orders` | `RecordingExecutor` (`submit_invokes_*`, `recording_executor_accumulates_successful_executions`); `ReservedLiveExchangeExecutor`; idempotência PG (ignorado). |
-| `bots` | Identidade, ranking, `build_catalog_from_monitor_registry` (multi-estratégia registrada), `BotRuntimePort` + `shared_bot_runtime()`, `MonitorStrategyRegistry`, `strategy_evaluation_binding`, métricas coerentes com `BotId`. |
+| `bots` | `MonitorEvaluatorKind`; `strategy_evaluation_binding_uses_ema_evaluator_from_registry`; runtime promote; catálogo multi-estratégia. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
-| `backtest` | Fees, next-open, slippage na venda, stop/take-profit, histórico insuficiente e ausência de lookahead. |
+| `backtest` | `run_sma_crossover` respeita `StrategyDefinition::evaluator`; fees, slippage, stop/take-profit (`ema_crossover_backtest_uses_strategy_evaluator`). |
 | `domain` | Ranking, métricas, janela de avaliação e tipos de identidade. |
 | `exchanges/mod` | Chave de conta estável e rótulo vazio rejeitado. |
 | `exchanges/account_file` | Parsing, seleção de ambiente e validação de origem. |
@@ -54,7 +54,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **34** paths; bots v2 end-to-end (`persist_catalog_then_promote_monitor_registry_v2_bot` incl. `strategy_evaluation_binding`); orders/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **34** paths; `GET /meta` + `meta_and_*_agree_on_*`; catálogo `monitor_evaluator` (`bots_catalog_http_lists_ema_evaluator_from_monitor_registry`); bots runtime promote; orders/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
