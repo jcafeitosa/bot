@@ -219,7 +219,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 
 - Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **386** testes no bin `bot`, **17** ignorados; PG **15/15** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
-- Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) existem como testes `#[ignore]` — exigem `DATABASE_URL` → `trading_bot` (PG 18+).
+- Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) em testes com skip via `pg_integration` — exercício real exige `DATABASE_URL` → `trading_bot` (PG 18+).
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.
 - A manutenção do vendor `ccxt-core` exige repetir a política de redirect e a prova HTTP após atualizações.
 - Não existe execução financeira live, saldo privado ou produção; o seam `orders` e o HTTP de submit falham fechado após validação de risco.
