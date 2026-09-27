@@ -38,6 +38,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 ## Planejamento
 
 - [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md)
+- [Status de implementação MVC mínimo](./architecture/module-implementation-status.md) — checklist `core`/`modules`/`presentation` e veredito vs goal de completude
 - [Plano de execução das correções pendentes do backend](./planning/backend-work-plan.md) — sequência de entregas, gates, dependências e bloqueios atuais.
 - [Análise de módulos ainda não desenvolvidos](./planning/unimplemented-modules-analysis.md) — capacidades previstas sem implementação completa, dependências e ordem recomendada.
 - [Auditoria completa de docs](./planning/docs-audit.md) — estrutura canônica, duplicidades, fontes preservadas e estado do grafo.

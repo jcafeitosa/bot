@@ -51,7 +51,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | Rotas Axum, OpenAPI, Scalar, `serve`, bots persist/snapshot, orders 422/503, admin bearer 401/403; `BOT_HTTP_AGENCY_ID` em list/get/audit/lifecycle agents (bots, orders, monitor commands), PG hydrate. | `presentation/http/server.rs`, `admin_auth.rs`. |
+| `presentation/http` | Rotas Axum, OpenAPI, Scalar, `serve`, `ApiState` (monitor snapshot/commands, orders submit, bots persist), admin bearer 401/403; `BOT_HTTP_AGENCY_ID` em rotas agents; PG hydrate. | `presentation/http/server.rs`, `state.rs`, `admin_auth.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
@@ -71,7 +71,7 @@ cargo test --locked
 5 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, pg identity, market, neo4j)
 ```
 
-Bin `bot`: 203 aprovados, 5 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
+Bin `bot`: 204 aprovados, 5 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
 
 ## Lacunas explícitas
 
