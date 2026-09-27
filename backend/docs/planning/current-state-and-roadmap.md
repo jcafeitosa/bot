@@ -41,10 +41,10 @@ tags:
 | Item | Estado atual | Documento |
 |---|---|---|
 | T-03 — configuração, mercado e organização | Proposta; Gate 1 não comprovado nesta revisão. | [SDD T-03](../sdd/backend-corrections-sdd.md) |
-| T-05 — redirects REST | Design e prova HTTP observável aprovados; loopback validado fora do sandbox. | [SDD T-05](../sdd/rest-redirect-sdd.md) |
-| T-07 — fixture e slippage | Design e parte da implementação/testes registrados; revisão documental acompanha os gates. | [SDD T-07](../sdd/backtest-trades-and-slippage-sdd.md) |
+| T-05 — redirects REST | C9/C10 aprovados com follow-up; G4 ainda pendente. | [SDD T-05](../sdd/rest-redirect-sdd.md) |
+| T-07 — fixture e slippage | C12/C13 aprovados com follow-up; G4 documental ainda pendente. | [SDD T-07](../sdd/backtest-trades-and-slippage-sdd.md) |
 | T-10 — pausa/retomada | C14/C15 implementados e aprovados com follow-up; C17 ainda depende do sinal de overflow no estado de persistência. | [SDD T-10](../sdd/monitor-pause-resume-sdd.md) |
-| T-13 — limpeza de arquivos legados | Design e implementação registrados como aprovados, sujeito à verificação do worktree. | [SDD T-13](../sdd/legacy-file-cleanup-sdd.md) |
+| T-13 — limpeza de arquivos legados | Design e implementação aprovados; manter verificação do worktree como controle de regressão. | [SDD T-13](../sdd/legacy-file-cleanup-sdd.md) |
 | T-15 — persistência opcional | C16 aprovado com follow-up; C17, G4 e V18 continuam pendentes. | [SDD T-15](../sdd/monitor-persistence-policy-sdd.md) |
 | T-16 — mapa de módulos | Documentação do README concluída conforme o SDD. | [SDD T-16](../sdd/backend-module-map-sdd.md) |
 
