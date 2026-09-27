@@ -106,7 +106,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 
 ## Lacunas conscientes
 
-- Monitor testnet: `submit_order` sem `client_order_id` nem ledger `ApiState` (reconciliação HTTP wired apenas).
+- Monitor testnet (seam recording/testnet): `client_order_id` `mon:{symbol}:{ts}:{side}` + `shared_live_order_reconciliation_ledger` com HTTP `ApiState`.
 - Monitor `RunMode::Paper` grava fills no mesmo `PaperLedgerExecutor` que HTTP/portfolio (`paper_run_mode_*` + `http_bridge::portfolio`); `RunMode::Testnet` usa `ExchangeSpotExecutor` quando `BOT_ORDERS_EXCHANGE_SUBMIT` está ativo; demais modos fail-closed.
 - Runtime live de bots e execução exchange: ports existem; implementação live pendente.
 - Auth owner verificável: seam HTTP em [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
