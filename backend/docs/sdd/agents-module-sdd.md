@@ -143,6 +143,6 @@ modules/agents/
 | Seam HTTP admin (`BOT_HTTP_*`) | [http-admin-auth-seam-sdd.md](./http-admin-auth-seam-sdd.md) | Sim (não é auth owner) |
 | Capability `promote_runtime_bot` + HTTP promote | `bot_promotion.rs`, migração `0005`, `server.rs` | Sim (seam) |
 | Autenticação verificável do owner humano | pesquisa § Etapa 1 item 4 | **Não** |
-| Bootstrap inicial único e auditado | pesquisa § bloqueador | **Não** |
+| Bootstrap inicial único e auditado | `0010_product_owner_bootstrap`, `BOT_PRODUCT_OWNER_BOOTSTRAP_*`, [owner bootstrap G1](./agents-owner-bootstrap-g1-sdd.md) | **Parcial** (PG+ACK; não IdP) |
 | Revisão Critic G1 + contrato público acordado | AGENTS.md | **Não** |
 | `./scripts/verify-backend-gates.sh` verde | **432** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |

@@ -1380,3 +1380,52 @@ async fn provider_credentials_admin_list_requires_admin_bearer_when_enabled() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
+
+#[tokio::test]
+async fn agents_register_rejects_owner_mismatch_when_product_owner_verified() {
+    use crate::modules::agents::VerifiedProductOwner;
+
+    let app = build_router(ApiState::with_agent_registry_and_verified_owner(
+        None,
+        AppDatabases::empty(),
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::disabled(),
+        VerifiedProductOwner::for_test("owner-verified"),
+    ));
+    let denied = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/agents")
+                .header("content-type", "application/json")
+                .body(Body::from(AGENT_REGISTER_JSON))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+    let body: serde_json::Value = serde_json::from_slice(
+        &axum::body::to_bytes(denied.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(body["code"], "owner_mismatch");
+
+    let ok_body = r#"{"agency":"acme","owner_id":"owner-verified","agent_id":"ceo","display_name":"CEO","role":"ceo","supervisor":{"kind":"owner","owner_id":"owner-verified"},"consult_jev":false}"#;
+    let ok = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/agents")
+                .header("content-type", "application/json")
+                .body(Body::from(ok_body))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(ok.status(), StatusCode::CREATED);
+}

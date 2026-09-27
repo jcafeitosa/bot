@@ -36,10 +36,11 @@ PG_TESTS=(
   loads_credentials_from_postgres
   pg_graph_projection_outbox_enqueue_and_drain_mock
   pg_graph_projection_outbox_drain_marks_retry_on_port_failure
+  pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed
 )
 
 # Keep in sync with docs (test-matrix, modules-completeness-audit, README).
-EXPECTED_PG_INTEGRATION_TESTS=20
+EXPECTED_PG_INTEGRATION_TESTS=21
 if [[ ${#PG_TESTS[@]} -ne ${EXPECTED_PG_INTEGRATION_TESTS} ]]; then
   echo "error: PG_TESTS manifest drift: expected ${EXPECTED_PG_INTEGRATION_TESTS}, got ${#PG_TESTS[@]}" >&2
   exit 1

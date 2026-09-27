@@ -9,7 +9,7 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-gates.sh` → **432** passed, **0** ignored; PG **20/20** com `DATABASE_URL` via `run-pg-integration-tests.sh`). Orders PG indisponível → `OrdersError::StoreUnavailable` / HTTP **503** `order_store_unavailable`.  
+**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-gates.sh` → **437** passed, **0** ignored; PG **20/20** com `DATABASE_URL` via `run-pg-integration-tests.sh`). Orders PG indisponível → `OrdersError::StoreUnavailable` / HTTP **503** `order_store_unavailable`.  
 **Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
 **Fatia goal completude (HTTP):** `presentation/http/http_integration_tests.rs` — bearer admin, owner bind verificável no seam (`BOT_HTTP_OWNER_ID` + token), orders executors, portfolio paper, catálogo `monitor_registry` v2; smoke/meta/OpenAPI em `server.rs`. Baseline docs: linha `OK:` de `verify-backend-gates.sh`.  
 **Fatia PG / grafo:** agents/bots write-through + hydrate; orders `0004`/`0006`; `provider_credentials` `0007`; **F2.1** outbox Neo4j `0009` (`5061a14f`); boot `build_api_state_for_http_serve` (**20/20** script). **Gate 1 HTTP (parcial):** [http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md) — seam `BOT_HTTP_*` fechado; auth owner humano (IdP/bootstrap) ainda pendente. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (auth owner + Critic AGENTS.md).

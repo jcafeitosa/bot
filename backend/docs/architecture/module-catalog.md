@@ -56,7 +56,7 @@ flowchart LR
 | raiz | `main` | `main() -> anyhow::Result` | Monitor ou `backtest`; bootstrap de persistência via `modules::monitor::startup`. | CLI/config indiretos. |
 | `core` | `config` | `Config::load`, `Config::validate` | TOML em `src/core/config/`, overrides CLI, validação. | `tests/config_cli.rs`, testes do módulo. |
 | `core` | `error` / `logging` | `BotError`, `init` | Erros e tracing compartilhados. | Consumidores. |
-| `core` | `database` | `AppDatabases`, `PostgresDatabase`, `Neo4jGraph` | Dual-store PG 18+ (Timescale/pgvector) + Neo4j; pool, migrate, health. Domínio ainda não projeta no grafo — ver [unified-neo4j-graph-strategy.md](./unified-neo4j-graph-strategy.md). | Testes unitários; PG/Neo4j via `pg_integration` (skip sem env). |
+| `core` | `database` | `AppDatabases`, `PostgresDatabase`, `Neo4jGraph`, `graph_projection_outbox` | Dual-store PG 18+ (Timescale/pgvector) + Neo4j; migrações até `0009` outbox; projeção write-only F1–F3.1 + drain inline/worker F2.1.2 — [unified-neo4j-graph-strategy.md](./unified-neo4j-graph-strategy.md), [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md). | PG **20/20** script; testes `pg_graph_projection_outbox_*`; Neo4j via `pg_integration` (skip sem stack). |
 | `core` | `persistence` | `Database`, `persist_dataset` | Fachada de domínio sobre `PostgresDatabase`; conflito de manifesto → `DatasetManifestConflict`; lock `pg_advisory_xact_lock(hashtext(dataset_id))` na transação. | `manifest_match_*`, `postgres_scaffold_*`, `persist_dataset_*` (script PG **20/20** com `DATABASE_URL`). |
 | `modules` | `monitor` | `run`, `bootstrap_monitor` | Supervisor REST/WS, pausa/retomada, dashboard, persistência. | Testes em `supervisor.rs` e controllers. |
 | `modules` | `market` | candles, `HybridCandleFeed` | Validação, agregação 1m, feed híbrido. | Testes de feed e modelos. |
@@ -147,9 +147,9 @@ Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog p
 | Peça | Comportamento |
 |---|---|
 | `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
-| `state` | `ApiState` (composition root); agents/bots/orders/portfolio (`submit_order_http`, `paper_wallet_snapshot`, `bot_ranking_from_metrics`, catálogo PG); `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); testes PG via `pg_integration` (skip sem `DATABASE_URL`) — [test-matrix](../reference/test-matrix.md). |
+| `state` | `ApiState` (composition root); `graph_projection_sync()` para outbox Neo4j; agents/bots/orders/portfolio (`submit_order_http`, `paper_wallet_snapshot`, catálogo PG); `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); testes PG via `pg_integration` (skip sem `DATABASE_URL`) — [test-matrix](../reference/test-matrix.md). |
 | `server::run` | Bootstrap `AppDatabases`, `ApiState::build_api_state_for_http_serve` (agents PG + env seams + reconciliação hydrate + catálogo), poll reconciliação em background (opcional), Axum + Scalar. |
-| `routes/*` | Superfície v1: agents, bots (catalog `monitor_evaluator` + runtime), orders, monitor, risk, backtest, `config/active` e `config/snapshot` (`monitor_registry[].evaluator`), health, `GET /meta` (`http_seams`). |
+| `routes/*` | Superfície v1: agents, bots (catalog `monitor_evaluator` + runtime), orders (**503** `order_store_unavailable` quando PG de idempotência falha), monitor, risk, backtest, `config/active` e `config/snapshot` (`monitor_registry[].evaluator`), `GET /healthz` (opcional `graph_projection_outbox` + `degraded`), `GET /meta` (`http_seams`). |
 | `http_integration_tests` (test) | Rotas mutantes + submit orders (paper/dev_accept/live_exchange) via `build_router` — [test-matrix § bearer](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token). |
 
 Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `bots/runtime/promote|demote`, `orders/submit`, `orders/reconciliation/poll`, `monitor/commands`.

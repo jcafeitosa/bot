@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
+use crate::core::config::ProductOwnerBootstrapConfig;
 use crate::core::database::{AppDatabases, GraphProjectionSync};
 use crate::core::error::BotError;
 use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
-use crate::modules::agents::AgentRegistry;
+use crate::modules::agents::adapters::ensure_product_owner_bootstrapped;
+use crate::modules::agents::{AgentRegistry, VerifiedProductOwner};
 use crate::modules::bots::{BotCatalogBackend, BotCatalogStore, BotRuntimePort};
 use crate::modules::bots::{BotPromotionRecord, BotRuntimeStatus, PromoteBotRequest};
 use crate::modules::config_api::Config;
@@ -36,6 +38,7 @@ pub struct HttpApiSeams {
     pub admin_auth: HttpAdminAuth,
     pub order_executor: HttpOrderExecutor,
     pub bot_runtime: Arc<dyn BotRuntimePort>,
+    pub verified_product_owner: Option<VerifiedProductOwner>,
 }
 
 impl HttpApiSeams {
@@ -45,6 +48,7 @@ impl HttpApiSeams {
             admin_auth: HttpAdminAuth::disabled(),
             order_executor: HttpOrderExecutor::fail_closed(),
             bot_runtime: Arc::new(FailClosedBotRuntime),
+            verified_product_owner: None,
         }
     }
 
@@ -54,6 +58,7 @@ impl HttpApiSeams {
             admin_auth: HttpAdminAuth::from_env(),
             order_executor: HttpOrderExecutor::from_env(),
             bot_runtime: shared_bot_runtime(),
+            verified_product_owner: None,
         }
     }
 
@@ -62,6 +67,7 @@ impl HttpApiSeams {
             admin_auth: auth,
             order_executor: HttpOrderExecutor::fail_closed(),
             bot_runtime: Arc::new(crate::modules::bots::FailClosedBotRuntime),
+            verified_product_owner: None,
         }
     }
 
@@ -71,6 +77,7 @@ impl HttpApiSeams {
             admin_auth: auth,
             order_executor,
             bot_runtime: Arc::new(crate::modules::bots::FailClosedBotRuntime),
+            verified_product_owner: None,
         }
     }
 
@@ -80,6 +87,7 @@ impl HttpApiSeams {
             admin_auth: auth,
             order_executor: HttpOrderExecutor::fail_closed(),
             bot_runtime,
+            verified_product_owner: None,
         }
     }
 
@@ -130,6 +138,7 @@ pub struct ApiStateInner {
     pub order_reconciliation: Arc<InMemoryOrderReconciliationLedger>,
     pub order_reconciliation_pg: Option<PgOrderReconciliationStore>,
     pub bot_runtime: Arc<dyn BotRuntimePort>,
+    pub verified_product_owner: Option<VerifiedProductOwner>,
 }
 
 impl ApiState {
@@ -149,6 +158,7 @@ impl ApiState {
                 &databases,
             ))),
             HttpApiSeams::disabled_fail_closed(),
+            None,
         )
     }
 
@@ -170,9 +180,32 @@ impl ApiState {
                 &databases,
             ))),
             HttpApiSeams::with_admin(http_admin_auth),
+            None,
         )
     }
 
+    pub fn with_agent_registry_and_verified_owner(
+        monitor: Option<MonitorHandle>,
+        databases: AppDatabases,
+        jev: Option<JevAdvisor>,
+        app_config: Config,
+        agents: Arc<std::sync::Mutex<AgentRegistry>>,
+        http_admin_auth: HttpAdminAuth,
+        verified_product_owner: VerifiedProductOwner,
+    ) -> Self {
+        Self::with_stores(
+            monitor,
+            databases.clone(),
+            jev,
+            app_config,
+            agents,
+            Arc::new(tokio::sync::Mutex::new(BotCatalogBackend::from_databases(
+                &databases,
+            ))),
+            HttpApiSeams::with_admin(http_admin_auth),
+            Some(verified_product_owner),
+        )
+    }
     /// Bootstrap `ApiState` for the HTTP server (admin + order execution from environment).
     pub fn for_http_server(
         monitor: Option<MonitorHandle>,
@@ -180,6 +213,7 @@ impl ApiState {
         jev: Option<JevAdvisor>,
         app_config: Config,
         agents: Arc<std::sync::Mutex<AgentRegistry>>,
+        verified_product_owner: Option<VerifiedProductOwner>,
     ) -> Self {
         Self::with_stores(
             monitor,
@@ -191,6 +225,7 @@ impl ApiState {
                 &databases,
             ))),
             HttpApiSeams::from_env(),
+            verified_product_owner,
         )
     }
 
@@ -225,8 +260,37 @@ impl ApiState {
                 }
             }
         }
+        let bootstrap_config = ProductOwnerBootstrapConfig::from_env();
+        let mut verified_product_owner = None;
+        if let Some(db) = databases.postgres_handle() {
+            let pool = db.as_postgres().pool();
+            let now_ms = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as i64)
+                .unwrap_or(0);
+            match ensure_product_owner_bootstrapped(pool, &bootstrap_config, now_ms).await {
+                Ok(owner_opt) => {
+                    verified_product_owner = owner_opt.map(VerifiedProductOwner::new);
+                }
+                Err(error) => {
+                    tracing::error!(target: "api", %error, "product owner bootstrap failed");
+                    if let Ok(Some(owner)) =
+                        crate::modules::agents::adapters::load_bootstrapped_owner_id(pool).await
+                    {
+                        verified_product_owner = Some(VerifiedProductOwner::new(owner));
+                    }
+                }
+            }
+        }
         let jev = JevAdvisor::from_env(app_config.jev.clone()).ok().flatten();
-        let state = Self::for_http_server(monitor, databases, jev, app_config, agents);
+        let state = Self::for_http_server(
+            monitor,
+            databases,
+            jev,
+            app_config,
+            agents,
+            verified_product_owner,
+        );
         if state.database().is_some() {
             if let Err(error) = state.hydrate_order_reconciliation_from_pg().await {
                 tracing::warn!(
@@ -242,6 +306,7 @@ impl ApiState {
         state
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn with_stores(
         monitor: Option<MonitorHandle>,
         databases: AppDatabases,
@@ -250,6 +315,7 @@ impl ApiState {
         agents: Arc<std::sync::Mutex<AgentRegistry>>,
         bot_catalog: Arc<tokio::sync::Mutex<BotCatalogBackend>>,
         http_seams: HttpApiSeams,
+        verified_product_owner: Option<VerifiedProductOwner>,
     ) -> Self {
         let order_idempotency_pg = databases
             .postgres_handle()
@@ -278,6 +344,7 @@ impl ApiState {
                     crate::modules::orders::shared_live_order_reconciliation_ledger(),
                 order_reconciliation_pg,
                 bot_runtime: http_seams.bot_runtime,
+                verified_product_owner,
             }),
         }
     }
@@ -364,6 +431,7 @@ impl ApiState {
                 &databases,
             ))),
             HttpApiSeams::with_bot_runtime(http_admin_auth, bot_runtime),
+            None,
         )
     }
 
@@ -387,6 +455,7 @@ impl ApiState {
                 &databases,
             ))),
             HttpApiSeams::with_order_executor(http_admin_auth, order_executor),
+            None,
         )
     }
 
@@ -535,6 +604,10 @@ impl ApiState {
         self.inner.http_admin_auth.owner_binding_active()
     }
 
+    pub fn product_owner_bootstrap_active(&self) -> bool {
+        self.inner.verified_product_owner.is_some()
+    }
+
     pub fn http_agency_binding_active(&self) -> bool {
         self.inner.http_admin_auth.agency_binding_active()
     }
@@ -669,9 +742,11 @@ impl ApiState {
     }
 
     pub fn require_register_owner_id(&self, owner_id: &str) -> Result<(), ApiError> {
-        self.inner
-            .http_admin_auth
-            .verify_register_owner_id(owner_id)
+        crate::presentation::http::register_owner::verify_register_owner_id(
+            self.inner.verified_product_owner.as_ref(),
+            &self.inner.http_admin_auth,
+            owner_id,
+        )
     }
 
     pub async fn persist_bot_catalog(&self) -> Result<BotCatalogPersistResponse, BotError> {
@@ -1279,6 +1354,7 @@ mod state_tests {
                 None,
                 Config::default(),
                 Arc::new(std::sync::Mutex::new(AgentRegistry::new())),
+                None,
             );
             assert_eq!(state.order_execution_mode(), HttpOrderExecutionMode::Paper);
             std::env::remove_var("BOT_ORDERS_EXECUTION");
@@ -1296,6 +1372,7 @@ mod state_tests {
                 None,
                 Config::default(),
                 Arc::new(std::sync::Mutex::new(AgentRegistry::new())),
+                None,
             );
             let shared = shared_bot_runtime();
             assert!(std::sync::Arc::ptr_eq(

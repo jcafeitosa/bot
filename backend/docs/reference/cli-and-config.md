@@ -134,7 +134,11 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_PAPER_FILL_UNIT_PRICE` | Opcional com `paper`: preço quote/base usado no ledger para calcular `positions` no snapshot HTTP (ex.: `50000` para BTC/USDT). |
 | `client_order_id` (body HTTP) | Campo opcional em `POST /api/v1/orders/submit`; replays retornam `accepted: true` sem reexecutar (memória; PG quando `DATABASE_URL` + migração `0004`). Com `live_exchange_wired`, reconciliação `pending`→`reconciled` (memória + PG `0006`); consulta `GET /api/v1/orders/reconciliation/{client_order_id}`; testnet usa `newClientOrderId` no submit; poller testnet pode `fetch_order` sem binding local. |
 | `paper_fill_unit_price` (body HTTP) | Opcional em modo `paper`: preço quote/base por ordem para `positions` no snapshot (alternativa a `BOT_PAPER_FILL_UNIT_PRICE`). |
-| `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; ver `docs/operations/postgres-and-graph-dev.md`. |
+| `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; projeção write-only F1–F3.1 + outbox F2.1; ver `docs/operations/postgres-and-graph-dev.md`. |
+| `neo4j.graph_projection_outbox_drain_secs` (`system.toml`) | Intervalo do worker de drain do outbox PG→Neo4j quando PG+Neo4j wired no `serve`/monitor; default **30**; **0** desliga o ticker. |
+| `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS` | Override env do intervalo (mesma semântica que `system.toml`; vence TOML quando definido). |
+| `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_BATCH` | Tamanho do lote por tick de drain (default **32**, clamp 1–500). |
+| `GET /healthz` | Campo opcional `graph_projection_outbox` (pending/retry/idade) e `status: degraded` com backlog; ver [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md). |
 | `NVIDIA_NIM_BASE_URL` | Raiz da integrate API (default `https://integrate.api.nvidia.com`); opcional em TOML como `providers.nim_base_url`. |
 
 Variáveis comentadas e exemplos mínimos: `backend/.env.example` (inclui seams `BOT_ORDERS_*`, `BOT_RUNTIME_ENABLED`, `BOT_HTTP_*`).
@@ -161,6 +165,16 @@ Política operacional sugerida (não há purge automático no binário `bot`):
 | `order_reconciliation` (`pending`) | alerta se **> 7 dias** | `POST /api/v1/orders/reconciliation/poll` + investigar exchange; manter `BOT_ORDERS_RECONCILIATION_POLL_SECS` ≥ **60** com submit live wired |
 
 Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md#threat-model-rascunho).
+
+## Verificação local (gates)
+
+```sh
+cd backend
+./scripts/verify-backend-gates.sh          # → 432 passed, 0 ignored (bin bot)
+./scripts/verify-backend-full.sh         # gates + PG 20/20 quando DATABASE_URL → trading_bot
+```
+
+Matriz e manifesto PG: [test-matrix](../reference/test-matrix.md). Auditoria do goal: [modules-completeness-audit](../planning/modules-completeness-audit.md).
 
 ## Contratos de segurança
 

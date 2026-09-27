@@ -79,4 +79,4 @@ Inclui `fmt`, `clippy --bin bot`, import-direction, testes do bin `bot` com `--t
 ./scripts/verify-backend-full.sh
 ```
 
-Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.
+Baseline esperada (2026-09-27): linha `OK:` do gate → **432** passed, **0** ignored no bin `bot`; com PG → `run-pg-integration-tests.sh` **20/20**. Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.

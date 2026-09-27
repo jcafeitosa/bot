@@ -162,6 +162,8 @@ mod migration_scaffold_tests {
             "order_idempotency_keys",
             "order_reconciliation",
             "graph_projection_outbox",
+            "product_owner_bootstrap",
+            "product_owner_bootstrap_events",
         ] {
             assert!(
                 db.table_exists(table).await.expect("table_exists query"),

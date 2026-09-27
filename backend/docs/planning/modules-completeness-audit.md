@@ -128,6 +128,6 @@ Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** /
 ## ENTREGA — pacote completude módulos (G4 Builder)
 
 - **Builder:** fatia técnica bots/orders/agents/HTTP + Neo4j F1–F3.1 + outbox F2.1.2 (worker + `/healthz` backlog); docs SDD/catálogo/roadmap/README alinhados.
-- **Testes/evidências:** `./scripts/verify-backend-gates.sh` → **432** passed, **0** ignored; `./scripts/verify-backend-full.sh` + `DATABASE_URL` → PG **20/20**; `http_integration` → **43** passed; `pg_store_error` + HTTP **503** `order_store_unavailable`.
+- **Testes/evidências:** `./scripts/verify-backend-gates.sh` → **432** passed, **0** ignored; `./scripts/verify-backend-full.sh` + `DATABASE_URL` → PG **20/20**; `http_integration` → **43** passed; `pg_store_error` + HTTP **503** `order_store_unavailable`; F2.1.2 worker + `/healthz` outbox ([cli-and-config](../reference/cli-and-config.md)).
 - **Achados/revisão:** **PENDENTE** — Critic independente (`AGENTS.md`); auth owner produto não verificável via `BOT_HTTP_*` alone.
 - **Veredito:** **PENDENTE** até sessão Critic + decisões de produto (auth owner, prod REST).

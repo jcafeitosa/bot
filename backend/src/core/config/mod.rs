@@ -29,7 +29,7 @@ pub use self::database::{
 pub use env_loader::ensure_dotenv_loaded;
 pub use system::SystemConfig;
 
-pub use agents::{monitor_agency_raw, monitor_agency_raw_set};
+pub use agents::{monitor_agency_raw, monitor_agency_raw_set, ProductOwnerBootstrapConfig};
 pub use backtest::require_database_url_for_persist;
 pub use bots::bot_runtime_enabled_from_env;
 pub use exchanges::redact_known_testnet_credentials;

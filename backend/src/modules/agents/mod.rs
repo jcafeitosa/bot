@@ -16,6 +16,7 @@ pub use controllers::{
 pub use models::{
     validate_hierarchy, AgencyId, AgentCapabilities, AgentDefinition, AgentId, AgentLifecycleState,
     AgentRole, AgentsError, IdentityAuditEvent, IdentityEventKind, OwnerId, SupervisorRef,
+    VerifiedProductOwner,
 };
 
 #[cfg(test)]

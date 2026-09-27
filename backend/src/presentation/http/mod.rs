@@ -6,6 +6,7 @@ pub mod error;
 mod http_integration_tests;
 pub mod openapi;
 pub mod order_execution;
+mod register_owner;
 pub mod routes;
 pub mod server;
 pub mod state;
