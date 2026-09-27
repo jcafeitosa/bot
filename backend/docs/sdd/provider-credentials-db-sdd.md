@@ -44,6 +44,8 @@
 
 ## HTTP admin CRUD (parcial, fail-closed)
 
+> **Auth:** "fail-closed" aqui vale só para o **503** sem PG. O bearer é exigido apenas quando `BOT_HTTP_ADMIN_TOKEN` está definido; sem token, listagem e `POST`/`PUT`/`DELETE` de segredos ficam abertos (`admin_auth.rs:91-94`) — **lacuna de segurança ABERTA** (não corrigida), ver [admin-http-auth-fail-open](../security/admin-http-auth-fail-open.md).
+
 | Método | Path | Auth | Resposta |
 |--------|------|------|----------|
 | GET | `/api/v1/admin/provider-credentials` | `BOT_HTTP_ADMIN_TOKEN` quando definido | **200** lista mascarada; **503** `provider_credentials_store_unavailable` sem PG |
@@ -60,4 +62,4 @@ Corpo POST: `{ "provider_id", "key_name", "secret" }` (`provider_id` ∈ `typesa
 - Scaffold: migration SQL contains table name.
 - Unit: `provider_credentials_encryption_mode_is_explicit_none_fail_closed` em `credentials/mod.rs`.
 - HTTP: `meta_exposes_provider_credentials_encryption_none` e `healthz_exposes_provider_credentials_encryption_none` em `http_integration_tests.rs`.
-- Integration: `loads_credentials_from_postgres` em `core/providers/credentials/pg_integration.rs` (skip sem `DATABASE_URL`); incluído em `./scripts/run-pg-integration-tests.sh` (**26/26** com `DATABASE_URL` → `trading_bot`).
+- Integration: `loads_credentials_from_postgres` em `core/providers/credentials/pg_integration.rs` (skip sem `DATABASE_URL`); incluído em `./scripts/run-pg-integration-tests.sh` (contagem do manifesto em [test-matrix](../reference/test-matrix.md); requer `DATABASE_URL` → `trading_bot`).

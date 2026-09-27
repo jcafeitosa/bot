@@ -72,6 +72,8 @@ Implementação adicional: `ApiState::graph_supervision_chain_advisory` / `graph
 
 Implementação: `ApiState::graph_code_impact_for_module_advisory` → `Neo4jGraph::graph_query().code_impact_for_module`.
 
+**Dependência externa (code-impact):** o binário não escreve o subgrafo `code`. A consulta (`CODE_IMPACT_FOR_MODULE`, `core/database/graph_query.rs:65-80`) lê nós `:CodeEntity` com `graph_domain = 'code'`; no repositório só o teste `neo4j_code_impact_for_module_after_seed` cria esses nós (`graph_query.rs:742`). O caminho de ops é `scripts/sync-code-graph-neo4j.sh` (requer CLI `graphify` e `BOT_NEO4J_*`; sem `graphify` o script sai com erro). Sem esse push, com PostgreSQL e Neo4j ligados, CLI e HTTP respondem com `entities: []` (HTTP **200**), não com erro. Sem PG ou sem Neo4j o HTTP responde **503** `graph_query_unavailable` (`presentation/http/state.rs:954-969`); com `BOT_HTTP_ADMIN_TOKEN` configurado e bearer ausente ou errado, **401** `unauthorized` antes da consulta (`routes/graph_admin.rs:131` → `state.rs:800-801` → `admin_auth.rs:91-105`). Ressalva estática, não verificada com Neo4j rodando: o `graphify export neo4j` instalado (graphify 0.9.66, `exporters/graphdb.py:54-56`) cria nós rotulados por `file_type` e chaveados por `id`, sem `:CodeEntity`/`graph_domain`/`source_id` — o push do script pode não popular o que a consulta lê.
+
 | Tipo | Evidência (code-impact) |
 |------|-----------|
 | HTTP integration | `graph_admin_code_impact_returns_503_without_postgres`, `graph_admin_code_impact_returns_503_without_neo4j_when_postgres_wired`, `graph_admin_code_impact_requires_admin_bearer_when_enabled` |

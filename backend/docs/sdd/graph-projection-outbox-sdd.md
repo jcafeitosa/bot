@@ -42,9 +42,11 @@ Drain com Neo4j down: `ping` falha → linhas permanecem `pending`/`retry`. MERG
 
 ## 5. Validação
 
-`./scripts/verify-backend-gates.sh` (baseline **470** bin `bot`); `./scripts/run-pg-integration-tests.sh` inclui `pg_graph_projection_outbox_*` e `pg_order_idempotency_and_graph_projection_same_transaction` (§8); worker + health cobertos por testes em `graph_projection_outbox_worker.rs` e `routes/health.rs`.
+`./scripts/verify-backend-gates.sh` (contagem do bin `bot` em [test-matrix](../reference/test-matrix.md)); `./scripts/run-pg-integration-tests.sh` inclui `pg_graph_projection_outbox_*` e `pg_order_idempotency_and_graph_projection_same_transaction` (§8); worker + health cobertos por testes em `graph_projection_outbox_worker.rs` e `routes/health.rs`.
 
 ## 6. F2.1.2 (*implemented*)
+
+> O ramo do monitor que projeta ordens (`project_order_intent_after_submit`, `modules/monitor/controllers/supervisor.rs:240-261`) só roda com `spot_seam` (`RunMode::Testnet`, `:196-197`), e `Config::validate` rejeita Testnet (`core/config/mod.rs:390-393`); hoje é inalcançável. A remoção está **planejada** em W0-11 ([wave0-11-monitor-ramo-testnet-sdd](./wave0-11-monitor-ramo-testnet-sdd.md)), ainda não feita.
 
 | Seam | Comportamento |
 |------|----------------|
@@ -72,9 +74,11 @@ Implementação: `core/database/graph_projection_cli.rs`; testes `graph_projecti
 | `PgBotCatalogStore::save_catalog` | Uma TX: replace `bot_catalog_entries` + N enqueues `bot_catalog`. |
 | `PgBotCatalogStore::enqueue_bot_promotion_graph_projection` / `enqueue_bot_demotion_graph_projection` | TX só outbox após promote/demote HTTP (runtime sem SoT PG). |
 | `PgOrderIdempotencyStore::enqueue_graph_projection_outbox_messages` | TX só outbox após submit monitor supervisor (sem SoT idempotência PG no loop TUI; reconciliação opcional via mirror assíncrono). |
-| `project_order_intent_after_submit` | Monitor supervisor pós-`submit_order` OK: PG → enqueue TX dedicada + `graph_projection_drain_best_effort`; sem PG → `graph_projection_best_effort` (Neo4j direto). |
+| `project_order_intent_after_submit` | Monitor supervisor pós-`submit_order` OK no ramo testnet (inalcançável no binário: `--mode testnet` rejeitado na validação): PG → enqueue TX dedicada + `graph_projection_drain_best_effort`; sem PG → `graph_projection_best_effort` (Neo4j direto). |
 | `graph_projection_drain_best_effort` | Drain inline pós-commit (Neo4j wired), espelhando `graph_projection_best_effort`. |
 
-Evidência PG: `pg_order_idempotency_and_graph_projection_same_transaction`, `pg_monitor_supervisor_graph_projection_outbox_same_transaction`, `pg_agent_identity_and_graph_projection_same_transaction`, `pg_bot_catalog_and_graph_projection_same_transaction` (`run-pg-integration-tests.sh` **25/25**).
+Evidência PG: `pg_order_idempotency_and_graph_projection_same_transaction`, `pg_monitor_supervisor_graph_projection_outbox_same_transaction`, `pg_agent_identity_and_graph_projection_same_transaction`, `pg_bot_catalog_and_graph_projection_same_transaction` (manifesto `scripts/run-pg-integration-tests.sh`; contagem em [test-matrix](../reference/test-matrix.md)).
 
 **Pendente F2.1.3+:** nenhum (fatia monitor supervisor fechada); demais domínios fora orders/agents/bots/monitor seguem roadmap.
+
+> Ressalva: o ramo de produção que usa essa projeção no monitor é inalcançável (validate rejeita Testnet, `core/config/mod.rs:390-393`) e tem remoção **planejada** em W0-11; só o teste PG exercita o caminho.

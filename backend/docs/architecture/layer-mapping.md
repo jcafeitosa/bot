@@ -104,7 +104,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `hydrate_order_reconciliation_from_pg` | Infra → domain (boot HTTP `serve`, espelha `order_reconciliation` PG na memória); evidência PG `pg_hydrate_order_reconciliation_from_pg_after_durable_write` |
 | Boot bots catálogo (PG) | `persist_bot_catalog` no boot + `bot_catalog_snapshot` lê PG; evidência `pg_bot_catalog_snapshot_round_trip_via_api_state` |
 | Boot HTTP (PG) | `ApiState::build_api_state_for_http_serve` (agents hydrate + `for_http_server` + reconciliação hydrate + catálogo persist); `server::run` delega; evidência `build_api_state_for_http_serve_without_database_wires_executor`, PG `pg_http_boot_sequence_mirrors_serve_wiring` |
-| `register_live_reconciliation_pg_mirror` | Infra: monitor testnet espelha reconciliação no PG quando `DATABASE_URL` ativo |
+| `register_live_reconciliation_pg_mirror` | Infra: registrado pelo HTTP `serve` com `DATABASE_URL`; o consumidor é o ramo testnet do monitor, inalcançável (`--mode testnet` rejeitado na validação) |
 | `observe_testnet_spot_order_by_client_id` | Infra exchanges → observação ccxt para poller testnet |
 
 Rotas puramente stateless (risk, strategy, backtest, exchanges, `application/signals`) chamam `http_bridge` diretamente com body/query. **`GET /config/snapshot`** e **`GET /config/active`** usam `ApiState` (path explícito vs config do boot). **`GET /portfolio/paper-snapshot`** usa `ApiState::paper_wallet_snapshot` → `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (fills de `PaperLedgerExecutor` após submit paper HTTP ou monitor `RunMode::Paper`; `paper_fill_unit_price` no body ou `BOT_PAPER_FILL_UNIT_PRICE`).
@@ -119,16 +119,16 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, `application/sig
 
 ```text
 ./scripts/verify-backend-gates.sh
-./scripts/verify-backend-full.sh   # gates + manifesto PG 27 quando DATABASE_URL → trading_bot (PG 18+)
+./scripts/verify-backend-full.sh   # gates + manifesto PG 29 quando DATABASE_URL → trading_bot (PG 18+)
 cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-backend-gates.sh
 ```
 
 
 ### Testes PG em `presentation/http/state.rs` (camada application ↔ infra)
 
-Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×27): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` via `build_api_state_for_http_serve` + `build_router` + `GET /agents`, `GET /bots/catalog`, `GET /config/active`, `GET /orders/reconciliation/{client_order_id}` (mesmo caminho que `server::run`).
+Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×29): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` via `build_api_state_for_http_serve` + `build_router` + `GET /agents`, `GET /bots/catalog`, `GET /config/active`, `GET /orders/reconciliation/{client_order_id}` (mesmo caminho que `server::run`).
 
-Evidência: **512** testes no bin `bot`, **0** ignorados; **62** `http_integration` (incl. F3 graph admin read-only); manifesto PG×27 (contagem estática) + provider credentials PG + outbox F2.1/F2.1.3+; Neo4j; testnet manual; ver [test-matrix](../reference/test-matrix.md).
+Evidência: **519** testes no bin `bot`, **0** ignorados; **62** `http_integration` (incl. F3 graph admin read-only); manifesto PG×29 (contagem estática) + provider credentials PG + outbox F2.1/F2.1.3+; Neo4j; testnet manual; ver [test-matrix](../reference/test-matrix.md).
 
 ## Documentos relacionados
 

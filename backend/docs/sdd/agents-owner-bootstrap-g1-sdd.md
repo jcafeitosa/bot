@@ -29,4 +29,4 @@ status: partial
 
 - Unitários: `register_owner.rs`, `ProductOwnerBootstrapConfig`, `pg_owner_bootstrap` (SQL embed + PG `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed`).
 - HTTP: `agents_register_rejects_owner_mismatch_when_product_owner_verified`; `bots_runtime_promote_rejects_promoted_by_mismatch_when_product_owner_verified`; `meta_reports_product_owner_bootstrap_active_when_verified`; `promote_bot_http_rejects_owner_mismatch_when_product_owner_verified` (`state.rs`).
-- `./scripts/verify-backend-gates.sh` verde (**470** bin `bot`); PG **22/22** via `run-pg-integration-tests.sh`.
+- `./scripts/verify-backend-gates.sh`: execução **não registrada** neste SDD (contagem do bin `bot` em [test-matrix](../reference/test-matrix.md); [modules-completeness-evidence.json](../planning/modules-completeness-evidence.json) guarda só contagens); PG: teste no manifesto `scripts/run-pg-integration-tests.sh`, contagem em [test-matrix](../reference/test-matrix.md) (execução não registrada).

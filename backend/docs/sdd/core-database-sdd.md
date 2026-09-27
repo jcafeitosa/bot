@@ -30,11 +30,11 @@ Compose opcional: `docker-compose.bot.yml` (Neo4j + Postgres agents); market/cat
 
 ## Migrações
 
-`src/core/database/migrations/` (`0000` extensions … `0003` vector scaffold).
+`src/core/database/migrations/` (`0000` extensions … `0010` product owner bootstrap). Nenhuma usa sintaxe exclusiva do PG 18; o mínimo PG 18 vem do check em runtime `assert_server_version` (`postgres.rs`, `MIN_SERVER_VERSION_NUM = 180000`).
 
 ## Validação
 
-fmt, clippy -D warnings, cargo test --locked, check-import-direction; testes `--ignored` com PG 18+ real.
+fmt, clippy -D warnings, cargo test --locked, check-import-direction; testes PG via `pg_integration` (skip sem `DATABASE_URL`) + manifesto `run-pg-integration-tests.sh` contra PG 18+ real. CI usa `timescaledb-ha:pg16` (divergente; issue aberta).
 
 ## Próximo
 
