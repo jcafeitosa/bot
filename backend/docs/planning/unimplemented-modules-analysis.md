@@ -18,7 +18,7 @@ tags:
 O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco, TUI, integrações públicas Binance, persistência básica opcional, logging e Jev consultivo. Os módulos abaixo ainda não existem como capacidade completa:
 
 1. Identidade de agentes com **auth owner verificável** no HTTP (persistência PG opcional já wired; sem bootstrap seguro).
-2. **Módulo `bots` além da fundação** — runtime live, promoção automática e PostgreSQL de catálogo (fundação em `src/modules/bots/` já cobre identidade, ranking e HTTP; ver [SDD bots](../sdd/bots-module-sdd.md)).
+2. **Módulo `bots` além da fundação** — runtime live e promoção automática (fundação em `src/modules/bots/` cobre identidade, ranking, HTTP e `PgBotCatalogStore` quando PG conecta; ver [SDD bots](../sdd/bots-module-sdd.md)).
 3. Autenticação do owner, autorização por agência e bootstrap seguro.
 4. Runtime de execução de agentes, worker, scheduler e recuperação.
 5. Gateway de ferramentas, permissões, aprovações e sandbox.

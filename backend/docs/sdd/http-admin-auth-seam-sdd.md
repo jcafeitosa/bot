@@ -33,5 +33,5 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 ## Validação
 
 - Testes unitários `admin_auth.rs`.
-- Testes HTTP `server.rs`: bearer obrigatório, owner mismatch.
+- Testes HTTP `server.rs`: bearer obrigatório (agents register, bots persist, orders submit, monitor commands), owner mismatch.
 - `./scripts/verify-backend-gates.sh`.
