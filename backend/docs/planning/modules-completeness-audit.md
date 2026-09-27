@@ -104,7 +104,7 @@ Escopo sugerido para uma instância **independente** (não substitui decisão de
 | Área | Artefatos | Verificação mínima |
 |------|-----------|-------------------|
 | HTTP admin seam | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md), `presentation/http/admin_auth.rs`, matriz em [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token) | `./scripts/verify-backend-gates.sh`; spot-check `agents_advisory_requires_admin_bearer_when_enabled` se flake reaparecer |
-| Orders G2 | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) (checklist + threat model), `modules/orders/`, `order_execution.rs` | Confirmar `authorize_rest_use` / prod REST bloqueado; retenção ops documentada; sem credenciais em CI |
+| Orders G2 | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) (checklist + threat model), `modules/orders/`, `order_execution.rs`, `binance_spot_testnet_submit.rs` (`redact_known_testnet_credentials`) | Confirmar `authorize_rest_use` / prod REST bloqueado; retenção ops documentada; teste `map_bot_error_redacts_*`; sem credenciais em CI |
 | Bots runtime G2 | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md), `evaluation_binding.rs`, `runtime_port.rs` | Promote capability + `evaluate_for_kind`; runtime partilhado vs isolado em testes HTTP (linha checklist **Parcial**) |
 | Agents G1 | [agents-module-sdd.md](../sdd/agents-module-sdd.md), `bot_promotion.rs` | Itens **Não** do checklist permanecem bloqueadores de produto |
 
