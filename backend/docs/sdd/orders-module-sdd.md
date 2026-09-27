@@ -45,13 +45,13 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `RecordingExecutor` | Double determinístico para testes de `submit_order` após risco (sem rede). |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
 | `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe síncrono em processo (`http_bridge/orders::submit_order_http`). |
-| `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Após submit HTTP com `client_order_id`, `mark_pending` em `ApiState.order_reconciliation` (confirmação exchange pendente). |
+| `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Modo `live_exchange` wired + `client_order_id`: pending → reconciled com id do adapter (`recording-N` / testnet). |
 | `PgOrderIdempotencyStore` | Dedupe durável quando `DATABASE_URL` conecta; `ApiState` consulta PG antes de executar e grava após sucesso. |
 | `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Scaffold G2: `Pending` → `Reconciled` / `Divergent` por `client_order_id`; wiring HTTP e poller exchange pendente. |
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **337** testes bin `bot` (incl. `RecordingExecutor` em `orders` + `http_bridge/orders`, `meta_and_orders_execution_status_agree_on_seams`).
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **340** testes bin `bot` (incl. `RecordingExecutor` em `orders` + `http_bridge/orders`, `meta_and_orders_execution_status_agree_on_seams`).
 
 ## Rollback
 
