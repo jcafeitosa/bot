@@ -82,6 +82,6 @@ Evidência G1 (2026-09-27): **317** testes bin `bot`, **6** ignorados; `orders_s
 | `RecordingExecutor` / test double sem rede | `orders/tests.rs`, `http_bridge/orders.rs` | Sim |
 | `PaperLedgerExecutor` (modo `paper`) | `paper_ledger_executor.rs`, `orders_submit_paper_executor_returns_200` | Sim |
 | Adapter `OrderExecutionPort` com exchange/testnet REST | ccxt/testnet pendente | **Não** (recording seam ok) |
-| `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200` | **Parcial** (recording; não testnet REST) |
+| `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording; não testnet REST) |
 | Threat model + revisão Critic | — | **Não** |
 | `./scripts/verify-backend-gates.sh` verde | **317** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
