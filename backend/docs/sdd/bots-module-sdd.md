@@ -10,7 +10,7 @@ status: draft
 ---
 # SDD — Módulo `modules/bots`
 
-- **Estado:** draft G1 — implementação fundacional em memória; persistência Gate 1 pendente.
+- **Estado:** fundação G1 — catálogo/ranking/HTTP; `BotCatalogBackend` com `PgBotCatalogStore` quando `DATABASE_URL` conecta (scaffold `0002_agents_bots_scaffold.sql`); runtime live e promoção executor pendentes.
 - **Referências:** [SDD agents — Relação com bots](./agents-module-sdd.md), [Pesquisa agents](../research/agents-capability-research.md), [Módulos não implementados §1b](../planning/unimplemented-modules-analysis.md), [Convenção MVC](./modules-mvc-convention-sdd.md).
 - **Premissas:** Bots são **variações estratégia × timeframe** (e símbolo de mercado quando aplicável), versionados, avaliados por métricas de simulação. Não são identidades administrativas (`modules/agents`).
 
@@ -26,7 +26,7 @@ O produto distingue **agentes** (governança) de **bots** (executores versionado
 |----------|----------------|------------------|--------------------|-------------------|
 | **Propósito** | Executor versionado strategy×timeframe (+ símbolo) | Identidade administrativa | Motor SMA crossover offline | Loop live/paper |
 | **Ranking** | `full_ranking` / `rank_bots` (domínio) | Não | `run_sma_crossover`, agregação `rank_strategies` | Não |
-| **Persistência** | Trait `BotCatalogStore` (stub) | Gate 1 PostgreSQL | Resultados JSON/CLI | Sessão opcional |
+| **Persistência** | `BotCatalogStore` (memória/PG) | `PgAgentIdentityStore` | Resultados JSON/CLI | Sessão opcional |
 
 **Mensagem:** `AgentRegistry::register` ≠ criar bot. `BotIdentity::bot_id()` compõe `strategy@version:timeframe:symbol` — mesma chave canônica usada na simulação, agora no domínio `bots`.
 
@@ -34,7 +34,7 @@ O produto distingue **agentes** (governança) de **bots** (executores versionado
 
 - Runtime live de executor, promoção automática ou ordens reais.
 - Substituir ou fundir com `modules/agents`.
-- Persistência PostgreSQL de catálogo (Gate 1).
+- Runtime live de executor ou promoção automática para produção.
 
 ## 2. Convenção MVC
 
@@ -43,7 +43,7 @@ modules/bots/
   mod.rs
   models/           # BotIdentity, BotId, BotDefinition, BotMetrics, ranking
   controllers/      # catalog, full_ranking
-  adapters/         # BotCatalogStore (stub)
+  adapters/         # BotCatalogStore (memória, PG)
 ```
 
 ## 3. Seams públicos
@@ -55,7 +55,7 @@ modules/bots/
 | `BotMetrics` | backtest report, ranking | Campos de identidade coerentes com `BotId`. |
 | `build_catalog_from_config` | testes, futura API | Uma entrada por timeframe suportado no modo da config. |
 | `full_ranking` / `rank_bots` | backtest CLI, agregadores | Escopo único (window, dataset_hash, quote); ordenação PnL ↓, drawdown ↑, bot_id. |
-| `BotCatalogStore` | Gate 1 | Trait only; `InMemoryBotCatalogStore`, `PgBotCatalogStore`, `BotCatalogBackend`; HTTP persist usa PG quando disponível. Gate 1 agents PG e auth pendente. |
+| `BotCatalogStore` | HTTP, boot API | `InMemoryBotCatalogStore`, `PgBotCatalogStore`, `BotCatalogBackend`; HTTP persist/snapshot usa PG quando disponível. Auth owner Gate 1 pendente. |
 
 ## 4. Migração desde backtest
 
@@ -70,6 +70,6 @@ modules/bots/
 
 ## 6. Pendências
 
-- Gate 1 PostgreSQL: [SDD Gate 1 catálogo](./bots-catalog-persistence-gate1-sdd.md) — implementar `BotCatalogStore` com PostgreSQL.
-- HTTP: catalog, catalog/persist, catalog/snapshot (store em ApiState), ranking; evoluir OpenAPI conforme novos campos.
-- Mapeamento formal executor versionado ↔ agentes autorizadores.
+- Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
+- Runtime live, promoção executor e mapeamento formal executor versionado ↔ agentes autorizadores.
+- Auth owner verificável no transporte (fora do seam `BOT_HTTP_*`).

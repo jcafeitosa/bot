@@ -87,6 +87,6 @@ Os contratos operacionais estão na [referência de CLI e configuração](../ref
 | Mensagem WS inválida | Parser e validação antes do feed. | Monitorar métricas/rejeições estruturadas. |
 | Banco errado | Nome `trading_bot` obrigatório. | Provisionamento operacional documentado fora do código. |
 | Vazamento de segredo | Variáveis de ambiente e payload Jev reduzido. | Rotação e runbook de incidente de credencial. |
-| API mutante sem auth | `BOT_HTTP_ADMIN_TOKEN` opcional (bearer). | Auth verificável do owner e bootstrap (Gate 1). |
+| API mutante sem auth | `BOT_HTTP_ADMIN_TOKEN` opcional (bearer); `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID` restringem registro e rotas de agentes. | Auth verificável do owner e bootstrap (Gate 1). |
 | Perda de WS | REST mantém fallback. | Alertas operacionais para degradação prolongada. |
 | Jev indisponível | Erro consultivo não vira ordem. | Definir política de observabilidade e retry por ambiente. |

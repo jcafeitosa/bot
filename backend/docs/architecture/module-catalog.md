@@ -23,6 +23,8 @@ O binário tem três pontos de entrada funcionais:
 
 O backend não envia ordens. O uso REST autorizado hoje é o backfill público de candles Spot da conta `dev`; observe e paper são os modos operacionais disponíveis.
 
+Mapeamento **domain / application / infrastructure / presentation** → [layer-mapping.md](./layer-mapping.md).
+
 ```mermaid
 flowchart LR
   Main[main] --> Config[core/config]

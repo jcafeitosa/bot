@@ -58,6 +58,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD — Módulo bots (estratégia × timeframe)](./sdd/bots-module-sdd.md) — identidade versionada, catálogo, ranking e HTTP.
 - [SDD — Módulo orders (fail-closed)](./sdd/orders-module-sdd.md) — validação de risco e port de execução bloqueado.
 - [SDD — Módulo agents (fundação IdentityOnly)](./sdd/agents-module-sdd.md) — registry + espelhamento/hidratação PG, hierarquia, lifecycle e seam Jev; auth owner pendente.
+- [SDD — HTTP admin bearer seam](./sdd/http-admin-auth-seam-sdd.md) — `BOT_HTTP_ADMIN_TOKEN`, binds opcionais de owner/agency; não substitui auth owner Gate 1.
 
 ## Governança
 

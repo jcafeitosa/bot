@@ -27,7 +27,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 ## Não-objetivos
 
 - Execução live, idempotência, reconciliação ou produção.
-- HTTP que simule sucesso de envio à exchange (o endpoint `POST /api/v1/orders/submit` valida risco e responde **503** `execution_disabled` com o executor padrão).
+- HTTP que simule sucesso de envio à exchange (o endpoint `POST /api/v1/orders/submit` valida risco e responde **503** `execution_disabled` com o executor padrão; exige bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido — ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
 - Remover gates `authorize_rest_use` ou habilitar trading live.
 - Duplicar política de risco fora de `modules/risk`.
 
@@ -42,7 +42,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Validação
 
-`cargo fmt`, `clippy -D warnings`, `cargo test --locked`, `./scripts/check-import-direction.sh`.
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_risk_rejected_returns_422`, `orders_submit_fail_closed_returns_503`, `orders_submit_requires_admin_bearer_when_enabled` em `presentation/http/server.rs`.
 
 ## Rollback
 

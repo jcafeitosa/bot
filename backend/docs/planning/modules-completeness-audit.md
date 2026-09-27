@@ -57,8 +57,8 @@ Evidência: **201** testes no binário `bot`, **5** ignorados (`persist_dataset_
 |-----------|-----------|--------|
 | Completude bots | `modules/bots/`, `PgBotCatalogStore`, HTTP `/bots/*` | **Parcial** (sem runtime live) |
 | Completude orders | `submit_order`, HTTP 422/503 | **Fundação** (fail-closed) |
-| Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN` + opcional `BOT_HTTP_OWNER_ID` no register; não substitui auth owner completo) |
-| Integração HTTP | OpenAPI 30 paths, `server.rs` testes | **Feito** |
+| Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN`; opcional `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`; não substitui auth owner completo) |
+| Integração HTTP + camadas | OpenAPI 30 paths, `http_bridge`, [layer-mapping.md](../architecture/layer-mapping.md) | **Feito** |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | 201 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
