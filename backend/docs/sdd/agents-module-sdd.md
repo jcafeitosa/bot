@@ -128,4 +128,4 @@ modules/agents/
 - Mutations: `ApiState::persist_agent_after_mutation` (snapshot em memória, `persist_identity_rows` em PG quando conectado).
 - Boot: `presentation/http/server.rs` chama `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` quando o registry compartilhado está vazio (`apply_agent_identity_snapshot` não sobrescreve registry já populado — teste `http_bridge/agents.rs`).
 - Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `server.rs`).
-- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **248** testes (**6** ignorados PG/Neo4j).
+- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **249** testes (**6** ignorados PG/Neo4j).
