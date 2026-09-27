@@ -111,7 +111,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking) chamam 
 cargo test --locked --bin bot
 ```
 
-Evidência: **223** testes no bin `bot`, **5** ignorados (PG/Neo4j).
+Evidência: **225** testes no bin `bot`, **5** ignorados (PG/Neo4j).
 
 ## Documentos relacionados
 

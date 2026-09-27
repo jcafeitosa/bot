@@ -45,11 +45,11 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **223** testes bin `bot`, **5** ignorados; `modules/bots/tests.rs`, HTTP bots catalog/persist, `PgBotCatalogStore` teste `#[ignore]`.
+Evidência G1 (2026-09-27): **225** testes bin `bot`, **5** ignorados; `modules/bots/tests.rs`, HTTP bots catalog/persist, `PgBotCatalogStore` teste `#[ignore]`.
 
 ## Validação Gate 2 (quando implementado)
 
-- Testes de promoção/demote sem rede; integração com `MonitorHandle` em processo.
+- Testes de promoção/demote sem rede; `GET /monitor/snapshot` expõe `promoted_bot_id` quando runtime in-memory ativo (supervisor ainda não consome promoção).
 - Nenhuma ordem real sem executor orders Gate 2.
 - Revisão Critic + SDD agents (autorização).
 - `./scripts/verify-backend-gates.sh` verde.
