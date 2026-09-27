@@ -40,6 +40,31 @@ export DATABASE_URL=postgresql://USER:PASS@127.0.0.1:55433/trading_bot
 ./scripts/verify-backend-full.sh   # gates + manifesto PG completo
 ```
 
+## Fatia 2 — W0-09 domínio + outbox (agents)
+
+| Artefato | Caminho |
+|----------|---------|
+| Seam TX | `persist_identity_and_enqueue_graph_projection_tx` em `modules/agents/adapters/pg_registry.rs` (caller faz commit ou rollback) |
+| Teste PG | `pg_agent_identity_graph_outbox_transaction_rollback_on_injected_failure` |
+| Manifesto PG | `scripts/run-pg-integration-tests.sh` (+1; **30** casos) |
+
+### Comportamento comprovado
+
+1. Na mesma transação PG: upsert `agent_identities`, append `agent_identity_events`, enqueue `graph_projection_outbox`.
+2. **Falha injetada:** `ROLLBACK` após enqueue (sem commit) → zero linhas em domínio, audit e outbox para o fixture.
+3. Sem trading live; caminho orders/idempotência+outbox permanece para fatia futura.
+
+```mermaid
+flowchart TD
+  A[BEGIN] --> B[agent_identities UPSERT]
+  B --> C[agent_identity_events INSERT]
+  C --> D[graph_projection_outbox enqueue]
+  D --> E{finalize}
+  E -->|produção| F[COMMIT]
+  E -->|W0-09 teste| G[ROLLBACK injetado]
+  G --> H[(PG sem linhas do fixture)]
+```
+
 ## Estado
 
-G4 de T-15 permanece **parcial**: W0-09 amplo (erro injetado em TX domínio+outbox) continua no [master-plan](../planning/master-plan.md); esta fatia fecha rollback/idempotência do caminho de candles do monitor.
+G4 de T-15 permanece **parcial**: W0-09 fatia agents+outbox rollback **fechada**; espelho idempotência+outbox (orders) e evidência CI (W0-10) continuam no [master-plan](../planning/master-plan.md). Fatia 1 fecha rollback/idempotência do caminho de candles do monitor.
