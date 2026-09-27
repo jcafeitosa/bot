@@ -55,7 +55,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **359** testes bin `bot`, **8** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_paper_executor_returns_200` (+ snapshot portfolio **995**), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência G1 (2026-09-27): **360** testes bin `bot`, **8** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_paper_executor_returns_200` (+ snapshot portfolio **995**), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
@@ -88,7 +88,7 @@ Evidência G1 (2026-09-27): **359** testes bin `bot`, **8** ignorados; `orders_s
 | Reconciliação pós-submit | Memória + PG `0006`; HTTP auto-reconcile recording; `GET /orders/reconciliation/{client_order_id}`; `run_reconciliation_poll_once` + `RecordingSpotOrderReconciliationQuery`; hydrate no boot; poller REST testnet/prod pendente | **Parcial** |
 | `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording determinístico; testnet exige credenciais/rede) |
 | Threat model + revisão Critic | seção rascunho neste SDD; Critic instância separada | **Parcial** |
-| `./scripts/verify-backend-gates.sh` verde | **359** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **360** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
 
 ## Threat model (rascunho)
 
@@ -99,7 +99,7 @@ Evidência G1 (2026-09-27): **359** testes bin `bot`, **8** ignorados; `orders_s
 | Credenciais testnet em log | CI sem credenciais; adapter não loga keys | Auditar erros ccxt e tracing em submit testnet |
 | Bypass de risco | `submit_order` sempre chama `risk::validate_intent` antes do port | — |
 | Admin token vazado | `BOT_HTTP_ADMIN_TOKEN` em rotas mutantes; não substitui auth owner | [agents G1](./agents-module-sdd.md) |
-| Estado de reconciliação inconsistente | Memória + PG; GET reconciliation; `POST /orders/reconciliation/poll` + job `BOT_ORDERS_RECONCILIATION_POLL_SECS` (recording) | Consulta testnet via  + binding; prod ausente |
+| Estado de reconciliação inconsistente | Memória + PG; GET reconciliation; `POST /orders/reconciliation/poll` + job `BOT_ORDERS_RECONCILIATION_POLL_SECS` (recording) | Consulta testnet via fetch_order + binding; prod ausente |
 | Vazamento de `exchange_order_id` em logs HTTP | Resposta JSON só em GET reconciliation; submit retorna `accepted` apenas | Revisar tracing em adapters ccxt |
 
 Revisão Critic e hardening de produção permanecem **pendentes** antes de fechar G2.
