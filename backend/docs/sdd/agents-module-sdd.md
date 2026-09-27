@@ -36,8 +36,8 @@ No domínio do produto bot, **agente** e **bot** são conceitos distintos. No c�
 
 ### Não objetivos
 
-- Autenticação verificável do owner, bootstrap único ou autorização por agência no transporte.
-- Cold-start hydrate PG quando registry vazio no `serve` (sem reconciliação contínua nem auth owner).
+- Autenticação verificável do owner, bootstrap único ou autorização por agência no transporte (além do seam fail-closed `BOT_HTTP_*`).
+- Reconciliação contínua PG↔`AgentRegistry` em runtime (hidratação cold-start no boot quando registry vazio está implementada — ver § HTTP e PostgreSQL).
 - Runtime durável, scheduler, gateway MCP, canais externos, execução financeira.
 - Alterar comportamento do monitor, risco ou estratégia nesta fatia (apenas documentar hook futuro).
 - Expandir `modules/bots` com runtime live ou PostgreSQL nesta fatia (gates próprios).

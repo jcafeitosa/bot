@@ -88,6 +88,19 @@ Esses recursos podem ser necessários para a visão completa de agentes “vivos
 - **Contrato público pendente:** operações, transições, estados terminais, erros, concorrência e semântica de aposentadoria precisam de aceitação explícita antes dos testes, segundo as regras do projeto.
 - **Crítico independente pendente:** as ferramentas disponíveis não confirmaram uma instância de revisão isolada neste repositório. O relatório permanece pesquisa preliminar, sem aprovação de Gate 1.
 
+### Implementação parcial no backend (não fecha Etapa 1)
+
+O código atual cobre parte da Etapa 1 **sem** satisfazer o item 4 (auth owner verificável) nem o fechamento de Gate 1:
+
+| Capacidade | Onde | Limite |
+|------------|------|--------|
+| Registry + hierarquia + lifecycle | `modules/agents` | Memória + testes unitários |
+| Espelhamento PG + hydrate cold-start | `PgAgentIdentityStore`, `http_bridge/agents.rs`, boot `server.rs` | Sem reconciliação contínua; PG opcional em CI (`run-pg-integration-tests.sh`, 8 testes) |
+| Seam HTTP fail-closed | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` — [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | Não prova identidade do owner humano |
+| Capability `promote_runtime_bot` | `bot_promotion.rs`, migração `0005` | Autorização administrativa, não auth de produto |
+
+Baseline de testes: `./scripts/verify-backend-gates.sh` → **387** passed, **10** ignored (2026-09-27). Auditoria: [modules-completeness-audit.md](../planning/modules-completeness-audit.md).
+
 ## Fontes primárias
 
 1. xAI/Cursor, [Grok Bot overview](https://docs.x.ai/grok-bot/overview) — Bots nomeados, computador persistente, colaboração, rotinas e contexto.
