@@ -67,6 +67,8 @@ pub struct AgentResponse {
 #[derive(Debug, Serialize, ToSchema)]
 pub struct AgentListResponse {
     pub agents: Vec<AgentResponse>,
+    /// Contagem de agentes retornados (igual a `agents.len()`; reservado para paginação futura).
+    pub total: u32,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -182,12 +184,13 @@ pub fn list_agents(
     agency_raw: &str,
 ) -> Result<AgentListResponse, AgentsError> {
     let agency = parse_agency(agency_raw)?;
-    let agents = registry
+    let agents: Vec<AgentResponse> = registry
         .list_agency(&agency)
         .into_iter()
         .map(map_agent)
         .collect();
-    Ok(AgentListResponse { agents })
+    let total = agents.len() as u32;
+    Ok(AgentListResponse { agents, total })
 }
 
 pub fn get_agent(
@@ -462,6 +465,30 @@ mod register_tests {
         .expect("register");
         assert!(response.promote_runtime_bot);
     }
+    #[test]
+    fn list_agents_total_matches_agent_count() {
+        let mut registry = AgentRegistry::new();
+        register_agent(
+            &mut registry,
+            RegisterAgentRequest {
+                agency: "acme".into(),
+                owner_id: "owner-1".into(),
+                agent_id: "ceo".into(),
+                display_name: "CEO".into(),
+                role: AgentRoleBody::Ceo,
+                supervisor: SupervisorRefBody::Owner {
+                    owner_id: "owner-1".into(),
+                },
+                consult_jev: false,
+                promote_runtime_bot: false,
+            },
+        )
+        .expect("register");
+        let listed = list_agents(&registry, "acme").expect("list");
+        assert_eq!(listed.total, 1);
+        assert_eq!(listed.agents.len(), 1);
+        assert_eq!(listed.total as usize, listed.agents.len());
+    }
 }
 
 #[cfg(test)]
@@ -559,6 +586,7 @@ mod pg_write_through_tests {
         let mut cold_registry = AgentRegistry::new();
         apply_agent_identity_snapshot(&mut cold_registry, agents, audit).expect("hydrate");
         let listed = list_agents(&cold_registry, "agency-cold").expect("list");
+        assert_eq!(listed.total, 1);
         assert_eq!(listed.agents.len(), 1);
         assert_eq!(listed.agents[0].agent_id, "ceo-cold");
         assert!(listed.agents[0].consult_jev);

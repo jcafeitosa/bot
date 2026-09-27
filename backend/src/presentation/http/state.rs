@@ -2236,6 +2236,8 @@ mod state_tests {
             .list_agents_in_agency(&agency)
             .await
             .expect("list agents");
+        assert_eq!(listed.total, 1);
+        assert_eq!(listed.total, 1);
         assert_eq!(listed.agents.len(), 1);
         assert_eq!(listed.agents[0].agent_id, agent_id);
         assert!(listed.agents[0].promote_runtime_bot);

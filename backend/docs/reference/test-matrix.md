@@ -81,7 +81,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**25/25** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **474** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **25/25** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **475** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **25/25** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -110,6 +110,7 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `graph_query_port_supervision_chain_returns_ordered_nodes` | `core/database/graph_query.rs` | F3 port stub |
 | `graph_cli_parses_query_supervision_chain` | `core/database/graph_cli.rs` | F3 CLI parse |
 | `graph_query_port_list_agents_returns_projected_nodes` | `core/database/graph_query.rs` | F3 mock `GraphQueryPort` |
+| `list_agents_total_matches_agent_count` | `modules/http_bridge/agents.rs` | `AgentListResponse.total` == `agents.len()` |
 | `graph_cli_parses_query_agents_with_limit` | `core/database/graph_cli.rs` | F3 CLI parse |
 | `list_agents_limit_clamped_in_neo4j_impl_signature` | `core/database/graph_query.rs` | F3 limit clamp unit |
 | `graph_projection_cli_parses_drain_with_limit` | `graph_projection_cli.rs` | F2.1.3 CLI parse |
