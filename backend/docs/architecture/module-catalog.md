@@ -19,7 +19,7 @@ O binário tem três pontos de entrada funcionais:
 
 - **Monitor (TUI):** `main → core::config → modules::monitor::startup → supervisor → … → presentation::terminal`.
 - **Backtest (CLI):** `main → modules::backtest::cli → fixture 1m → modules::backtest → JSON`.
-- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (28 paths utoipa).
+- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (30 paths utoipa).
 
 O backend não envia ordens. O uso REST autorizado hoje é o backfill público de candles Spot da conta `dev`; observe e paper são os modos operacionais disponíveis.
 

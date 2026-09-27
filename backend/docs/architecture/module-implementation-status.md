@@ -9,7 +9,7 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-26  
+**Data da verificação:** 2026-09-27  
 **Escopo:** árvore alvo do objetivo literal (sem PG dedicado, sem live trading, sem `technical_analysis`).  
 **Correção aplicada nesta verificação:** `InMemoryBotCatalogStore` deixou de ser `#[cfg(test)]` para compilar o seam HTTP de catálogo de bots (`presentation/http/state.rs`, `http_bridge/bots.rs`).
 

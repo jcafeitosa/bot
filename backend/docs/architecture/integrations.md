@@ -18,6 +18,7 @@ tags:
 | `ccxt-core` / `ccxt-exchanges` | Patch local em `vendor/ccxt-core-0.1.5` | Cliente HTTP e adapter da exchange. | Vendorizado; política de redirect sob gate de segurança. |
 | PostgreSQL | `core::persistence::Database` | Migrações e gravação opcional de datasets/candles. | Opt-in; exige banco dedicado `trading_bot`. |
 | TypeSafe/Jev | `JevAdvisor` | Avaliação consultiva de regime, qualidade do sinal e anomalia. | Opcional; não autoriza ordens. |
+| HTTP API (Axum) | `modules::http_bridge` + `presentation::http` | OpenAPI 30 paths; agents, bots, orders fail-closed, monitor quando `--with-monitor`. | Ativo em `serve`. |
 | Terminal | Ratatui + Crossterm | Dashboard, comandos de pausa/retomada/saída e logs. | Caminho operacional principal. |
 
 ## Binance REST
