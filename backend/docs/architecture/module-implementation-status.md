@@ -9,7 +9,7 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-27  
+**Data da verificação:** 2026-09-27 (core::database dual-store)  
 **Escopo:** árvore alvo do objetivo literal (sem PG **wiring** em runtime, sem live trading, sem `technical_analysis`).  
 **Correção aplicada nesta verificação:** `InMemoryBotCatalogStore` deixou de ser `#[cfg(test)]` para compilar o seam HTTP de catálogo de bots (`presentation/http/state.rs`, `http_bridge/bots.rs`).  
 **Fatia pós-goal:** `0002_agents_bots_scaffold.sql` — schema PostgreSQL para agents/bots; memória continua fonte de verdade no processo até Gate 1 auth + repositórios.
@@ -36,6 +36,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | config | `core/config/mod.rs` | Infra (`Config`, validação) | `core::config::tests`, `tests/config_cli.rs` |
 | error | `core/error.rs` | Infra (`BotError`) | Usado em todos os módulos + HTTP |
 | logging | `core/logging.rs` | Infra (`init`) | `main.rs` (`core::logging::init`) |
+| database | `core/database/` | Infra (PG 18+, Neo4j, `AppDatabases`) | `core::database::tests`, HTTP bootstrap |
 | persistence | `core/persistence/` | Infra (`Database`, dataset) | `market/models` integration (ignored PG), monitor startup |
 | health | `core/health/mod.rs` | Infra (liveness/readiness) | `core::health::tests` |
 | notifications | `core/notifications/` | Infra + `stub` adapter | `core::notifications::tests` |

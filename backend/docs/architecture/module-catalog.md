@@ -11,7 +11,7 @@ tags:
 
 # Catálogo completo de módulos do backend
 
-> Revisão: 2026-09-26 (inclui `modules/agents`, `modules/bots`, `modules/orders`). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/persistence/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
+> Revisão: 2026-09-26 (inclui `modules/agents`, `modules/bots`, `modules/orders`). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/database/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
 
 ## 1. Mapa de execução
 
@@ -52,7 +52,8 @@ flowchart LR
 | raiz | `main` | `main() -> anyhow::Result` | Monitor ou `backtest`; bootstrap de persistência via `modules::monitor::startup`. | CLI/config indiretos. |
 | `core` | `config` | `Config::load`, `Config::validate` | TOML em `src/core/config/`, overrides CLI, validação. | `tests/config_cli.rs`, testes do módulo. |
 | `core` | `error` / `logging` | `BotError`, `init` | Erros e tracing compartilhados. | Consumidores. |
-| `core` | `persistence` | `Database`, `persist_dataset` | Migrações e gravação idempotente. | PostgreSQL ignorado por padrão. |
+| `core` | `database` | `AppDatabases`, `PostgresDatabase`, `Neo4jGraph` | Dual-store PG 18+ (Timescale/pgvector) + Neo4j; pool, migrate, health. | Testes unitários + integração ignorada. |
+| `core` | `persistence` | `Database`, `persist_dataset` | Fachada de domínio sobre `PostgresDatabase`. | PostgreSQL ignorado por padrão. |
 | `modules` | `monitor` | `run`, `bootstrap_monitor` | Supervisor REST/WS, pausa/retomada, dashboard, persistência. | Testes em `supervisor.rs` e controllers. |
 | `modules` | `market` | candles, `HybridCandleFeed` | Validação, agregação 1m, feed híbrido. | Testes de feed e modelos. |
 | `modules` | `strategy` | SMA, `evaluate` | Sinais sem efeitos colaterais. | Testes de períodos e sinais. |
