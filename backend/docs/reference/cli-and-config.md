@@ -51,7 +51,7 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 |---|---|---|
 | `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |
 | `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `MonitorStrategyRegistry` + `strategy_evaluation_binding` + `BotSignal.bot_id`. Catálogo HTTP inclui `monitor_fast_period` / `monitor_slow_period` / `monitor_evaluator` (`sma_cross` ou `ema_cross` via `[[strategy.monitor_registry]]`). |
-| `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit` | Status expõe `mode` (`disabled` / `dev_accept` / `paper` / `live_exchange_reserved`) e `live_exchange_wired` (sempre `false` até adapter). Submit: fail-closed **503**; `live_exchange_not_wired` só em `live_exchange`; `paper` e `dev_accept` **200** após risco; **422** se risco rejeita; `client_order_id` opcional com dedupe memória/PG. |
+| `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit` | Status expõe `mode` (`disabled` / `dev_accept` / `paper` / `live_exchange` / `live_exchange_reserved`) e `live_exchange_wired` (sempre `false` até adapter). Submit: fail-closed **503**; `live_exchange_not_wired` só em `live_exchange`; `paper` e `dev_accept` **200** após risco; **422** se risco rejeita; `client_order_id` opcional com dedupe memória/PG. |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
 
@@ -114,7 +114,8 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_HTTP_AGENCY_ID` | Restringe rotas `/api/v1/agents*` ao `agency` configurado (query ou body); falha **403** `http_agency_mismatch`. `GET /meta` → `http_agency_binding_active` (booleano, sem expor o ID). |
 | `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes exigem `Authorization: Bearer <token>` (fail-closed; não substitui auth do owner). |
 | `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**503** em promote). |
-| `BOT_ORDERS_EXECUTION` | vazio/`disabled` (fail-closed); `dev_accept` (double local); `paper` (`PaperLedgerExecutor`, ledger in-process); `live_exchange` (seam reservado — **503** `live_exchange_not_wired`). Outros valores → `disabled`. |
+| `BOT_ORDERS_EXCHANGE_SUBMIT` | Com `BOT_ORDERS_EXECUTION=live_exchange`, `recording` liga `ExchangeSpotExecutor` (sem rede; dev/test). Futuro: `testnet` para REST Spot. |
+| `BOT_ORDERS_EXECUTION` | vazio/`disabled` (fail-closed); `dev_accept` (double local); `paper` (`PaperLedgerExecutor`, ledger in-process); `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → **200** após risco; `live_exchange` sem submit backend — **503** `live_exchange_not_wired`). Outros valores → `disabled`. |
 | `client_order_id` (body HTTP) | Campo opcional em `POST /api/v1/orders/submit`; replays retornam `accepted: true` sem reexecutar (memória; PG quando `DATABASE_URL` + migração `0004`). |
 | `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; ver `docs/operations/postgres-and-graph-dev.md`. |
 | `NVIDIA_NIM_BASE_URL` | Raiz da integrate API (default `https://integrate.api.nvidia.com`); opcional em TOML como `providers.nim_base_url`. |
