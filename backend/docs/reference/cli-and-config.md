@@ -94,7 +94,7 @@ slow_period = 15
 
 Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O supervisor ainda só avalia estratégias registradas com evaluator SMA; ids desconhecidos na promoção caem em fallback com log.
 
-`GET /api/v1/config/active` e `GET /api/v1/config/snapshot` incluem o array `monitor_registry` (somente entradas extras do TOML; `sma-cross@1` continua refletido em `sma_fast` / `sma_slow`).
+`GET /api/v1/config/active` e `GET /api/v1/config/snapshot` incluem o array `monitor_registry` (somente entradas extras do TOML; cada item pode definir `evaluator` = `sma_cross` ou `ema_cross`; `sma-cross@1` continua refletido em `sma_fast` / `sma_slow`).
 
 ## Variáveis de ambiente
 

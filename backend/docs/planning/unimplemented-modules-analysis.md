@@ -47,7 +47,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Execução financeira live | Domínio de intenção em `modules/orders` (fail-closed); sem saldo privado, produção ou REST de ordens. | `exchanges/rest` autoriza somente `PublicSpotBackfill` em `dev`; `authorize_rest_use` falha para usos privados. | Adapter verificado, idempotência, reconciliação e revisão de segurança antes de qualquer port real. |
 | Observabilidade | Há logging estruturado, mas não há catálogo completo de métricas, SLI/SLO, alertas ou runbook de incidentes. | Roadmap lista WS/REST, persistência, idade de candle, Jev e credenciais como pendências. | Definir métricas, cardinalidade, alertas, dashboards e runbooks. |
 | Persistência de runtime | A camada `persistence` grava datasets, mas o estado de recuperação do monitor ainda não está completo. | SDD T-15 marca C17/G4 pendentes: `DEGRADED`, `HEALTHY`, `GAP`, suspeita de commit e recuperação. | Implementar C17 após C14/C15/C16 e revisar G4. |
-| Integração PostgreSQL | Existe conexão, migração e persistência básica; a integração operacional completa não foi executada. | V18 está bloqueada por banco descartável; o teste PostgreSQL é ignorado por padrão. | Executar migração, commit, rollback, idempotência e limpeza em `trading_bot` isolado. |
+| Integração PostgreSQL | Conexão, migrações, adapters agents/bots/orders/market; testes `#[ignore]` + `./scripts/run-pg-integration-tests.sh` (5 testes); job CI `postgres-integration` com Timescale. | Default `cargo test` não roda PG; exige `DATABASE_URL` → `trading_bot` (ver [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)). | Neo4j ignorado em CI; rollback operacional V18/C17 ainda em roadmap. |
 
 ## 1. Identidade persistente de agentes
 
