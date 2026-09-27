@@ -121,7 +121,26 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 
 **HTTP:** `GET /api/v1/orders/execution-status`; `GET /api/v1/orders/reconciliation/{client_order_id}` (memória + fallback PG); `POST /api/v1/orders/reconciliation/poll` → `ApiState::reconcile_pending_orders_once` (admin bearer); `POST /api/v1/orders/submit` (**503** `execution_disabled` / `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`, `paper` ou `live_exchange` wired) → `ApiState::submit_order_http`; `GET /meta` inclui `order_reconciliation_pending` (max memória/PG); job opcional `BOT_ORDERS_RECONCILIATION_POLL_SECS` no `serve` quando `live_exchange_wired`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` definido; `BOT_ORDERS_EXECUTION` em `HttpApiSeams::from_env`.
 
-## 3d. Camada `presentation::http`
+## 3d. Facade `http_bridge` (`src/modules/http_bridge/`)
+
+Camada de aplicação fina entre `presentation::http::routes` e os módulos de domínio — rotas **não** importam `modules::*` diretamente ([import check](../../scripts/check-import-direction.sh)).
+
+| Arquivo | Responsabilidade HTTP |
+|---------|------------------------|
+| `agents.rs` | Registro/lifecycle/advisory; snapshots PG (`load_agent_identity_snapshot`, `write_through_agent_identity`, `apply_agent_identity_snapshot`). |
+| `bots.rs` | Catálogo/ranking/persist a partir de `Config`. |
+| `bots_runtime.rs` | Promote/demote/status via `BotRuntimePort`. |
+| `orders.rs` | DTO submit + `submit_order_http` (risco + idempotência + executor injetado pelo `ApiState`). |
+| `portfolio.rs` | Paper snapshot/positions a partir do ledger in-process. |
+| `monitor.rs` | Snapshot/commands quando `--with-monitor`. |
+| `config.rs` | Active config e snapshot para OpenAPI. |
+| `risk.rs` | Corpo de limites + gate de sinal. |
+| `backtest.rs` | Disparo SMA crossover via HTTP. |
+| `strategy.rs` / `application.rs` / `exchanges.rs` / `providers.rs` | Facades auxiliares para rotas stateless. |
+
+Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog persist, agent snapshots, submit fail-closed/accept, runtime promote/demote). Integração HTTP pesada: `presentation/http/server.rs`.
+
+## 3e. Camada `presentation::http`
 
 | Peça | Comportamento |
 |---|---|
