@@ -69,7 +69,7 @@ Evidência G1 (2026-09-27): **331** testes bin `bot`, **6** ignorados; `orders_s
 
 ## Pendências de decisão
 
-- Escopo inicial: **paper ledger** implementado (`PaperLedgerExecutor`); testnet Spot via adapter exchange ainda pendente.
+- Escopo inicial: **paper ledger** implementado; testnet Spot **market buy** via `binance_spot_testnet_submit` (sell e reconciliação pendentes).
 - Store de idempotência: memória vs PostgreSQL (`0002` ou migração nova).
 - Autorização owner/agency além de `BOT_HTTP_ADMIN_TOKEN` (Gate 1 auth).
 
@@ -82,8 +82,8 @@ Evidência G1 (2026-09-27): **331** testes bin `bot`, **6** ignorados; `orders_s
 | `live_exchange_not_wired` até adapter real | `ReservedLiveExchangeExecutor`, meta + execution-status | Sim (seam) |
 | `RecordingExecutor` / test double sem rede | `orders/tests.rs`, `http_bridge/orders.rs` | Sim |
 | `PaperLedgerExecutor` (modo `paper`) | `paper_ledger_executor.rs`, `orders_submit_paper_executor_returns_200` | Sim |
-| Adapter `OrderExecutionPort` com exchange/testnet REST | ccxt/testnet pendente | **Não** (recording seam ok) |
-| `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording; não testnet REST) |
+| Adapter `OrderExecutionPort` com exchange/testnet REST | `binance_spot_testnet_submit.rs` (buy market); sell/prod pendente; CI sem credenciais | **Parcial** |
+| `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording determinístico; testnet exige credenciais/rede) |
 | Threat model + revisão Critic | seção rascunho neste SDD; Critic instância separada | **Parcial** |
 | `./scripts/verify-backend-gates.sh` verde | **331** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
 
@@ -91,9 +91,9 @@ Evidência G1 (2026-09-27): **331** testes bin `bot`, **6** ignorados; `orders_s
 
 | Risco | Mitigação atual | Gap |
 |-------|-----------------|-----|
-| Envio acidental de ordem live | Default `BOT_ORDERS_EXECUTION` fail-closed; `authorize_rest_use` bloqueia `OrderSubmit` exceto seam `recording` em dev Spot | REST testnet/prod ainda desabilitado |
+| Envio acidental de ordem live | Default `BOT_ORDERS_EXECUTION` fail-closed; `authorize_rest_use` permite `OrderSubmit` só com seam `recording` ou testnet+credenciais em dev Spot | Prod REST desabilitado; testnet opt-in explícito |
 | Replay de `client_order_id` | `OrderIdempotencyStore` memória + PG `0004` | TTL/expiração operacional não definida |
-| Credenciais testnet em log | Sem adapter REST de ordem em CI; recording não usa rede | Revisar logging ao ligar ccxt |
+| Credenciais testnet em log | CI sem credenciais; adapter não loga keys | Auditar erros ccxt e tracing em submit testnet |
 | Bypass de risco | `submit_order` sempre chama `risk::validate_intent` antes do port | — |
 | Admin token vazado | `BOT_HTTP_ADMIN_TOKEN` em rotas mutantes; não substitui auth owner | [agents G1](./agents-module-sdd.md) |
 

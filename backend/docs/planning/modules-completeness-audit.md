@@ -17,7 +17,7 @@ tags:
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
 | `modules/bots` | `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross`/`ema_cross`), supervisor + backtest via `evaluate_for_kind`, catálogo HTTP `monitor_evaluator` | `monitor_strategy.rs`, `evaluation_binding.rs`, `simulation.rs`, `server.rs` | Auth owner; orders live |
-| `modules/orders` | `PaperLedgerExecutor`, `ExchangeSpotExecutor` (recording), `RecordingExecutor`, `ReservedLiveExchangeExecutor`, idempotência, HTTP execution-status/meta + `meta`/`live_exchange_wired` | `orders/tests.rs`, `http_bridge/orders.rs` | Adapter exchange real |
+| `modules/orders` | `PaperLedgerExecutor`, `ExchangeSpotExecutor` (`recording` + `testnet` ccxt quando credenciais), `RecordingExecutor`, `ReservedLiveExchangeExecutor`, idempotência, HTTP execution-status/meta + `meta`/`live_exchange_wired` | `orders/tests.rs`, `spot_order_submit.rs`, `http_bridge/orders.rs` | Prod REST + threat model; posições paper |
 | `modules/portfolio` | `paper_snapshot_with_fills`; HTTP lê ledger in-process (`orders` paper) | `controllers.rs`, `http_bridge/portfolio.rs`, `server.rs` | Posições/base asset (só fluxo quote hoje) |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
 | `presentation/http` | OpenAPI **34** paths; `GET /meta`; catálogo bots `monitor_evaluator`; contratos `meta_and_*`; `HttpAdminAuth` | `meta.rs`, `server.rs` (`bots_catalog_http_*`) | Auth owner produto (Gate 1) |
@@ -42,7 +42,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
-Evidência (2026-09-27): **331** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
+Evidência (2026-09-27): **331** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). `./scripts/verify-backend-gates.sh` verde; `./scripts/run-pg-integration-tests.sh` **5/5** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste.
 
 ## Documentação relacionada
 
@@ -59,7 +59,7 @@ Evidência (2026-09-27): **331** testes no binário `bot`, **6** ignorados (`per
 | Requisito | Evidência | Status |
 |-----------|-----------|--------|
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor + backtest `evaluate_for_kind` (SMA/EMA) | **Parcial** (sem orders live; auth owner) |
-| Completude orders | `submit_order`, `PaperLedgerExecutor`, `exchange_order_gate` (+ política REST testnet com `BINANCE_TESTNET_*`), `ExchangeSpotExecutor` (recording), execution-status, idempotência | **Parcial** (adapter REST ccxt submit unwired) |
+| Completude orders | `submit_order`, `PaperLedgerExecutor`, `exchange_order_gate`, `spot_order_submit` (`recording` + testnet ccxt buy), `ExchangeSpotExecutor`, execution-status, idempotência | **Parcial** (prod/sell/reconciliação; threat model) |
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
 | Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `config/active` + catálogo com `evaluator`/`monitor_evaluator`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` snapshot; PG hydrate | **Parcial** (auth owner, exchange REST real) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
