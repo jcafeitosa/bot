@@ -1,3 +1,12 @@
+---
+title: Instruções para agentes do projeto bot
+description: Regras de governança, fluxo, segurança e operação para agentes deste projeto
+tags:
+  - governance
+  - agents
+  - project-rules
+---
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
