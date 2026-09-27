@@ -12,7 +12,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 ## Comece aqui
 
-- [Guia de execução e operação](./operations/runbook.md) — pré-requisitos, inicialização, modos suportados, persistência e diagnóstico.
+- [Guia de execução e operação](./operations/runbook.md) — pré-requisitos, inicialização, modos suportados, persistência, diagnóstico e `./scripts/verify-backend-gates.sh`.
 - [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente e validações.
 - [API HTTP (OpenAPI + Scalar)](./reference/cli-and-config.md#subcomando-serve-http) — subcomando `serve`, `/openapi.json`, `/docs`, `GET /meta` (`http_seams`), agents e `--with-monitor`.
 - [Referência de módulos do backend](./architecture/backend-module-reference.md) — visão consolidada, interfaces, seams, fluxos e limites.

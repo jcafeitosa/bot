@@ -67,12 +67,16 @@ As regras de redirects e validação da janela REST estão detalhadas no [SDD de
 
 ## Verificação antes de aceitar uma alteração
 
-Execute:
+Gate canônico (mesmo job `rust` da CI):
 
 ```sh
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test
+./scripts/verify-backend-gates.sh
 ```
 
-Para mudanças de banco, execute o teste de integração somente em um banco descartável explicitamente provisionado. O [plano de execução](../planning/backend-work-plan.md) é a fonte dos gates e pendências atuais.
+Inclui `fmt`, `clippy --bin bot`, import-direction, testes do bin `bot` com `--test-threads=1` e cinco suítes em `tests/`. Com PostgreSQL descartável (`DATABASE_URL` → `trading_bot`):
+
+```sh
+./scripts/verify-backend-full.sh
+```
+
+Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.

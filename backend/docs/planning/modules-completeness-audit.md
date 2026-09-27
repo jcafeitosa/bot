@@ -74,7 +74,7 @@ Evidência (2026-09-27, gate ~10,6s): **387** testes no binário `bot`, **10** i
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots runtime/evaluator, orders G2 (testnet+reconciliação+poll+redação credenciais), agents PG + promote; `.env.example` seams HTTP | **Parcial** (auth owner; Critic; prod REST política) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → **387** ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `./scripts/verify-backend-gates.sh` → **387** ok (bin `bot`) + 5 suítes `tests/`; clippy/fmt/import | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
