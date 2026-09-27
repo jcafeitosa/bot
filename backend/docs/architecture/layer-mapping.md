@@ -86,6 +86,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 
 | Método | Domínio |
 |--------|---------|
+| `build_api_state_for_http_serve` | Boot HTTP (`server::run`): agents PG hydrate, seams env, reconciliação hydrate, catálogo persist |
 | `require_http_admin` / `require_register_owner_id` / `require_bound_agency` | Auth seam |
 | `list_agents_in_agency`, `get_agent_in_agency`, `agents_audit_log` | Agents (leitura) |
 | `register_agent_and_persist`, `pause|resume|retire_agent_and_persist` | Agents (mutação + PG) |
