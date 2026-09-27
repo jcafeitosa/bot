@@ -27,6 +27,18 @@ cargo run -- --config src/core/config/bot.toml --environment dev --mode observe 
 
 Sem `--config`, o processo procura `src/core/config/bot.toml` relativo ao diretório de execução (execute a partir de `backend/` ou passe caminho absoluto).
 
+## Configuração em camadas
+
+| Artefato | Função |
+|---|---|
+| `backend/.env` (gitignored) | Secrets e overrides; **vence** TOML quando definido. Modelo: [`.env.example`](../../.env.example). |
+| `src/core/config/system.toml` | Defaults não sensíveis (orders, bots, monitor, providers endpoints, neo4j estrutura). Carregado via `SystemConfig` no boot. |
+| `src/core/config/bot.toml` | Preset monitor (market, strategy, risk, `run_mode`). |
+| `src/core/config/exchanges/*.toml` | Contas/endpoints exchange (`binance.toml`); `load_registry` ignora `credentials.toml` (só documenta env `BINANCE_TESTNET_*`). |
+| PostgreSQL `provider_credentials` | API keys LLM (primary); env `TYPESAFE_*` / `OPENAI_*` = bootstrap deprecated. |
+
+Ordem de bootstrap: `ensure_dotenv_loaded()` → `system.toml` → `bot.toml`. Detalhes: [SDD configuração centralizada](../sdd/centralized-config-sdd.md), [provider credentials](../sdd/provider-credentials-db-sdd.md).
+
 ## Subcomando `serve` (HTTP)
 
 Flags globais (`--config`, `--environment`, …) vêm **antes** de `serve`. Também é possível repetir o TOML no subcomando:

@@ -62,7 +62,9 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD — Gate 2 orders live (parcial)](./sdd/orders-live-execution-gate2-sdd.md) — `HttpOrderExecutor`, idempotência HTTP; adapter exchange real pendente.
 - [SDD — Gate 2 bots runtime (parcial)](./sdd/bots-runtime-live-gate2-sdd.md) — `BotRuntimePort`, `MonitorEvaluatorKind` (SMA/EMA), promoção HTTP; auth owner pendente.
 - [SDD — Módulo agents (fundação IdentityOnly)](./sdd/agents-module-sdd.md) — registry + espelhamento/hidratação PG, hierarquia, lifecycle e seam Jev; auth owner pendente.
-- [SDD — HTTP admin bearer seam](./sdd/http-admin-auth-seam-sdd.md) — `BOT_HTTP_ADMIN_TOKEN`, binds opcionais de owner/agency; não substitui auth owner Gate 1.
+- [SDD — HTTP admin bearer seam](./sdd/http-admin-auth-sdd.md) — `BOT_HTTP_ADMIN_TOKEN`, binds opcionais de owner/agency; não substitui auth owner Gate 1.
+- [SDD — Configuração centralizada](./sdd/centralized-config-sdd.md) — `system.toml`, `.env`, `bot.toml`, árvore `core/config/`.
+- [SDD — Provider credentials (PostgreSQL)](./sdd/provider-credentials-db-sdd.md) — migração `0007`, cache em memória; teste ignorado `loads_credentials_from_postgres`.
 
 ## Governança
 

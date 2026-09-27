@@ -46,7 +46,8 @@ Evidência (2026-09-27, gate ~10,5s–10,6s; `verify-backend-full.sh` → `OK: b
 
 ## Documentação relacionada
 
-- [CLI e variáveis HTTP](../reference/cli-and-config.md) (`BOT_HTTP_*`, `BOT_ORDERS_EXECUTION`, `BOT_RUNTIME_ENABLED`, `client_order_id`)
+- [CLI e variáveis HTTP](../reference/cli-and-config.md) (`BOT_HTTP_*`, `BOT_ORDERS_EXECUTION`, `BOT_RUNTIME_ENABLED`, `client_order_id`; [camadas system/bot/env](../reference/cli-and-config.md#configuração-em-camadas))
+- [SDD configuração centralizada](../sdd/centralized-config-sdd.md)
 - [module-catalog.md](../architecture/module-catalog.md)
 - [module-implementation-status.md](../architecture/module-implementation-status.md) — MVC mínimo vs goal de completude (dois vereditos distintos)
 - [unimplemented-modules-analysis.md](./unimplemented-modules-analysis.md)
