@@ -215,6 +215,29 @@ impl ApiError {
             "Jev advisory is disabled or not configured in this API process",
         )
     }
+
+    pub fn from_provider_credentials_store_error(
+        error: crate::core::providers::credentials::ProviderCredentialsStoreError,
+    ) -> Self {
+        use crate::core::providers::credentials::ProviderCredentialsStoreError;
+        match error {
+            ProviderCredentialsStoreError::InvalidRequest(message) => ApiError::with_code(
+                StatusCode::BAD_REQUEST,
+                "invalid_provider_credential",
+                message,
+            ),
+            ProviderCredentialsStoreError::NotFound => ApiError::with_code(
+                StatusCode::NOT_FOUND,
+                "provider_credential_not_found",
+                "provider credential not found",
+            ),
+            ProviderCredentialsStoreError::StoreUnavailable(message) => ApiError::with_code(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "provider_credentials_store_unavailable",
+                message,
+            ),
+        }
+    }
 }
 
 #[cfg(test)]

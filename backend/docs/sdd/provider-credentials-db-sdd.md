@@ -36,19 +36,20 @@
 - Migração `0008_provider_credentials_dev_seed_note.sql` — sem INSERT automático.
 - Procedimento: [postgres-and-graph-dev.md](../operations/postgres-and-graph-dev.md#provider-credentials-llm-api-keys).
 
-## HTTP admin CRUD (stub, fail-closed)
+## HTTP admin CRUD (parcial, fail-closed)
 
 | Método | Path | Auth | Resposta |
 |--------|------|------|----------|
-| GET | `/api/v1/admin/provider-credentials` | `BOT_HTTP_ADMIN_TOKEN` quando definido | **501** `provider_credentials_admin_not_implemented` |
-| POST | `/api/v1/admin/provider-credentials` | idem | **501** |
-| PUT | `/api/v1/admin/provider-credentials/{provider_id}/{key_name}` | idem | **501** |
-| DELETE | `/api/v1/admin/provider-credentials/{provider_id}/{key_name}` | idem | **501** |
+| GET | `/api/v1/admin/provider-credentials` | `BOT_HTTP_ADMIN_TOKEN` quando definido | **200** lista mascarada; **503** `provider_credentials_store_unavailable` sem PG |
+| POST | `/api/v1/admin/provider-credentials` | idem | **200** upsert mascarado; **400** `invalid_provider_credential` |
+| PUT | `/api/v1/admin/provider-credentials/{provider_id}/{key_name}` | idem | **200** replace mascarado |
+| DELETE | `/api/v1/admin/provider-credentials/{provider_id}/{key_name}` | idem | **204** ou **404** `provider_credential_not_found` |
 
-Nenhuma rota retorna coluna `secret`. Implementação futura exige owner auth Gate 1 e ADR opcional de encryption-at-rest.
+Corpo POST: `{ "provider_id", "key_name", "secret" }` (`provider_id` ∈ `typesafe|openai|nvidia|ngc`; v1 `key_name` = `api_key`). Respostas expõem `secret_masked` (`****` + últimos 4 chars); **nunca** coluna `secret` nem valor integral em JSON/logs. Após mutação, `reload_from_pool`. IdP/owner Gate 1 e encryption-at-rest permanecem follow-up.
 
 ## Tests
 
-- Unit: env fallback when cache empty.
+- Unit: env fallback when cache empty; `store::mask_secret` / validação `provider_id`.
+- HTTP: `provider_credentials_admin_*` em `http_integration_tests.rs` (503 sem PG; upsert+list mascarado com PG).
 - Scaffold: migration SQL contains table name.
 - Integration: `loads_credentials_from_postgres` em `core/providers/credentials/pg_integration.rs` (skip sem `DATABASE_URL`); incluído em `./scripts/run-pg-integration-tests.sh` (**21/21** com `DATABASE_URL` → `trading_bot`; evidência 2026-09-27: `OK: PostgreSQL integration tests passed (21 tests)`).

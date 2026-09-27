@@ -755,6 +755,38 @@ async fn meta_includes_http_seams_snapshot() {
 }
 
 #[tokio::test]
+async fn meta_reports_product_owner_bootstrap_active_when_verified() {
+    use crate::modules::agents::VerifiedProductOwner;
+
+    let default_app = build_router(ApiState::new(
+        None,
+        AppDatabases::empty(),
+        None,
+        Config::default(),
+    ));
+    let default_meta = json_get(&default_app, "/api/v1/meta").await;
+    assert_eq!(
+        default_meta["http_seams"]["product_owner_bootstrap_active"].as_bool(),
+        Some(false)
+    );
+
+    let verified_app = build_router(ApiState::with_agent_registry_and_verified_owner(
+        None,
+        AppDatabases::empty(),
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::disabled(),
+        VerifiedProductOwner::for_test("owner-verified"),
+    ));
+    let verified_meta = json_get(&verified_app, "/api/v1/meta").await;
+    assert_eq!(
+        verified_meta["http_seams"]["product_owner_bootstrap_active"].as_bool(),
+        Some(true)
+    );
+}
+
+#[tokio::test]
 async fn meta_and_orders_execution_status_agree_on_seams() {
     let state = ApiState::with_order_executor(
         None,
@@ -1351,7 +1383,7 @@ async fn agents_audit_lists_lifecycle_events_after_register_and_pause() {
 }
 
 #[tokio::test]
-async fn provider_credentials_admin_list_returns_501_with_admin_bearer() {
+async fn provider_credentials_admin_list_returns_503_without_postgres() {
     let app = router_with_admin(HttpAdminAuth::for_test(ADMIN_TOKEN));
     let response = app
         .oneshot(
@@ -1363,7 +1395,85 @@ async fn provider_credentials_admin_list_returns_501_with_admin_bearer() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["code"], "provider_credentials_store_unavailable");
+}
+
+#[tokio::test]
+async fn provider_credentials_admin_upsert_list_masked_never_returns_raw_secret() {
+    let Some(db) = crate::core::persistence::pg_integration::database_for_integration_test().await
+    else {
+        return;
+    };
+    let state = ApiState::with_agent_registry(
+        None,
+        AppDatabases {
+            postgres: Some(db),
+            neo4j: None,
+        },
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::for_test(ADMIN_TOKEN),
+    );
+    let app = build_router(state);
+    const PROVIDER: &str = "typesafe";
+    const SECRET: &str = "integration-test-secret-value-xy";
+    let upsert = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/admin/provider-credentials")
+                .header("content-type", "application/json")
+                .header(bearer_header(ADMIN_TOKEN).0, bearer_header(ADMIN_TOKEN).1)
+                .body(Body::from(format!(
+                    r#"{{"provider_id":"{PROVIDER}","key_name":"api_key","secret":"{SECRET}"}}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(upsert.status(), StatusCode::OK);
+    let upsert_json: serde_json::Value = serde_json::from_slice(
+        &axum::body::to_bytes(upsert.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(upsert_json["secret_masked"].as_str(), Some("****e-xy"));
+    assert!(upsert_json.get("secret").is_none());
+
+    let list = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/admin/provider-credentials")
+                .header(bearer_header(ADMIN_TOKEN).0, bearer_header(ADMIN_TOKEN).1)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(list.status(), StatusCode::OK);
+    let list_json: serde_json::Value = serde_json::from_slice(
+        &axum::body::to_bytes(list.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let body = list_json.to_string();
+    assert!(!body.contains(SECRET));
+    let entry = list_json["credentials"]
+        .as_array()
+        .expect("credentials")
+        .iter()
+        .find(|row| row["provider_id"] == PROVIDER)
+        .expect("typesafe row");
+    assert_eq!(entry["secret_masked"].as_str(), Some("****e-xy"));
 }
 
 #[tokio::test]

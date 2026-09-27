@@ -15,6 +15,7 @@ pub mod exchanges;
 pub mod monitor;
 pub mod orders;
 pub mod portfolio;
+pub mod provider_credentials;
 pub mod providers;
 pub mod risk;
 pub mod strategy;
