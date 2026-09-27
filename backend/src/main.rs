@@ -38,7 +38,53 @@ async fn main() -> Result<()> {
             }
             let config = Config::load(&monitor_cli)?;
             let _logging_guard = crate::core::logging::init(&config.logging)?;
-            presentation::http::run_server(args.bind, config).await?;
+            let monitor_handle = if args.with_monitor {
+                if config.operation.is_hft() {
+                    anyhow::bail!(
+                        "HFT is not supported by this REST polling implementation; omit --with-monitor or use a non-HFT operation mode"
+                    );
+                }
+                let persist_flag = std::env::var("PERSIST_MARKET_DATA").map(Some).or_else(
+                    |error| match error {
+                        std::env::VarError::NotPresent => Ok(None),
+                        std::env::VarError::NotUnicode(_) => {
+                            Err(modules::monitor::StartupError::InvalidFlag)
+                        }
+                    },
+                )?;
+                let database = modules::monitor::bootstrap_monitor(
+                    persist_flag.as_deref(),
+                    &config.market.timeframe,
+                    || match std::env::var("DATABASE_URL") {
+                        Ok(url) => Ok(Some(url)),
+                        Err(std::env::VarError::NotPresent) => Ok(None),
+                        Err(std::env::VarError::NotUnicode(_)) => {
+                            Err(modules::monitor::StartupError::InvalidUrl)
+                        }
+                    },
+                    modules::monitor::connect_database,
+                )
+                .await?;
+                let agent_hook = modules::agents::monitor_agent_hook_from_env();
+                let (handle, task) =
+                    modules::monitor::spawn_headless_for_api(config.clone(), database, agent_hook)
+                        .await?;
+                tokio::spawn(async move {
+                    match task.await {
+                        Ok(Ok(())) => {}
+                        Ok(Err(error)) => {
+                            tracing::error!(target: "monitor", %error, "headless monitor stopped with error")
+                        }
+                        Err(error) => {
+                            tracing::error!(target: "monitor", %error, "headless monitor task failed")
+                        }
+                    }
+                });
+                Some(handle)
+            } else {
+                None
+            };
+            presentation::http::run_server(args.bind, config, monitor_handle).await?;
         }
         None => {
             let config = Config::load(&cli.monitor)?;

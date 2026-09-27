@@ -33,7 +33,7 @@ pub async fn execute_backtest(cli: &BacktestCli) -> BotResult<serde_json::Value>
     let timeframe = Timeframe::new(parse_timeframe_minutes(&config.market.timeframe)?)
         .map_err(|e| crate::core::error::BotError::MarketData(e.to_string()))?;
     let strategy = StrategyDefinition {
-        id: crate::modules::backtest::StrategyId::new("sma-cross")
+        id: crate::modules::bots::StrategyId::new("sma-cross")
             .map_err(|e| crate::core::error::BotError::Configuration(e.to_string()))?,
         version: StrategyVersion(1),
         name: "SMA crossover".into(),
@@ -240,7 +240,7 @@ mod tests {
         assert_eq!(bars[27].open, 100.0);
 
         let strategy = StrategyDefinition {
-            id: crate::modules::backtest::StrategyId::new("sma-cross").unwrap(),
+            id: crate::modules::bots::StrategyId::new("sma-cross").unwrap(),
             version: StrategyVersion(1),
             name: "SMA crossover".into(),
             fast_period: 5,

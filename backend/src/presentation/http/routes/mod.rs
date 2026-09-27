@@ -1,11 +1,13 @@
 pub mod agents;
 pub mod application;
 pub mod backtest;
+pub mod bots;
 pub mod config;
 pub mod exchanges;
 pub mod health;
 pub mod meta;
 pub mod monitor;
+pub mod orders;
 pub mod portfolio;
 pub mod providers;
 pub mod risk;
@@ -43,7 +45,10 @@ pub fn v1_routes() -> Router<ApiState> {
         .route("/strategy/periods", get(strategy::sma_periods))
         .route("/strategy/evaluate-sma", post(strategy::evaluate_sma))
         .route("/portfolio/paper-snapshot", get(portfolio::paper_wallet))
+        .route("/bots/catalog", get(bots::bot_catalog))
+        .route("/bots/ranking", post(bots::bot_ranking))
         .route("/backtest/sma-crossover", post(backtest::run_sma_backtest))
+        .route("/orders/submit", post(orders::submit_order))
         .route("/monitor/snapshot", get(monitor::snapshot))
         .route("/monitor/commands", post(monitor::post_command))
 }

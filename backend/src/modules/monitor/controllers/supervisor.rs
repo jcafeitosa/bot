@@ -36,6 +36,7 @@ use crate::{
             HybridCandleFeed,
         },
         monitor::controllers::persistence_health::{PersistenceHealth, PersistenceState},
+        orders::{submit_order, FailClosedExecutor, OrderSide, OrdersError, SubmitOrderRequest},
         portfolio::Asset,
         risk::{gate_signal, profile_limits, ExecutionContext, RiskLimits},
         strategy::{evaluate, Signal, StrategySnapshot},
@@ -136,14 +137,40 @@ async fn apply_strategy_snapshot(
             }
         }
         match gate_signal(snapshot.signal, *limits, config.run_mode, execution_ctx) {
-            Ok(()) => warn!(
-                target: "risk",
-                environment=%config.environment,
-                mode=%config.run_mode,
-                quote_cap=limits.max_order_quote,
-                open_positions=execution_ctx.open_positions,
-                "Strategy intent passed risk gate; live orders remain disabled in v1"
-            ),
+            Ok(()) => {
+                warn!(
+                    target: "risk",
+                    environment=%config.environment,
+                    mode=%config.run_mode,
+                    quote_cap=limits.max_order_quote,
+                    open_positions=execution_ctx.open_positions,
+                    "Strategy intent passed risk gate; live orders remain disabled in v1"
+                );
+                let side = match snapshot.signal {
+                    Signal::Buy => OrderSide::Buy,
+                    Signal::Sell => OrderSide::Sell,
+                    _ => unreachable!("buy/sell branch only"),
+                };
+                let order = SubmitOrderRequest {
+                    symbol: &config.market.symbol,
+                    side,
+                    quote_amount: limits.max_order_quote,
+                    estimated_daily_loss: execution_ctx.estimated_daily_loss_quote,
+                    open_positions: execution_ctx.open_positions,
+                };
+                match submit_order(order, *limits, &FailClosedExecutor) {
+                    Ok(()) => {}
+                    Err(OrdersError::ExecutionDisabled) => info!(
+                        target: "orders",
+                        symbol=%config.market.symbol,
+                        side=?side,
+                        "Order seam reached fail-closed executor (ExecutionDisabled)"
+                    ),
+                    Err(e) => {
+                        warn!(target: "orders", error=%e, "Order submit failed after risk gate")
+                    }
+                }
+            }
             Err(e) => warn!(target: "risk", error=%e, "Strategy intent rejected by risk gate"),
         }
     }
@@ -700,6 +727,16 @@ pub async fn run_with_agent_hook(
     database: Option<Database>,
     agent_hook: Arc<dyn MonitorAgentHook>,
 ) -> BotResult<()> {
+    run_with_agent_hook_inner(config, database, agent_hook, false, None).await
+}
+
+async fn run_with_agent_hook_inner(
+    config: Config,
+    database: Option<Database>,
+    agent_hook: Arc<dyn MonitorAgentHook>,
+    headless: bool,
+    handle_tx: Option<tokio::sync::oneshot::Sender<MonitorHandle>>,
+) -> BotResult<()> {
     let registry = load_registry(config.environment)
         .map_err(|e| crate::core::error::BotError::Configuration(e.to_string()))?;
     let spot = spot_account_for_symbol(&registry, config.environment, &config.market.symbol)?;
@@ -777,18 +814,28 @@ pub async fn run_with_agent_hook(
     let limits = profile_limits(config.risk_profile, base_limits);
     let mut dashboard = new_dashboard(&config, limits);
     dashboard.persistence_status = PersistenceHealth::new(database.is_some()).label().into();
-    let (event_tx, event_rx) = mpsc::channel(64);
+    let (event_tx, mut event_rx) = mpsc::channel(64);
     let (monitor_handle, command_rx, _) = MonitorHandle::channel(8, 64);
     let (state_tx, state_rx) = tokio::sync::watch::channel(
         crate::modules::monitor::views::terminal_dashboard::MonitorState::Running,
     );
     let (dashboard_tx, dashboard_rx) = watch::channel(dashboard.clone());
-    let mut ui_task = tokio::spawn(crate::presentation::terminal::run(
-        monitor_handle.clone(),
-        event_rx,
-        state_rx,
-        dashboard_rx,
-    ));
+    if let Some(tx) = handle_tx {
+        let _ = tx.send(monitor_handle.clone());
+    }
+    let mut ui_task = if headless {
+        tokio::spawn(async move {
+            while event_rx.recv().await.is_some() {}
+            Ok::<(), anyhow::Error>(())
+        })
+    } else {
+        tokio::spawn(crate::presentation::terminal::run(
+            monitor_handle.clone(),
+            event_rx,
+            state_rx,
+            dashboard_rx,
+        ))
+    };
 
     let spot_account_id = spot.id.clone();
     let interval = time::interval(Duration::from_secs(config.market.poll_seconds));
@@ -875,6 +922,22 @@ pub async fn run_with_agent_hook(
     // The monitor and UI are shut down by their respective commands/cancellation paths.
     info!(target: "system", environment=%config.environment, "Shutdown complete; no live-order action was performed");
     Ok(())
+}
+
+/// Headless monitor for HTTP `serve --with-monitor` (no Ratatui).
+pub async fn spawn_headless_for_api(
+    config: Config,
+    database: Option<Database>,
+    agent_hook: Arc<dyn MonitorAgentHook>,
+) -> BotResult<(MonitorHandle, JoinHandle<BotResult<()>>)> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let join = tokio::spawn(async move {
+        run_with_agent_hook_inner(config, database, agent_hook, true, Some(tx)).await
+    });
+    let handle = rx.await.map_err(|_| {
+        BotError::Configuration("headless monitor exited before exposing handle".into())
+    })?;
+    Ok((handle, join))
 }
 
 #[cfg(test)]

@@ -1,19 +1,6 @@
 use axum::Json;
-use serde::Serialize;
-use utoipa::ToSchema;
 
-use crate::modules::application_contracts::{signal_label, Signal};
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct SignalDescriptor {
-    pub signal: Signal,
-    pub label: String,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct SignalsResponse {
-    pub signals: Vec<SignalDescriptor>,
-}
+use crate::modules::http_bridge::application::{self, SignalsResponse};
 
 #[utoipa::path(
     get,
@@ -22,12 +9,5 @@ pub struct SignalsResponse {
     responses((status = 200, description = "Trading signal enum", body = SignalsResponse))
 )]
 pub async fn list_signals() -> Json<SignalsResponse> {
-    let signals = [Signal::Warmup, Signal::Hold, Signal::Buy, Signal::Sell]
-        .into_iter()
-        .map(|signal| SignalDescriptor {
-            label: signal_label(signal).to_owned(),
-            signal,
-        })
-        .collect();
-    Json(SignalsResponse { signals })
+    Json(application::list_trading_signals())
 }

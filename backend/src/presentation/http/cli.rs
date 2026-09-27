@@ -11,4 +11,7 @@ pub struct ServeCli {
     /// Override bot.toml path for this API process (same as global `--config`).
     #[arg(long)]
     pub config: Option<PathBuf>,
+    /// Run the live market monitor in-process (headless) so `/api/v1/monitor/*` routes work.
+    #[arg(long)]
+    pub with_monitor: bool,
 }

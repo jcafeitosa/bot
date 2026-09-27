@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use tokio::sync::Mutex;
-
 use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
 use crate::modules::agents::AgentRegistry;
@@ -16,7 +14,7 @@ pub struct ApiState {
 pub struct ApiStateInner {
     pub monitor: Option<MonitorHandle>,
     pub database: Option<Database>,
-    pub agents: Mutex<AgentRegistry>,
+    pub agents: Arc<std::sync::Mutex<AgentRegistry>>,
     pub jev: Option<JevAdvisor>,
     pub app_config: Config,
 }
@@ -28,11 +26,27 @@ impl ApiState {
         jev: Option<JevAdvisor>,
         app_config: Config,
     ) -> Self {
+        Self::with_agent_registry(
+            monitor,
+            database,
+            jev,
+            app_config,
+            Arc::new(std::sync::Mutex::new(AgentRegistry::new())),
+        )
+    }
+
+    pub fn with_agent_registry(
+        monitor: Option<MonitorHandle>,
+        database: Option<Database>,
+        jev: Option<JevAdvisor>,
+        app_config: Config,
+        agents: Arc<std::sync::Mutex<AgentRegistry>>,
+    ) -> Self {
         Self {
             inner: Arc::new(ApiStateInner {
                 monitor,
                 database,
-                agents: Mutex::new(AgentRegistry::new()),
+                agents,
                 jev,
                 app_config,
             }),
@@ -56,12 +70,12 @@ impl ApiState {
     }
 
     pub async fn with_agents<R>(&self, f: impl FnOnce(&mut AgentRegistry) -> R) -> R {
-        let mut guard = self.inner.agents.lock().await;
+        let mut guard = self
+            .inner
+            .agents
+            .lock()
+            .expect("agent registry lock poisoned");
         f(&mut guard)
-    }
-
-    pub async fn agents_lock(&self) -> tokio::sync::MutexGuard<'_, AgentRegistry> {
-        self.inner.agents.lock().await
     }
 }
 

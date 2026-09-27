@@ -109,11 +109,17 @@ For `backtest`, [modules::backtest::cli](src/modules/backtest/cli.rs) drives syn
 | Module | Responsibility |
 |---|---|
 | [core](src/core/mod.rs) | Shared `config`, `error`, `health`, `logging`, `notifications`, `persistence`, and `providers` (OpenAI-compatible clients + Jev). |
-| [modules](src/modules/mod.rs) | Domain modules: `market`, `monitor`, `exchanges`, `strategy`, `risk`, `portfolio`, `backtest`, `agents`; shared seams in [application_contracts](src/modules/application_contracts.rs). |
+| [modules](src/modules/mod.rs) | Domain modules: `market`, `monitor`, `exchanges`, `strategy`, `risk`, `portfolio`, `backtest`, `agents`, `bots`, `orders`; shared seams in [application_contracts](src/modules/application_contracts.rs). |
 | [presentation](src/presentation/mod.rs) | Terminal UI (`presentation::terminal`). |
 
 ### `modules::agents` (IdentityOnly foundation)
 
 Administrative agent identities live under [modules/agents](src/modules/agents/mod.rs): in-memory `AgentRegistry`, hierarchy validation (owner → CEO → Level B → Level A → specialist/worker), lifecycle transitions (pause/resume/retire) with an audit trail, and `run_advisory_step` delegating to [`core::providers::jev`](src/core/providers/jev/mod.rs) only when `AgentCapabilities.consult_jev` is set. Registering an agent does not start workers, tools, or LLM calls. Design: [docs/sdd/agents-module-sdd.md](docs/sdd/agents-module-sdd.md). PostgreSQL persistence and owner authentication remain blocked per [agents capability research](docs/research/agents-capability-research.md).
 
-**Agents ≠ bots:** `modules/agents` is product **identity and governance** only. There is **no** `modules/bots` yet — that module is planned for versioned trading executors and promotion cycles, separate from agents. Do not confuse either with [`backtest::BotId`](src/modules/backtest/models.rs) (simulation key: `strategy@version:timeframe:symbol`) or with the live [`modules/monitor`](src/modules/monitor/mod.rs) supervisor. See the comparison table in [agents-module-sdd.md — Relação com bots](docs/sdd/agents-module-sdd.md).
+**Agents ≠ bots:** `modules/agents` is product **identity and governance** only. [`modules/bots`](src/modules/bots/mod.rs) holds versioned strategy×timeframe executors (catalog, ranking, HTTP); live runtime and PostgreSQL remain gated. [`modules/orders`](src/modules/orders/mod.rs) is a fail-closed order seam (`submit_order` validates risk then returns `ExecutionDisabled`). Do not confuse `bots`/`backtest::BotId` with [`modules/agents`](src/modules/agents/mod.rs) administrative identity. See [bots-module-sdd.md](docs/sdd/bots-module-sdd.md) and [agents-module-sdd.md](docs/sdd/agents-module-sdd.md).
+### `modules::bots` and `modules::orders`
+
+[`modules/bots`](src/modules/bots/mod.rs): `BotIdentity`, catalog from active config, full PnL ranking, and HTTP routes under `/api/v1/bots/*`. Design: [docs/sdd/bots-module-sdd.md](docs/sdd/bots-module-sdd.md).
+
+[`modules/orders`](src/modules/orders/mod.rs): `submit_order` runs `risk::validate_intent` then `FailClosedExecutor` (no live exchange). Design: [docs/sdd/orders-module-sdd.md](docs/sdd/orders-module-sdd.md).
+

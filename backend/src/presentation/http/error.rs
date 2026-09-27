@@ -102,6 +102,23 @@ impl ApiError {
         )
     }
 
+    pub fn from_orders_error(error: crate::modules::orders::OrdersError) -> Self {
+        use crate::modules::orders::OrdersError;
+        match error {
+            OrdersError::InvalidRequest(message) => {
+                ApiError::with_code(StatusCode::BAD_REQUEST, "invalid_order", message)
+            }
+            OrdersError::RiskRejected(message) => {
+                ApiError::with_code(StatusCode::UNPROCESSABLE_ENTITY, "risk_rejected", message)
+            }
+            OrdersError::ExecutionDisabled => ApiError::with_code(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "execution_disabled",
+                "order execution is disabled in this build",
+            ),
+        }
+    }
+
     pub fn jev_unavailable() -> Self {
         ApiError::with_code(
             StatusCode::SERVICE_UNAVAILABLE,

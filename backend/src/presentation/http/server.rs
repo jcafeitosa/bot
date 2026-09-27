@@ -8,13 +8,17 @@ use utoipa_scalar::{Scalar, Servable};
 
 use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
+use crate::modules::agents::shared_agent_registry;
 use crate::modules::config_api::Config;
-use crate::presentation::http::agent_log::agent_debug_log;
 use crate::presentation::http::openapi::ApiDoc;
 use crate::presentation::http::routes;
 use crate::presentation::http::state::ApiState;
 
-pub async fn run(bind: SocketAddr, app_config: Config) -> anyhow::Result<()> {
+pub async fn run(
+    bind: SocketAddr,
+    app_config: Config,
+    monitor: Option<crate::modules::monitor::MonitorHandle>,
+) -> anyhow::Result<()> {
     let database = match std::env::var("DATABASE_URL") {
         Ok(url) => match Database::connect_from_url(&url).await {
             Ok(db) => Some(db),
@@ -27,22 +31,19 @@ pub async fn run(bind: SocketAddr, app_config: Config) -> anyhow::Result<()> {
     };
 
     let jev = JevAdvisor::from_env(app_config.jev.clone()).ok().flatten();
-    let state = ApiState::new(None, database, jev, app_config);
+    let state =
+        ApiState::with_agent_registry(monitor, database, jev, app_config, shared_agent_registry());
+    let monitor_attached = state.monitor().is_some();
     let app = build_router(state);
 
-    agent_debug_log(
-        "B",
-        "presentation/http/server.rs:run",
-        "HTTP router mounted",
-        serde_json::json!({
-            "bind": bind.to_string(),
-            "openapi_paths": ApiDoc::openapi().paths.paths.len(),
-        }),
-        "post-expand",
-    );
-
     let listener = TcpListener::bind(bind).await?;
-    tracing::info!(target: "api", %bind, "HTTP API listening (Scalar at /docs)");
+    tracing::info!(
+        target: "api",
+        %bind,
+        monitor_attached,
+        openapi_paths = ApiDoc::openapi().paths.paths.len(),
+        "HTTP API listening (Scalar at /docs)"
+    );
     axum::serve(listener, app).await?;
     Ok(())
 }
@@ -137,7 +138,7 @@ mod tests {
         let doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         let paths = doc["paths"].as_object().expect("paths").len();
         assert!(
-            paths >= 25,
+            paths >= 28,
             "expected expanded openapi surface, got {paths}"
         );
         assert!(doc["paths"]["/api/v1/agents"].is_object());
@@ -167,6 +168,7 @@ mod tests {
             ("/api/v1/monitor/snapshot", StatusCode::SERVICE_UNAVAILABLE),
             ("/api/v1/agents?agency=acme", StatusCode::OK),
             ("/api/v1/agents/audit?agency=acme", StatusCode::OK),
+            ("/api/v1/bots/catalog", StatusCode::OK),
         ];
         for (path, expected) in get_paths {
             let response = app
@@ -190,6 +192,55 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(monitor_cmd.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn bots_ranking_post_returns_report_shape() {
+        let app = build_router(ApiState::default());
+        let body = r#"{"metrics":[{"bot_id":"sma-cross@1:5m:BTC/USDT","timeframe":"5m","symbol":"BTC/USDT","strategy_id":"sma-cross","strategy_version":1,"run_id":"r1","dataset_hash":"dataset-v1","window":{"start_ms":100,"end_ms":200},"quote_currency":"USDT","initial_capital_quote":1000.0,"net_pnl_quote":20.0,"net_return_pct":2.0,"max_drawdown_pct":5.0,"trades":10,"accuracy_pct":92.0}]}"#;
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/bots/ranking")
+                    .header("content-type", "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        let report = doc.get("report").expect("report");
+        assert_eq!(report["dataset_hash"], "dataset-v1");
+        assert_eq!(report["quote_currency"], "USDT");
+        let entries = report["entries"].as_array().expect("entries");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0]["rank"], 1);
+        assert!(entries[0]["metrics"]["bot_id"]
+            .as_str()
+            .is_some_and(|id| id.contains("sma-cross")));
+    }
+
+    #[tokio::test]
+    async fn orders_submit_fail_closed_returns_503() {
+        let app = build_router(ApiState::default());
+        let body = r#"{"symbol":"BTC/USDT","side":"buy","quote_amount":5.0,"estimated_daily_loss":0.0,"open_positions":0,"limits":{"max_order_quote":10.0,"max_daily_loss_quote":20.0,"max_open_positions":1}}"#;
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/orders/submit")
+                    .header("content-type", "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
     #[tokio::test]
@@ -242,12 +293,15 @@ mod tests {
     fn openapi_surface_lists_core_paths() {
         let doc = ApiDoc::openapi();
         let paths = &doc.paths.paths;
-        assert_eq!(paths.len(), 25, "update test when adding utoipa paths");
+        assert_eq!(paths.len(), 28, "update test when adding utoipa paths");
         for key in [
             "/api/v1/config/active",
             "/api/v1/agents/{agent_id}/advisory",
+            "/api/v1/bots/catalog",
+            "/api/v1/bots/ranking",
             "/api/v1/monitor/commands",
             "/api/v1/risk/gate-signal",
+            "/api/v1/orders/submit",
         ] {
             assert!(paths.contains_key(key), "missing openapi path {key}");
         }
@@ -298,7 +352,7 @@ mod tests {
     #[tokio::test]
     async fn agents_lifecycle_endpoints_after_register() {
         let app = build_router(ApiState::default());
-        let register_body = r#"{"agency":"acme","owner_id":"owner-1","agent_id":"ceo","display_name":"CEO","role":"ceo","supervisor":{"kind":"owner","owner_id":"owner-1"},"consult_jev":true}"#;
+        let register_body = r#"{"agency":"lifecycle","owner_id":"owner-1","agent_id":"ceo","display_name":"CEO","role":"ceo","supervisor":{"kind":"owner","owner_id":"owner-1"},"consult_jev":false}"#;
         let register = app
             .clone()
             .oneshot(
@@ -317,7 +371,7 @@ mod tests {
             .clone()
             .oneshot(
                 Request::builder()
-                    .uri("/api/v1/agents/ceo?agency=acme")
+                    .uri("/api/v1/agents/ceo?agency=lifecycle")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -330,7 +384,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/api/v1/agents/ceo/pause?agency=acme")
+                    .uri("/api/v1/agents/ceo/pause?agency=lifecycle")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -343,7 +397,7 @@ mod tests {
             .oneshot(
                 Request::builder()
                     .method("POST")
-                    .uri("/api/v1/agents/ceo/resume?agency=acme")
+                    .uri("/api/v1/agents/ceo/resume?agency=lifecycle")
                     .body(Body::empty())
                     .unwrap(),
             )

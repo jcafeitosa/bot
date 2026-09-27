@@ -1,11 +1,13 @@
 pub mod agents;
 pub mod application_contracts;
 pub mod backtest;
+pub mod bots;
 pub mod config_api;
 pub mod exchanges;
 pub mod http_bridge;
 pub mod market;
 pub mod monitor;
+pub mod orders;
 pub mod portfolio;
 pub mod risk;
 pub mod strategy;
