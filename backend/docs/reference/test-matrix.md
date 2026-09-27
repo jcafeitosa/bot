@@ -31,6 +31,7 @@ tags:
 | `strategy` | Períodos por operação e sinais de cruzamento. |
 | `risk` | Limite conservador/agressivo, tamanho, stop/take profit e incompatibilidade de modo. |
 | `agents` | Registry, hierarquia, lifecycle, advisory, `restore_from_snapshot`, `PgAgentIdentityStore` SQL mapping. |
+| `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
 | `orders` | `submit_order` rejeita acima do cap de risco; após risco OK retorna `ExecutionDisabled`. |
 | `bots` | Identidade, ranking, catálogo por modo e métricas coerentes com `BotId`. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |

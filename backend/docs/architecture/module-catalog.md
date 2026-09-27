@@ -82,7 +82,9 @@ Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-mo
 | `controllers/supervisor_hook` | `MonitorAgentHook` / `NoopMonitorAgentHook` — seam futuro com o supervisor do monitor. |
 | `adapters/jev` | Adaptador fino para `JevAdvisor`; sem política de domínio nova. |
 
-**Limites:** sem PostgreSQL de identidades, sem autenticação do owner no transporte, sem runtime durável, scheduler, gateway MCP ou canais externos.
+**Persistência:** `PgAgentIdentityStore` (migração `0002_agents_bots_scaffold.sql`); mutações HTTP espelham best-effort; boot `serve` restaura snapshot só se o registry compartilhado estiver vazio (`apply_agent_identity_snapshot`).
+
+**Limites:** sem autenticação verificável do owner no transporte (seam `BOT_HTTP_ADMIN_TOKEN` / `BOT_HTTP_OWNER_ID` apenas); sem scheduler, gateway MCP ou canais externos.
 
 **Agents vs bots vs backtest:** `bots::BotId` e `backtest::BotId` (reexport) compõem a mesma chave canônica `strategy@version:timeframe:symbol`; isso não é `AgentId`. O monitor opera o loop de mercado e pode, no futuro, usar `MonitorAgentHook`; hoje permanece noop. Tabela completa: [SDD bots](../sdd/bots-module-sdd.md), [SDD agents — Relação com bots](../sdd/agents-module-sdd.md).
 
@@ -95,7 +97,7 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 |---|---|
 | `models` | `BotIdentity`, `BotId`, `BotDefinition`, `BotMetrics`, erros e tipos de ranking. |
 | `controllers` | `build_catalog_from_config`, `full_ranking` / `rank_bots`. |
-| `adapters` | `BotCatalogStore`; `NoopBotCatalogStore`, `InMemoryBotCatalogStore`, `PgBotCatalogStore`; `BotCatalogBackend` (memória ou PG via `AppDatabases`). Agents PG pendente. |
+| `adapters` | `BotCatalogStore`; `NoopBotCatalogStore`, `InMemoryBotCatalogStore`, `PgBotCatalogStore`; `BotCatalogBackend` (memória ou PG via `AppDatabases`). |
 | `controllers` | `persist_catalog_snapshot` grava catálogo derivado da config no store. |
 
 **HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking` via `presentation/http/routes/bots.rs` (store compartilhado em `ApiState`).
@@ -110,7 +112,17 @@ Seam fail-closed ([SDD orders](../sdd/orders-module-sdd.md)).
 | `controllers` | `submit_order` — valida request e `risk::validate_intent`. |
 | `adapters` | `OrderExecutionPort`, `FailClosedExecutor` (`ExecutionDisabled`). |
 
-**HTTP:** `POST /api/v1/orders/submit` (fail-closed `503` após gate de risco) via `presentation/http/routes/orders.rs`.
+**HTTP:** `POST /api/v1/orders/submit` (fail-closed `503` após gate de risco) via `presentation/http/routes/orders.rs`; exige bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido.
+
+## 3d. Camada `presentation::http`
+
+| Peça | Comportamento |
+|---|---|
+| `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
+| `server::run` | Bootstrap `AppDatabases`, hydrate agents PG, `HttpAdminAuth::from_env`, Axum + Scalar. |
+| `routes/*` | Superfície v1: agents, bots, orders, monitor (commands mutante), risk, backtest, config, health, meta. |
+
+Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `orders/submit`, `monitor/commands`.
 
 ## 4. Módulos de exchanges (`src/modules/exchanges/`)
 
@@ -176,7 +188,7 @@ Seam fail-closed ([SDD orders](../sdd/orders-module-sdd.md)).
 ## 7. Débitos e limites conhecidos
 
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
-- O round-trip PostgreSQL permanece não executado nesta sessão.
+- Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) existem como testes `#[ignore]` — exigem `DATABASE_URL` → `trading_bot` (PG 18+).
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.
 - A manutenção do vendor `ccxt-core` exige repetir a política de redirect e a prova HTTP após atualizações.
 - Não existe execução financeira live, saldo privado ou produção; o seam `orders` e o HTTP de submit falham fechado após validação de risco.
