@@ -40,9 +40,9 @@ Gate canônico (recomendado):
 ./scripts/verify-backend-gates.sh
 ```
 
-Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
+Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
-Evidência (2026-09-27): **368** testes no binário `bot`, **8** ignorados (PG×6 incl. `pg_order_reconciliation_round_trip`, Neo4j, testnet manual). `./scripts/verify-backend-gates.sh` verde; `cargo test --locked --bin bot -- --test-threads=8` ~5s (sem hang de reconciliação). `./scripts/run-pg-integration-tests.sh` **6/6** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste; ledger partilhado de orders: `lock_shared_live_order_reconciliation_ledger_for_test()` (env antes do ledger quando ambos) — [test-matrix](../reference/test-matrix.md).
+Evidência (2026-09-27): **368** testes no binário `bot`, **8** ignorados (PG×6 incl. `pg_order_reconciliation_round_trip`, Neo4j, testnet manual). `./scripts/verify-backend-gates.sh` verde; gate canônico usa `cargo test --locked --bin bot -- --test-threads=1` (`verify-backend-gates.sh`); stress local opcional `--test-threads=8` ~5s quando locks env→ledger respeitados. `./scripts/run-pg-integration-tests.sh` **6/6** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste; ledger partilhado de orders: `lock_shared_live_order_reconciliation_ledger_for_test()` (env antes do ledger quando ambos) — [test-matrix](../reference/test-matrix.md).
 
 ## Documentação relacionada
 
