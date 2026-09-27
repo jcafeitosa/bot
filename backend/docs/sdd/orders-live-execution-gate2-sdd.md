@@ -55,7 +55,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **364** testes bin `bot`, **8** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_paper_executor_returns_200` (+ snapshot portfolio **995**), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência G1 (2026-09-27): **365** testes bin `bot`, **8** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_paper_executor_returns_200` (+ snapshot portfolio **995**), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
@@ -88,7 +88,7 @@ Evidência G1 (2026-09-27): **364** testes bin `bot`, **8** ignorados; `orders_s
 | Reconciliação pós-submit | Memória + PG `0006`; GET/POST reconciliation; `LiveExchangeSpotOrderReconciliationQuery` (binding + `observe_testnet_spot_order_by_client_id`); job poll opcional | **Parcial** (prod REST; Critic) |
 | `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording determinístico; testnet exige credenciais/rede) |
 | Threat model + revisão Critic | seção rascunho neste SDD; Critic instância separada | **Parcial** |
-| `./scripts/verify-backend-gates.sh` verde | **364** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **365** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
 
 ## Threat model (rascunho)
 
@@ -117,6 +117,6 @@ Implementado (recording): `run_reconciliation_poll_once`, `SpotOrderReconciliati
 
 - [ ] Critic independente registra LGTM com achados tratados ou aceitos.
 - [ ] TTL/retenção de `order_idempotency_keys` e `order_reconciliation` definidos (ops).
-- [ ] Prod REST permanece bloqueado em `authorize_rest_use` até decisão explícita.
+- [x] Prod REST permanece bloqueado em `authorize_rest_use` até decisão explícita — evidência: `modules/exchanges/rest.rs` (`only_public_spot_dev_backfill_is_allowed` com `Environment::Prod`; `order_rest_paths_stay_disabled` sem seam).
 
 **Recomendação ops (não automatizada no código):** retenção sugerida `order_idempotency_keys` **90 dias**; linhas `order_reconciliation` em estado terminal (`reconciled`/`divergent`) **180 dias**; pendências além de **7 dias** devem acionar alerta + poll manual (`POST /orders/reconciliation/poll`). Job `BOT_ORDERS_RECONCILIATION_POLL_SECS` ≥ **60** em ambientes com submit live wired.
