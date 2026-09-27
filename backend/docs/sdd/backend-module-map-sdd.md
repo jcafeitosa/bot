@@ -48,4 +48,4 @@ As tabelas são documentação de responsabilidade, não interfaces prometidas. 
 
 **Riscos e reversão:** o mapa pode ficar desatualizado quando módulos forem adicionados ou os SDDs implementados. Uma alteração futura de `main.rs` ou `exchanges/mod.rs` deve atualizar a tabela na mesma entrega. A reversão é a da seção documental; não há migração, deploy ou mudança de runtime. Jev não acrescenta valor à checagem determinística de nomes e caminhos (`Jev: não aplicável`).
 
-**Resultado G3 (2026-09-26):** `/root/module_map_design_critic` aprovou a seção `Architecture` do README. A verificação encontrou 16/16 módulos raiz e 13/13 submódulos `exchanges`, sem faltas ou extras; os links relativos da seção resolvem e `git diff --check -- backend/README.md` passou.
+**Resultado G3 (2026-09-26):** `/root/module_map_design_critic` aprovou a seção `Architecture` do README. A verificação encontrou 16/16 módulos raiz e 14/14 submódulos `exchanges`, sem faltas ou extras; os links relativos da seção resolvem e `git diff --check -- backend/README.md` passou.
