@@ -13,7 +13,7 @@ tags:
 - **Autor:** System Designer / Dados Builder `/root/persistence_designer`
 - **Revisor designado:** Crítico independente `/root/persistence_design_critic`
 - **Data:** 2026-09-26
-- **Estado:** G1 técnico aprovado por `/root/persistence_design_critic`; acordo do usuário com seams e G2/G3 pendentes; implementação e testes não iniciados
+- **Estado:** G1 técnico aprovado por `/root/persistence_design_critic`; usuário aprovou os seams dos quatro SDDs em 2026-09-26; C16 em revisão independente, C17/G4 pendentes
 - **Escopo:** binário `monitor` em `dev`, modos `observe` e `paper`; `backtest --persist` mantém seu contrato independente
 
 ## Contexto, objetivo e limites
@@ -84,4 +84,8 @@ Rollout é uma mudança local do próximo build do monitor; não há deploy auto
 
 Riscos residuais: outage maior que a janela REST ou pausa longa pode deixar `GAP`; relógio incorreto pode recusar uma janela pela política T-10; commits com conflito de conteúdo não são detectados pelo `ON CONFLICT DO NOTHING`; um processo abortado pode não registrar na TUI a faixa perdida; histórico anterior à sessão não é auditado. Esses riscos impedem afirmar arquivo histórico completo. Uma eventual exigência de durabilidade completa ou ordens reais requer novo design de backfill/auditoria e gate de dados/segurança.
 
-**Gate atual:** G1 técnico aprovado em revisão independente por `/root/persistence_design_critic`, após resolver quatro achados importantes sobre estado inicial, perda por pausa/overflow/desconexão, commit ambíguo e resultado tardio de geração antiga. Acordo do usuário sobre os três seams, G2/G3/G4 pendentes. A aprovação de design não comprova implementação nem autoriza testes antes desse acordo.
+**Gate atual:** G1 técnico aprovado em revisão independente por `/root/persistence_design_critic`, após resolver quatro achados importantes sobre estado inicial, perda por pausa/overflow/desconexão, commit ambíguo e resultado tardio de geração antiga. O usuário aprovou os três seams em 2026-09-26. C16 está em revisão por `/root/c16_critic`; C17 e G4 seguem pendentes. A aprovação de design não comprova implementação.
+
+### Evidência C16 (startup)
+
+O bootstrap do monitor está em `src/monitor_startup.rs`, chamado por `main.rs` antes de `app::run`; `app.rs` usa o handle validado em vez de reconsultar `PERSIST_MARKET_DATA` a cada evento. Testes unitários usam um store falso e um provedor de URL injetável, sem tocar no banco compartilhado. O primeiro teste de opt-out foi executado em red por símbolos ainda não implementados e depois passou em green. Os testes adicionais cobrem flags desligadas/invalidas, timeframe, URL ausente/vazia, conexão e migração únicas, falhas sanitizadas, URL inválida e `WrongDatabase`. `backtest --persist` continua no caminho independente. O estado operacional, confirmação de escrita e recuperação ficam para C17; esses testes não provam conexão ou migração com PostgreSQL real.
