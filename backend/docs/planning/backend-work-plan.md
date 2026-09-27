@@ -3,11 +3,11 @@
 - **Responsável:** Orquestrador `/root`
 - **Data:** 2026-09-26
 - **Estado:** plano de G2 revisado e aprovado por `/root/workplan_critic`; usuário aprovou as interfaces dos quatro SDDs em 2026-09-26; C9 bloqueado em G3 por falta de prova HTTP no sandbox
-- **Base:** SDDs [T-05](rest-redirect-sdd.md), [T-07](backtest-trades-and-slippage-sdd.md), [T-10](monitor-pause-resume-sdd.md) e [T-15](monitor-persistence-policy-sdd.md), todos com G1 técnico aprovado por críticos independentes
+- **Base:** SDDs [T-05](../sdd/rest-redirect-sdd.md), [T-07](../sdd/backtest-trades-and-slippage-sdd.md), [T-10](../sdd/monitor-pause-resume-sdd.md) e [T-15](../sdd/monitor-persistence-policy-sdd.md), todos com G1 técnico aprovado por críticos independentes
 
 ## Escopo e gates
 
-O objetivo é corrigir o risco de redirect REST, a fixture e o custo de venda do backtest, a pausa/retomada do monitor e a semântica da persistência opcional. As entregas [T-13](legacy-file-cleanup-sdd.md) e [T-16](backend-module-map-sdd.md) já passaram por revisão independente; seus arquivos permanecem no worktree e não são refeitos aqui.
+O objetivo é corrigir o risco de redirect REST, a fixture e o custo de venda do backtest, a pausa/retomada do monitor e a semântica da persistência opcional. As entregas [T-13](../sdd/legacy-file-cleanup-sdd.md) e [T-16](../sdd/backend-module-map-sdd.md) já passaram por revisão independente; seus arquivos permanecem no worktree e não são refeitos aqui.
 
 O `AGENTS.md` exige acordo do usuário com os seams públicos antes de escrever cada teste. O usuário aprovou explicitamente as interfaces de T-05, T-07, T-10 e T-15 em 2026-09-26. G2 está fechado quanto a esse requisito. C9 foi produzido por `/root/c9_builder` e revisado por `/root/c9_critic`; o veredito é **REPROVADO por evidência pendente** porque o sandbox negou bind em `127.0.0.1` para os dois testes HTTP obrigatórios. A política, a licença e os testes puros foram inspecionados, mas G3 de C9 não está aprovado. C10 aguarda C9. Os demais CLs independentes podem avançar com seus próprios pares. O autor nunca aprova o próprio artefato. Cada CL seguirá red → green → revisão, com documentação no mesmo CL quando aplicável.
 
