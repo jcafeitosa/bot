@@ -32,7 +32,8 @@ pub use graph_projection_cli::{
 };
 pub use graph_projection_outbox::{
     drain_graph_projection_outbox, drain_graph_projection_outbox_with_port,
-    enqueue_graph_projection_outbox, graph_projection_best_effort, DrainSummary,
+    enqueue_graph_projection_outbox, enqueue_graph_projection_outbox_tx,
+    graph_projection_best_effort, graph_projection_drain_best_effort, DrainSummary,
     GraphProjectionOutboxError, GraphProjectionOutboxMessage, GraphProjectionPayload,
     GraphProjectionSync,
 };

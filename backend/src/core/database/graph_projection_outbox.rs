@@ -2,10 +2,11 @@
 //!
 //! **Enqueue timing:** hooks run after PG commit today (`persist_agent_after_mutation`,
 //! catalog persist, order submit). Rows are inserted in a separate statement — not yet in the
-//! same transaction as domain writes. Future seams may pass `&mut Transaction` into enqueue.
+//! same transaction as domain writes. Orders HTTP (PG claim path) uses
+//! `persist_idempotency_and_enqueue_graph_projection` + `enqueue_graph_projection_outbox_tx`.
 
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, Transaction};
 use thiserror::Error;
 
 use super::graph_projection::{
@@ -112,8 +113,8 @@ pub struct DrainSummary {
     pub failed: u32,
 }
 
-pub async fn enqueue_graph_projection_outbox(
-    pool: &PgPool,
+pub async fn enqueue_graph_projection_outbox_tx(
+    tx: &mut Transaction<'_, Postgres>,
     message: &GraphProjectionOutboxMessage,
 ) -> Result<(), GraphProjectionOutboxError> {
     let payload_json = serde_json::to_value(&message.payload)
@@ -132,10 +133,46 @@ pub async fn enqueue_graph_projection_outbox(
     .bind(&message.event_kind)
     .bind(&message.idempotency_key)
     .bind(payload_json)
-    .execute(pool)
+    .execute(&mut **tx)
     .await
     .map_err(|error| GraphProjectionOutboxError::Store(error.to_string()))?;
     Ok(())
+}
+
+pub async fn enqueue_graph_projection_outbox(
+    pool: &PgPool,
+    message: &GraphProjectionOutboxMessage,
+) -> Result<(), GraphProjectionOutboxError> {
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|error| GraphProjectionOutboxError::Store(error.to_string()))?;
+    enqueue_graph_projection_outbox_tx(&mut tx, message).await?;
+    tx.commit()
+        .await
+        .map_err(|error| GraphProjectionOutboxError::Store(error.to_string()))?;
+    Ok(())
+}
+
+/// Best-effort inline drain after outbox rows were committed (e.g. same-TX domain persist).
+pub async fn graph_projection_drain_best_effort(
+    sync: GraphProjectionSync<'_>,
+    message_count: usize,
+) {
+    if message_count == 0 {
+        return;
+    }
+    if let (Some(postgres), Some(neo4j)) = (sync.postgres, sync.neo4j) {
+        let drain_limit = (message_count as u32).saturating_add(16);
+        if let Err(error) = drain_graph_projection_outbox(postgres.pool(), neo4j, drain_limit).await
+        {
+            tracing::warn!(
+                target: "database",
+                %error,
+                "graph projection outbox drain failed (rows remain pending/retry)"
+            );
+        }
+    }
 }
 
 /// Drains pending/retry rows via Neo4j MERGE. Fail-closed when Neo4j ping fails (no row mutation).

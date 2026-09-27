@@ -45,15 +45,11 @@ fn now_unix_ms() -> i64 {
         .unwrap_or(0)
 }
 
-pub async fn best_effort_project_order_intent(
-    sync: GraphProjectionSync<'_>,
+pub fn order_graph_projection_outbox_messages(
     snapshot: &RedactedOrderSubmitSnapshot,
-) {
+) -> Vec<GraphProjectionOutboxMessage> {
     if snapshot.client_order_id.trim().is_empty() {
-        return;
-    }
-    if sync.postgres.is_none() && sync.neo4j.is_none() {
-        return;
+        return Vec::new();
     }
     let mut messages = vec![GraphProjectionOutboxMessage::order_intent(
         redacted_order_submit_to_projection(snapshot),
@@ -69,6 +65,23 @@ pub async fn best_effort_project_order_intent(
                 client_order_id: snapshot.client_order_id.clone(),
             },
         ));
+    }
+    messages
+}
+
+pub async fn best_effort_project_order_intent(
+    sync: GraphProjectionSync<'_>,
+    snapshot: &RedactedOrderSubmitSnapshot,
+) {
+    if snapshot.client_order_id.trim().is_empty() {
+        return;
+    }
+    if sync.postgres.is_none() && sync.neo4j.is_none() {
+        return;
+    }
+    let messages = order_graph_projection_outbox_messages(snapshot);
+    if messages.is_empty() {
+        return;
     }
     graph_projection_best_effort(sync, &messages).await;
 }

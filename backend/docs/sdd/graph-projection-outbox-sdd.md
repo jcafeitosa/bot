@@ -42,7 +42,7 @@ Drain com Neo4j down: `ping` falha → linhas permanecem `pending`/`retry`. MERG
 
 ## 5. Validação
 
-`./scripts/verify-backend-gates.sh` (baseline **469** bin `bot`); `./scripts/run-pg-integration-tests.sh` inclui `pg_graph_projection_outbox_*`; worker + health cobertos por testes em `graph_projection_outbox_worker.rs` e `routes/health.rs`.
+`./scripts/verify-backend-gates.sh` (baseline **470** bin `bot`); `./scripts/run-pg-integration-tests.sh` inclui `pg_graph_projection_outbox_*`; worker + health cobertos por testes em `graph_projection_outbox_worker.rs` e `routes/health.rs`.
 
 ## 6. F2.1.2 (*implemented*)
 
@@ -61,3 +61,13 @@ Drain com Neo4j down: `ping` falha → linhas permanecem `pending`/`retry`. MERG
 Implementação: `core/database/graph_projection_cli.rs`; testes `graph_projection_cli_*`.
 
 **Pendente F2.1.3+:** enqueue na mesma TX quando o seam de domínio permitir.
+
+## 8. F2.1.3+ (*partial* — enqueue na mesma TX, fatia orders)
+
+| Seam | Comportamento |
+|------|----------------|
+| `enqueue_graph_projection_outbox_tx` | INSERT outbox dentro de `sqlx::Transaction` existente (fail-closed → `OrdersError::StoreUnavailable` no caminho orders). |
+| `PgOrderIdempotencyStore::persist_idempotency_and_enqueue_graph_projection` | Uma TX: `INSERT order_idempotency_keys` + N enqueues; usado após submit HTTP bem-sucedido quando `try_claim` PG já reservou a chave. |
+| `graph_projection_drain_best_effort` | Drain inline pós-commit (Neo4j wired), espelhando `graph_projection_best_effort`. |
+
+**Pendente:** agents/bots/catalog na mesma TX; monitor supervisor continua pós-commit (`best_effort_project_order_intent`).

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs 21 PostgreSQL domain integration tests in the bot binary (CI job postgres-integration).
+# Runs 22 PostgreSQL domain integration tests in the bot binary (CI job postgres-integration).
 # Requires DATABASE_URL → database `trading_bot` on PostgreSQL 18+ with TimescaleDB + pgvector
 # (see docs/operations/postgres-and-graph-dev.md and docker-compose.bot.yml).
 set -euo pipefail
@@ -25,6 +25,7 @@ PG_TESTS=(
   pg_cold_start_apply_snapshot_after_write_through
   pg_order_idempotency_round_trip
   pg_order_idempotency_try_claim_and_release
+  pg_order_idempotency_and_graph_projection_same_transaction
   pg_order_reconciliation_round_trip
   pg_hydrate_order_reconciliation_from_pg_after_durable_write
   pg_order_reconciliation_lookup_reads_pg_when_memory_empty
@@ -40,7 +41,7 @@ PG_TESTS=(
 )
 
 # Keep in sync with docs (test-matrix, modules-completeness-audit, README).
-EXPECTED_PG_INTEGRATION_TESTS=21
+EXPECTED_PG_INTEGRATION_TESTS=22
 if [[ ${#PG_TESTS[@]} -ne ${EXPECTED_PG_INTEGRATION_TESTS} ]]; then
   echo "error: PG_TESTS manifest drift: expected ${EXPECTED_PG_INTEGRATION_TESTS}, got ${#PG_TESTS[@]}" >&2
   exit 1

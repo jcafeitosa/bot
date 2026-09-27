@@ -176,7 +176,7 @@ Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live
 ```sh
 cd backend
 ./scripts/verify-backend-gates.sh          # → 464 passed, 0 ignored (bin bot); assert-completeness-evidence.sh
-./scripts/verify-backend-full.sh         # gates + PG 21/21 quando DATABASE_URL → trading_bot
+./scripts/verify-backend-full.sh         # gates + PG 22/22 quando DATABASE_URL → trading_bot
 bot graph query agents --limit 32   # read-only Neo4j (fail-closed sem stack)
 bot graph query supervision-chain --agency-id agency-a --agent-id worker-1
 bot graph query bots-for-agent --agency-id agency-a --agent-id agent-promoter --limit 32

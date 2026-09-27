@@ -22,7 +22,10 @@ pub use accepting_executor::AcceptingExecutor;
 pub use exchange_spot_executor::ExchangeSpotExecutor;
 pub use execution_port::OrderExecutionPort;
 pub use fail_closed::FailClosedExecutor;
-pub use graph_projection::{best_effort_project_order_intent, RedactedOrderSubmitSnapshot};
+pub use graph_projection::{
+    best_effort_project_order_intent, order_graph_projection_outbox_messages,
+    RedactedOrderSubmitSnapshot,
+};
 pub use idempotency::{InMemoryOrderIdempotencyStore, OrderIdempotencyStore};
 #[cfg(test)]
 pub use in_memory_reconciliation::{

@@ -562,17 +562,34 @@ impl ApiState {
         }
 
         if let Some(key) = idem_key.as_deref() {
-            crate::modules::orders::adapters::best_effort_project_order_intent(
-                self.graph_projection_sync(),
-                &crate::modules::orders::adapters::RedactedOrderSubmitSnapshot {
-                    client_order_id: key.to_string(),
-                    symbol: symbol.clone(),
-                    side: order_side,
-                    execution_mode: self.order_execution_mode().as_api_label().to_string(),
-                    submitting_bot_id: None,
-                },
-            )
-            .await;
+            let snapshot = crate::modules::orders::adapters::RedactedOrderSubmitSnapshot {
+                client_order_id: key.to_string(),
+                symbol: symbol.clone(),
+                side: order_side,
+                execution_mode: self.order_execution_mode().as_api_label().to_string(),
+                submitting_bot_id: None,
+            };
+            if pg_claimed_key.is_some() {
+                if let Some(pg) = &self.inner.order_idempotency_pg {
+                    let messages =
+                        crate::modules::orders::adapters::order_graph_projection_outbox_messages(
+                            &snapshot,
+                        );
+                    pg.persist_idempotency_and_enqueue_graph_projection(key, &messages)
+                        .await?;
+                    crate::core::database::graph_projection_drain_best_effort(
+                        self.graph_projection_sync(),
+                        messages.len(),
+                    )
+                    .await;
+                }
+            } else {
+                crate::modules::orders::adapters::best_effort_project_order_intent(
+                    self.graph_projection_sync(),
+                    &snapshot,
+                )
+                .await;
+            }
         }
 
         Ok(response)

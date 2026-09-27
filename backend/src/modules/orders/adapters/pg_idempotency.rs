@@ -1,7 +1,10 @@
 use sqlx::PgPool;
 
 use super::pg_store_error::orders_pg_store_error;
-use crate::core::database::PostgresDatabase;
+use crate::core::database::{
+    enqueue_graph_projection_outbox_tx, GraphProjectionOutboxError, GraphProjectionOutboxMessage,
+    PostgresDatabase,
+};
 use crate::modules::orders::OrdersError;
 
 /// Durable idempotency keys when PostgreSQL is available (`order_idempotency_keys`).
@@ -60,6 +63,49 @@ impl PgOrderIdempotencyStore {
             .execute(&self.pool)
             .await
             .map_err(|error| orders_pg_store_error("idempotency release", error))?;
+        Ok(())
+    }
+
+    /// Atomically persists idempotency (noop if row already claimed) and enqueues graph outbox rows (F2.1.3+ orders).
+    pub async fn persist_idempotency_and_enqueue_graph_projection(
+        &self,
+        key: &str,
+        messages: &[GraphProjectionOutboxMessage],
+    ) -> Result<(), OrdersError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|error| orders_pg_store_error("idempotency and graph outbox tx", error))?;
+        sqlx::query(
+            "INSERT INTO order_idempotency_keys (client_order_id) VALUES ($1) ON CONFLICT DO NOTHING",
+        )
+        .bind(key)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| orders_pg_store_error("idempotency and graph outbox tx", error))?;
+        for message in messages {
+            enqueue_graph_projection_outbox_tx(&mut tx, message)
+                .await
+                .map_err(|error| match error {
+                    GraphProjectionOutboxError::Store(message) => OrdersError::StoreUnavailable(
+                        format!("graph projection outbox enqueue: {message}"),
+                    ),
+                    GraphProjectionOutboxError::InvalidPayload(message) => {
+                        OrdersError::StoreUnavailable(format!(
+                            "graph projection outbox payload: {message}"
+                        ))
+                    }
+                    GraphProjectionOutboxError::Neo4jUnavailable(_) => {
+                        OrdersError::StoreUnavailable(
+                            "graph projection outbox enqueue: neo4j unavailable".into(),
+                        )
+                    }
+                })?;
+        }
+        tx.commit().await.map_err(|error| {
+            orders_pg_store_error("idempotency and graph outbox tx commit", error)
+        })?;
         Ok(())
     }
 }
@@ -137,5 +183,48 @@ mod tests {
         .execute(&pool)
         .await
         .expect("restore table");
+    }
+
+    #[tokio::test]
+    async fn pg_order_idempotency_and_graph_projection_same_transaction() {
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
+        use crate::modules::orders::adapters::graph_projection::{
+            order_graph_projection_outbox_messages, RedactedOrderSubmitSnapshot,
+        };
+        use crate::modules::orders::OrderSide;
+
+        let store = PgOrderIdempotencyStore::new(db.as_postgres());
+        let key = format!(
+            "idem-outbox-tx-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        );
+        let snapshot = RedactedOrderSubmitSnapshot {
+            client_order_id: key.clone(),
+            symbol: "BTC/USDT".into(),
+            side: OrderSide::Buy,
+            execution_mode: "paper".into(),
+            submitting_bot_id: None,
+        };
+        let messages = order_graph_projection_outbox_messages(&snapshot);
+        store
+            .persist_idempotency_and_enqueue_graph_projection(&key, &messages)
+            .await
+            .expect("persist tx");
+        assert!(store.is_completed(&key).await.expect("idem"));
+        let pending: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_projection_outbox WHERE idempotency_key = $1 AND status = 'pending'",
+        )
+        .bind(format!("order:intent:{key}"))
+        .fetch_one(db.pool())
+        .await
+        .expect("outbox count");
+        assert_eq!(pending, 1);
     }
 }
