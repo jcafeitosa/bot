@@ -17,7 +17,7 @@ use crate::modules::orders::{PaperLedgerExecutor, PaperLedgerTestGuard};
 use crate::presentation::http::admin_auth::HttpAdminAuth;
 use crate::presentation::http::order_execution::HttpOrderExecutor;
 use crate::presentation::http::server::build_router;
-use crate::presentation::http::state::ApiState;
+use crate::presentation::http::state::{ApiState, HttpApiSeams};
 
 const ADMIN_TOKEN: &str = "integration-admin-token";
 
@@ -1428,4 +1428,49 @@ async fn agents_register_rejects_owner_mismatch_when_product_owner_verified() {
         .await
         .unwrap();
     assert_eq!(ok.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn bots_runtime_promote_rejects_promoted_by_mismatch_when_product_owner_verified() {
+    use crate::modules::agents::VerifiedProductOwner;
+    use crate::modules::bots::InMemoryBotRuntime;
+    use std::sync::Arc;
+
+    let state = ApiState::with_stores(
+        None,
+        AppDatabases::empty(),
+        None,
+        Config::default(),
+        fresh_agents(),
+        Arc::new(tokio::sync::Mutex::new(
+            crate::modules::bots::BotCatalogBackend::from_databases(&AppDatabases::empty()),
+        )),
+        HttpApiSeams::with_bot_runtime(
+            HttpAdminAuth::for_test(ADMIN_TOKEN),
+            Arc::new(InMemoryBotRuntime::new()),
+        ),
+        Some(VerifiedProductOwner::for_test("owner-verified")),
+    );
+    let app = build_router(state);
+    let body = r#"{"bot_id":"sma-cross@1:15m:BTCUSDT","promoted_by":"wrong-owner"}"#;
+    let denied = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/bots/runtime/promote")
+                .header("content-type", "application/json")
+                .header("authorization", format!("Bearer {}", ADMIN_TOKEN))
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(denied.status(), StatusCode::FORBIDDEN);
+    let payload: serde_json::Value = serde_json::from_slice(
+        &axum::body::to_bytes(denied.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(payload["code"], "owner_mismatch");
 }

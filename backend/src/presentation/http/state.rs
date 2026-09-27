@@ -38,7 +38,6 @@ pub struct HttpApiSeams {
     pub admin_auth: HttpAdminAuth,
     pub order_executor: HttpOrderExecutor,
     pub bot_runtime: Arc<dyn BotRuntimePort>,
-    pub verified_product_owner: Option<VerifiedProductOwner>,
 }
 
 impl HttpApiSeams {
@@ -48,7 +47,6 @@ impl HttpApiSeams {
             admin_auth: HttpAdminAuth::disabled(),
             order_executor: HttpOrderExecutor::fail_closed(),
             bot_runtime: Arc::new(FailClosedBotRuntime),
-            verified_product_owner: None,
         }
     }
 
@@ -58,7 +56,6 @@ impl HttpApiSeams {
             admin_auth: HttpAdminAuth::from_env(),
             order_executor: HttpOrderExecutor::from_env(),
             bot_runtime: shared_bot_runtime(),
-            verified_product_owner: None,
         }
     }
 
@@ -67,7 +64,6 @@ impl HttpApiSeams {
             admin_auth: auth,
             order_executor: HttpOrderExecutor::fail_closed(),
             bot_runtime: Arc::new(crate::modules::bots::FailClosedBotRuntime),
-            verified_product_owner: None,
         }
     }
 
@@ -77,7 +73,6 @@ impl HttpApiSeams {
             admin_auth: auth,
             order_executor,
             bot_runtime: Arc::new(crate::modules::bots::FailClosedBotRuntime),
-            verified_product_owner: None,
         }
     }
 
@@ -87,7 +82,6 @@ impl HttpApiSeams {
             admin_auth: auth,
             order_executor: HttpOrderExecutor::fail_closed(),
             bot_runtime,
-            verified_product_owner: None,
         }
     }
 
@@ -366,16 +360,31 @@ impl ApiState {
         if let Some(agency_raw) = self.inner.http_admin_auth.bound_agency_id_opt() {
             let agency = crate::modules::agents::AgencyId::new(agency_raw)
                 .map_err(ApiError::from_agents_error)?;
-            self.with_agents(|registry| {
-                crate::modules::agents::assert_runtime_promotion_authorized(
-                    registry,
-                    &agency,
-                    &request.promoted_by,
-                    &request.bot_id,
-                )
-            })
-            .await
-            .map_err(ApiError::from_agents_error)?;
+            let agent_owner = self
+                .with_agents(|registry| {
+                    crate::modules::agents::assert_runtime_promotion_authorized(
+                        registry,
+                        &agency,
+                        &request.promoted_by,
+                        &request.bot_id,
+                    )?;
+                    let agent_id = crate::modules::agents::AgentId::new(&request.promoted_by)?;
+                    let agent = registry.get(&agency, &agent_id)?;
+                    Ok(agent.owner.as_str().to_string())
+                })
+                .await
+                .map_err(ApiError::from_agents_error)?;
+            crate::presentation::http::register_owner::verify_promoted_by_product_owner(
+                self.inner.verified_product_owner.as_ref(),
+                &request.promoted_by,
+                Some(agent_owner.as_str()),
+            )?;
+        } else {
+            crate::presentation::http::register_owner::verify_promoted_by_product_owner(
+                self.inner.verified_product_owner.as_ref(),
+                &request.promoted_by,
+                None,
+            )?;
         }
         let config = self.app_config().clone();
         let catalog = self.inner.bot_catalog.lock().await;
@@ -1264,6 +1273,47 @@ mod state_tests {
             })
             .await
             .expect("promoter authorized");
+    }
+
+    #[tokio::test]
+    async fn promote_bot_http_rejects_owner_mismatch_when_product_owner_verified() {
+        use crate::modules::agents::{AgentRegistry, VerifiedProductOwner};
+        use crate::modules::bots::{InMemoryBotRuntime, PromoteBotRequest};
+        use std::sync::Arc;
+
+        let config = crate::modules::config_api::Config::default();
+        let active_tf = config.market.timeframe.clone();
+        let state = ApiState::with_stores(
+            None,
+            AppDatabases::empty(),
+            None,
+            config,
+            Arc::new(std::sync::Mutex::new(AgentRegistry::new())),
+            Arc::new(tokio::sync::Mutex::new(
+                crate::modules::bots::BotCatalogBackend::from_databases(&AppDatabases::empty()),
+            )),
+            HttpApiSeams::with_bot_runtime(
+                HttpAdminAuth::disabled(),
+                Arc::new(InMemoryBotRuntime::new()),
+            ),
+            Some(VerifiedProductOwner::for_test("owner-verified")),
+        );
+        let persisted = state.persist_bot_catalog().await.expect("catalog");
+        let bot_id = persisted
+            .bots
+            .iter()
+            .find(|entry| entry.timeframe == active_tf)
+            .map(|entry| entry.bot_id.clone())
+            .expect("bot for timeframe");
+        let err = state
+            .promote_bot_http(PromoteBotRequest {
+                bot_id,
+                promoted_by: "not-the-owner".into(),
+            })
+            .await
+            .expect_err("promoted_by must match bootstrapped owner");
+        assert_eq!(err.status_code(), axum::http::StatusCode::FORBIDDEN);
+        assert_eq!(err.error_code(), Some("owner_mismatch"));
     }
 
     #[tokio::test]
