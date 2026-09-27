@@ -215,7 +215,7 @@ Testes em `http_integration_tests.rs` (incluídos nos **62** `http_integration`)
 
 | Comportamento | Teste |
 |---------------|-------|
-| GET sem PG → **507** `provider_credentials_store_unavailable` | `provider_credentials_admin_list_returns_503_without_postgres` |
+| GET sem PG → **503** `provider_credentials_store_unavailable` | `provider_credentials_admin_list_returns_503_without_postgres` |
 | POST upsert + GET lista → `secret_masked` sem secret em claro | `provider_credentials_admin_upsert_list_masked_never_returns_raw_secret` (requer `DATABASE_URL`) |
 | GET sem bearer quando admin token ativo → **401** | `provider_credentials_admin_list_requires_admin_bearer_when_enabled` |
 | DELETE remove linha; segundo DELETE → **404** | `provider_credentials_admin_delete_removes_row` (requer `DATABASE_URL`) |

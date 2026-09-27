@@ -9,12 +9,12 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-gates.sh` → **503** passed, **0** ignored; PG **26/26** com `DATABASE_URL` via `run-pg-integration-tests.sh`). Orders PG indisponível → `OrdersError::StoreUnavailable` / HTTP **503** `order_store_unavailable`.  
+**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-gates.sh` → **507** passed, **0** ignored; PG **27/27** com `DATABASE_URL` via `run-pg-integration-tests.sh`). Orders PG indisponível → `OrdersError::StoreUnavailable` / HTTP **503** `order_store_unavailable`. Retenção ops Gate 2: CLI `bot orders retention-purge` ([cli-and-config § retention](../reference/cli-and-config.md#pg-orders-retention-gate-2)).  
 **Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
 **Fatia goal completude (HTTP):** `presentation/http/http_integration_tests.rs` — **62** testes `http_integration` (bearer admin, owner bind verificável no seam (`BOT_HTTP_OWNER_ID` + token), orders executors, portfolio paper, catálogo `monitor_registry` v2, F3 admin graph read-only agents/supervision-chain/bots-for-agent); smoke/meta/OpenAPI em `server.rs`. Baseline docs: linha `OK:` de `verify-backend-gates.sh`.  
 **Stack Neo4j (runtime):** `BOT_GRAPH_ENABLED` (preferido) ou legado `BOT_AGENTS_ENABLED` + `BOT_NEO4J_*` ([postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).  
 **Stack Neo4j (runtime):** `BOT_GRAPH_ENABLED` (preferido) ou legado `BOT_AGENTS_ENABLED` + `BOT_NEO4J_*` ([postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).  
-**Fatia PG / grafo:** agents/bots write-through + hydrate; orders `0004`/`0006`; `provider_credentials` `0007`; **F2.1** outbox Neo4j `0009`; **F2.1.3+** enqueue outbox na mesma TX de domínio **fechado** nos caminhos principais (orders idempotency, agents identity, bots catalog, monitor supervisor); boot `build_api_state_for_http_serve` (**26/26** script). **F3** leitura `GraphQueryPort` + CLI `graph query` completa; HTTP admin read-only advisory (`GET /admin/graph/agents`, `supervision-chain`, `bots-for-agent`, `code-impact` — [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md)). **Gate 1 HTTP (parcial):** [http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md) — seam `BOT_HTTP_*` fechado; bootstrap PG `0010` parcial ([owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)); IdP pendente. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (IdP + Critic AGENTS.md).
+**Fatia PG / grafo:** agents/bots write-through + hydrate; orders `0004`/`0006` + purge retenção (`orders retention-purge`); `provider_credentials` `0007`; **F2.1** outbox Neo4j `0009`; **F2.1.3+** enqueue outbox na mesma TX de domínio **fechado** nos caminhos principais (orders idempotency, agents identity, bots catalog, monitor supervisor); boot `build_api_state_for_http_serve` (**27/27** script). **F3** leitura `GraphQueryPort` + CLI `graph query` completa; HTTP admin read-only advisory (`GET /admin/graph/agents`, `supervision-chain`, `bots-for-agent`, `code-impact` — [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md)). **Gate 1 HTTP (parcial):** [http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md) — seam `BOT_HTTP_*` fechado; bootstrap PG `0010` parcial ([owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)); IdP pendente. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (IdP + Critic AGENTS.md).
 
 ## Gates (G4)
 
@@ -22,9 +22,9 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --locked --bin bot -- -D warnings` | PASS | mesmo escopo que `verify-backend-gates.sh` |
-| `cargo test --locked` | PASS | **503** testes (bin `bot`), **0** ignorados; integração PG/Neo4j/testnet via `pg_integration` (skip sem env; PG **26/26** no script com `DATABASE_URL`) |
+| `cargo test --locked` | PASS | **507** testes (bin `bot`), **0** ignorados; integração PG/Neo4j/testnet via `pg_integration` (skip sem env; PG **27/27** no script com `DATABASE_URL`) |
 | `./scripts/verify-backend-gates.sh` | PASS | fmt + clippy `--bin bot` + import-direction + `assert-pg-integration-manifest.sh` + `cargo test --bin bot -- --test-threads=1` + 5 suítes `tests/*`; linha `OK:` com resumo `test result:` |
-| `./scripts/verify-backend-full.sh` | PASS (com `DATABASE_URL` → `trading_bot`) | gates + PG **26/26**; mensagem `OK: backend full verification passed` |
+| `./scripts/verify-backend-full.sh` | PASS (com `DATABASE_URL` → `trading_bot`) | gates + PG **27/27**; mensagem `OK: backend full verification passed` |
 
 ## Critério de linha
 
@@ -58,7 +58,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | monitor | `modules/monitor/` | M+C+views | supervisor/handle/startup tests; `main` monitor path |
 | agents | `modules/agents/` | M+C+A (`jev`, `pg_registry`, `bot_promotion`) | `modules/agents/tests.rs`, HTTP agents + PG hydrate; `promote_runtime_bot` quando `BOT_HTTP_AGENCY_ID` |
 | bots | `modules/bots/` | M+C+A (`PgBotCatalogStore`, `BotRuntimePort`, `BotCatalogBackend`, Neo4j F2) | `modules/bots/tests.rs`, HTTP catalog + `/bots/runtime/*`, `graph_projection` best-effort; supervisor `strategy_evaluation_binding` |
-| orders | `modules/orders/` | M+C+A + Neo4j F3 `OrderIntent` redigido (best-effort pós-submit) | `modules/orders/tests.rs`, `adapters/graph_projection.rs`, `http_bridge/orders`, HTTP 422/503 + reconciliação; [SDD](../sdd/orders-neo4j-projection-sdd.md) |
+| orders | `modules/orders/` | M+C+A + Neo4j F3 `OrderIntent` redigido (best-effort pós-submit) | `modules/orders/tests.rs`, `adapters/graph_projection.rs`, `http_bridge/orders`, HTTP 422/503 + reconciliação; CLI `orders retention-purge` (dry-run/`--apply`); [SDD](../sdd/orders-neo4j-projection-sdd.md) |
 | http_bridge | `modules/http_bridge/` | Facades por domínio | `bridge_tests::persist_catalog_bridge_wires_store_seam` |
 | config_api | `modules/config_api.rs` | Reexport tipado (evita `presentation` → `core::config`) | Rotas HTTP `config` |
 | application_contracts | `modules/application_contracts.rs` | Tipos compartilhados (`Signal`, `BotSignal`) | `application_contracts::tests` |
@@ -85,8 +85,8 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Veredito
 
-**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**503** testes bin `bot`, **0** ignorados).
+**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**507** testes bin `bot`, **0** ignorados).
 
-**COMPLETUDE_MODULOS_GOAL=parcial** — veredito e [ENTREGA G4 Builder](../planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) na [auditoria de completude](../planning/modules-completeness-audit.md). Fundação bots/orders/agents/HTTP documentada e testada (**503** testes, **0** ignorados; PG **26/26** via `verify-backend-full.sh`; **62** `http_integration`); outbox **F2.1.3+** TX fechada nos caminhos principais; **Gate 1 HTTP** (admin bearer + owner bind no seam) fechado; F3 HTTP admin read-only (agents, supervision-chain, bots-for-agent, code-impact); bots runtime parcial (`MonitorEvaluatorKind`, catálogo `monitor_evaluator`); orders G2 parcial (idempotência PG `try_claim`/`release_claim`); **bloqueadores:** IdP (bootstrap PG `0010` parcial) e revisão Critic independente ([fechamento do goal](../planning/modules-completeness-audit.md#fechamento-do-goal-pendente)).
+**COMPLETUDE_MODULOS_GOAL=parcial** — veredito e [ENTREGA G4 Builder](../planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) na [auditoria de completude](../planning/modules-completeness-audit.md). Fundação bots/orders/agents/HTTP documentada e testada (**507** testes, **0** ignorados; PG **27/27** via `verify-backend-full.sh`; **62** `http_integration`); outbox **F2.1.3+** TX fechada nos caminhos principais; **Gate 1 HTTP** (admin bearer + owner bind no seam) fechado; F3 HTTP admin read-only (agents, supervision-chain, bots-for-agent, code-impact); bots runtime parcial (`MonitorEvaluatorKind`, catálogo `monitor_evaluator`); orders G2 parcial (idempotência PG `try_claim`/`release_claim`); **bloqueadores:** IdP (bootstrap PG `0010` parcial) e revisão Critic independente ([fechamento do goal](../planning/modules-completeness-audit.md#fechamento-do-goal-pendente)).
 
 **Raciocínio:** Todos os nós da árvore alvo existem em `src/`. Domínios expõem models + controllers/adapters com testes ou HTTP/main. Não há live trading nem `technical_analysis`. O veredito MVC **não** substitui o fechamento do goal de completude de módulos.
