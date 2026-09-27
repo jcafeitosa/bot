@@ -38,21 +38,9 @@ tags:
 
 As capturas preservadas de Grok Bot, OpenBot, OpenClaw e Meta Model API estão conectadas ao índice por links sob `external-sources/`. O HTML da Meta é um artefato de fonte preservada, não uma página de produto do backend.
 
-### Duplicidade física detectada
+### Duplicidade física (resolvida em 2026-09-26)
 
-Existe o arquivo físico:
-
-```text
-backend/docs/backend/docs/research/agents-capability-research.md
-```
-
-Ele é uma cópia complementar sem frontmatter, sem backlinks e com caminho duplicado `backend/docs/backend/docs`. O conteúdo canônico está em:
-
-```text
-backend/docs/research/agents-capability-research.md
-```
-
-A exclusão automática da cópia foi recusada pelo OpenKnowledge porque o caminho é ambíguo e poderia atingir a pesquisa canônica. O artefato permanece registrado como **pendência de limpeza física**. Não usar exclusão indireta ou ferramenta nativa para contorná-la; resolver por uma operação explícita de manutenção de caminho no OpenKnowledge.
+A árvore acidental `backend/docs/backend/docs/` (cópias de pesquisa, proposta, fontes externas e HTML duplicado da Meta) foi removida. As capturas Grok/OpenBot/OpenClaw foram consolidadas em `backend/docs/external-sources/`; links do índice apontam para essa pasta canônica.
 
 ## Correções aplicadas nesta auditoria
 

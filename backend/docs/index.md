@@ -27,11 +27,11 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 ## Fontes preservadas
 
-- [Grok Bot — overview](./backend/docs/external-sources/grok-bot-overview.md)
-- [Grok Bot — teams and enterprises](./backend/docs/external-sources/grok-bot-teams-and-enterprises.md)
-- [OpenBot — README](./backend/docs/external-sources/openbot-readme.md)
-- [OpenClaw — Security](./backend/docs/external-sources/openclaw-security.md)
-- [Meta Model API — overview](./backend/docs/external-sources/meta-model-api-overview.md)
+- [Grok Bot — overview](./external-sources/grok-bot-overview.md)
+- [Grok Bot — teams and enterprises](./external-sources/grok-bot-teams-and-enterprises.md)
+- [OpenBot — README](./external-sources/openbot-readme.md)
+- [OpenClaw — Security](./external-sources/openclaw-security.md)
+- [Meta Model API — overview](./external-sources/meta-model-api-overview.md)
 
 ## Planejamento
 
@@ -43,9 +43,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 - [SDD — Contrato de apresentação do monitor e tolerância zero](./sdd/monitor-presentation-contract-sdd.md) — snapshot completo, recuperação após lag e shutdown verificável.
 
-- [Proposta 0001 — Separação entre core, módulos e MVC no backend](./proposals/0001-backend-core-modules-mvc.md) — proposta `draft`; seam TUI–monitor confirmado pelo owner.
-
-- [Proposta 0001 — Separação entre core, módulos e MVC no backend](./proposals/0001-backend-core-modules-mvc.md) — proposta `draft`, aguardando revisão e decisão humana.
+- [Proposta 0001 — Separação entre core, módulos e MVC no backend](./proposals/0001-backend-core-modules-mvc.md) — proposta `draft`; seam TUI–monitor confirmado pelo owner; aguardando revisão e decisão humana.
 - [SDD — Correções de configuração, mercado e organização do backend](./sdd/backend-corrections-sdd.md)
 - [SDD T-05 — Restringir redirects REST do monitor Binance](./sdd/rest-redirect-sdd.md)
 - [SDD T-07 — Fixture do backtest e custo da saída por sinal](./sdd/backtest-trades-and-slippage-sdd.md)
