@@ -11,7 +11,7 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (http_bridge v1 completo; `presentation/http/http_integration_tests.rs` — **62** `http_integration` para bearer/orders/portfolio/F3 graph admin; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG); outbox **F2.1.3+** TX fechada nos caminhos principais; F3 CLI `graph query` completa; F3 HTTP admin read-only agents/supervision-chain/bots-for-agent; **C17 fatia 1** snapshot PG supervisor — [monitor-persistence-c17-sdd](../sdd/monitor-persistence-c17-sdd.md)). Baseline local registrado: `./scripts/verify-backend-gates.sh` ( **515** / **0** ignored; manifesto PG **28**, execução não registrada; CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09)). Auditoria do goal: [modules-completeness-audit](./modules-completeness-audit.md). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; Gate 2 runtime **parcial** (`BotRuntimePort`, HTTP promote/demote, supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`, `evaluate_for_kind` SMA/EMA); auth owner e ciclo de promoção live completo pendentes. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
+> Revisão: 2026-09-27 (http_bridge v1 completo; `presentation/http/http_integration_tests.rs` — **62** `http_integration` para bearer/orders/portfolio/F3 graph admin; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG); outbox **F2.1.3+** TX fechada nos caminhos principais; F3 CLI `graph query` completa; F3 HTTP admin read-only agents/supervision-chain/bots-for-agent; **C17 fatia 1** snapshot PG supervisor + **fatia 2** `PersistenceStatus::Gap` e REST `persistence_status` — [monitor-persistence-c17-sdd](../sdd/monitor-persistence-c17-sdd.md)). Baseline local registrado: `./scripts/verify-backend-gates.sh` ( **518** / **0** ignored; manifesto PG **28**, execução não registrada; CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09)). Auditoria do goal: [modules-completeness-audit](./modules-completeness-audit.md). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; Gate 2 runtime **parcial** (`BotRuntimePort`, HTTP promote/demote, supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`, `evaluate_for_kind` SMA/EMA); auth owner e ciclo de promoção live completo pendentes. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
 
 ## Resumo
 
@@ -26,7 +26,7 @@ O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco,
 7. Canais de conversa, voz, aplicações e interface externa.
 8. Execução financeira **prod** e ambiente de produção completo (seam `modules/orders` + HTTP: paper/recording/testnet + reconciliação **parcial**; prod REST fail-closed; threat model/Critic pendentes).
 9. Observabilidade operacional completa.
-10. Estado de persistência e recuperação do monitor conforme C17.
+10. Gate **V18** PostgreSQL isolado e G4 integrado do monitor (runtime T-15/C17 em código; fatias 1–2 C17 entregues).
 11. Round-trip PostgreSQL operacional conforme V18.
 
 Essas capacidades não devem ser tratadas como módulos parcialmente prontos só porque existem tipos auxiliares, flags de configuração ou documentação de design.
@@ -47,7 +47,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Canais externos | Não existem canais de chat, voz, mobile, navegador ou computador persistente. | Pesquisa marca canais e dispositivos fora da etapa atual. | Contrato de interação, identidade por canal e controles de privacidade. |
 | Execução financeira live | `modules/orders` + `authorize_rest_use` para `OrderSubmit` (recording/testnet+ credenciais); market buy/sell testnet ccxt; sem prod. | `exchanges/rest`, `binance_spot_testnet_submit.rs`. | Saldo privado, reconciliação, prod bloqueado; Critic G2. |
 | Observabilidade | Há logging estruturado, mas não há catálogo completo de métricas, SLI/SLO, alertas ou runbook de incidentes. | Roadmap lista WS/REST, persistência, idade de candle, Jev e credenciais como pendências. | Definir métricas, cardinalidade, alertas, dashboards e runbooks. |
-| Persistência de runtime | **C17 fatia 1** (snapshot PG supervisor, migração `0011`) entregue; estado TUI `DEGRADED`/`HEALTHY`/`GAP` e recuperação REST ainda pendentes. | [monitor-persistence-c17-sdd](../sdd/monitor-persistence-c17-sdd.md); SDD T-15 / [monitor-persistence-policy](../sdd/monitor-persistence-policy-sdd.md). | Próximas fatias C17 + revisar G4. |
+| Persistência de runtime | **C17 fatia 1** (snapshot PG `0011`) + **fatia 2** (`PersistenceStatus::Gap`, REST `persistence_status`) entregues; runtime `PersistenceHealth` + TUI conforme [monitor-persistence-policy](../sdd/monitor-persistence-policy-sdd.md); **V18** PG isolado e G4 pendentes. | [monitor-persistence-c17-sdd](../sdd/monitor-persistence-c17-sdd.md); SDD T-15. | V18 em `trading_bot` descartável; revisão G4 Orquestrador. |
 | Integração PostgreSQL | Conexão, migrações, adapters agents/bots/orders/market; `pg_integration` + `./scripts/run-pg-integration-tests.sh` (**28** testes no manifesto); job CI `postgres-integration` com Timescale `pg16` — nunca executou com sucesso e diverge do mínimo PG 18 do código. | Default `cargo test` skip PG sem `DATABASE_URL`; exercício real exige `DATABASE_URL` → `trading_bot` (ver [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)). | Neo4j skip em CI sem stack; rollback operacional V18 ainda em roadmap. |
 
 ## 1. Identidade persistente de agentes
@@ -177,16 +177,9 @@ O módulo `exchanges/rest` autoriza somente backfill público Spot em `dev`. A e
 
 **Fatia 1 (2026-09-27):** singleton `monitor_supervisor_snapshot` em PG quando wired — [monitor-persistence-c17-sdd](../sdd/monitor-persistence-c17-sdd.md); teste `pg_monitor_supervisor_snapshot_round_trip` (manifesto **28**).
 
-O SDD T-15 ainda prevê para fatias seguintes:
+**Fatia 2 (2026-09-27):** expõe estado de arquivo na apresentação/REST — enum `PersistenceStatus` (`Gap` distinto de `Degraded`), campo `persistence_status` em `GET /api/v1/monitor/snapshot`; testes unit `monitor_snapshot_maps_*` / `snapshot_from_domain_exposes_persistence_status_for_rest`. Runtime de loop/recuperação permanece em `PersistenceHealth` + policy T-15 (evidência em [monitor-persistence-policy-sdd](../sdd/monitor-persistence-policy-sdd.md) § C17).
 
-- estado inicial `DEGRADED`;
-- distinção `HEALTHY`, `DEGRADED` e `GAP`;
-- suspeita de perda por overflow, pausa, desconexão ou commit incerto;
-- recuperação somente após janela REST contígua e commit confirmado;
-- descarte de resultados de gerações antigas;
-- comportamento de timeout e retry.
-
-C14/C15/C16 fechados; **fatia 1 C17** entregue; demais itens T-15 permanecem pendentes.
+C14/C15/C16 fechados; **C17 fatias 1–2** entregues; **V18** (migração/commit/rollback auditado em PG isolado) e G4 integrado permanecem pendentes.
 
 ### V18 — PostgreSQL
 
