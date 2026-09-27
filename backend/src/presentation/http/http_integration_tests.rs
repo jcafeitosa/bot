@@ -1477,6 +1477,100 @@ async fn provider_credentials_admin_upsert_list_masked_never_returns_raw_secret(
 }
 
 #[tokio::test]
+async fn provider_credentials_admin_delete_removes_row() {
+    let Some(db) = crate::core::persistence::pg_integration::database_for_integration_test().await
+    else {
+        return;
+    };
+    let state = ApiState::with_agent_registry(
+        None,
+        AppDatabases {
+            postgres: Some(db),
+            neo4j: None,
+        },
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::for_test(ADMIN_TOKEN),
+    );
+    let app = build_router(state);
+    const PROVIDER: &str = "delete-http-test";
+    const KEY: &str = "api_key";
+    let upsert = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/admin/provider-credentials")
+                .header("content-type", "application/json")
+                .header(bearer_header(ADMIN_TOKEN).0, bearer_header(ADMIN_TOKEN).1)
+                .body(Body::from(format!(
+                    r#"{{"provider_id":"{PROVIDER}","key_name":"{KEY}","secret":"delete-me-secret"}}"#
+                )))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(upsert.status(), StatusCode::OK);
+
+    let delete = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!(
+                    "/api/v1/admin/provider-credentials/{PROVIDER}/{KEY}"
+                ))
+                .header(bearer_header(ADMIN_TOKEN).0, bearer_header(ADMIN_TOKEN).1)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(delete.status(), StatusCode::NO_CONTENT);
+
+    let list = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/admin/provider-credentials")
+                .header(bearer_header(ADMIN_TOKEN).0, bearer_header(ADMIN_TOKEN).1)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(list.status(), StatusCode::OK);
+    let list_json: serde_json::Value = serde_json::from_slice(
+        &axum::body::to_bytes(list.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let found = list_json["credentials"]
+        .as_array()
+        .expect("credentials")
+        .iter()
+        .any(|row| row["provider_id"] == PROVIDER && row["key_name"] == KEY);
+    assert!(!found);
+
+    let delete_again = app
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!(
+                    "/api/v1/admin/provider-credentials/{PROVIDER}/{KEY}"
+                ))
+                .header(bearer_header(ADMIN_TOKEN).0, bearer_header(ADMIN_TOKEN).1)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(delete_again.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn provider_credentials_admin_list_requires_admin_bearer_when_enabled() {
     let app = router_with_admin(HttpAdminAuth::for_test(ADMIN_TOKEN));
     let response = app

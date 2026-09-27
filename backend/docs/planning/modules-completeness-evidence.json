@@ -9,7 +9,7 @@
     "pg_integration": "./scripts/run-pg-integration-tests.sh"
   },
   "observed": {
-    "bot_tests_passed": 451,
+    "bot_tests_passed": 456,
     "bot_tests_ignored": 0,
     "http_integration_passed": 47,
     "pg_script_tests": 21
@@ -24,6 +24,7 @@
     "docs/reference/test-matrix.md",
     "docs/sdd/agents-owner-bootstrap-g1-sdd.md",
     "docs/sdd/provider-credentials-db-sdd.md",
-    "scripts/assert-completeness-evidence.sh"
+    "scripts/assert-completeness-evidence.sh",
+    "docs/sdd/graph-query-port-f3-sdd.md"
   ]
 }

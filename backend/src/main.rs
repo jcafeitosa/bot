@@ -29,6 +29,8 @@ enum BotCommand {
     Serve(presentation::http::ServeCli),
     /// Graph projection operations (Neo4j outbox drain)
     GraphProjection(crate::core::database::GraphProjectionCli),
+    /// Read-only Neo4j graph queries (F3)
+    Graph(crate::core::database::GraphCli),
 }
 
 #[derive(Debug, Parser)]
@@ -53,7 +55,9 @@ fn bot_config_path_for_cli(cli: &TopCli) -> std::path::PathBuf {
             .config
             .clone()
             .unwrap_or_else(|| cli.monitor.config.clone()),
-        Some(BotCommand::GraphProjection(_)) => cli.monitor.config.clone(),
+        Some(BotCommand::GraphProjection(_)) | Some(BotCommand::Graph(_)) => {
+            cli.monitor.config.clone()
+        }
         None => cli.monitor.config.clone(),
     }
 }
@@ -72,7 +76,9 @@ async fn main() -> Result<()> {
         Some(BotCommand::Backtest(_)) | None => {
             ensure_bot_config_readable(&bot_config_path_for_cli(&cli))?;
         }
-        Some(BotCommand::Serve(_)) | Some(BotCommand::GraphProjection(_)) => {}
+        Some(BotCommand::Serve(_))
+        | Some(BotCommand::GraphProjection(_))
+        | Some(BotCommand::Graph(_)) => {}
     }
     match cli.command {
         Some(BotCommand::Backtest(args)) => {
@@ -80,6 +86,9 @@ async fn main() -> Result<()> {
         }
         Some(BotCommand::GraphProjection(args)) => {
             crate::core::database::graph_projection_cli::run(&args).await?;
+        }
+        Some(BotCommand::Graph(args)) => {
+            crate::core::database::graph_cli::run(&args).await?;
         }
         Some(BotCommand::Serve(args)) => {
             let mut monitor_cli = cli.monitor.clone();

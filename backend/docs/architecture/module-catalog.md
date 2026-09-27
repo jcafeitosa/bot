@@ -221,7 +221,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 
 ## 7. Débitos e limites conhecidos
 
-- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **456** testes no bin `bot`, **0** ignorados; PG **21/21** via `./scripts/verify-backend-full.sh` (`OK: backend full verification passed`) ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); `cargo test --bin bot http_integration -- --test-threads=1` → **48** passed; paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
+- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **451** testes no bin `bot`, **0** ignorados; PG **21/21** via `./scripts/verify-backend-full.sh` (`OK: backend full verification passed`) ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); `cargo test --bin bot http_integration -- --test-threads=1` → **47** passed; paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
 - Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) em testes com skip via `pg_integration` — exercício real exige `DATABASE_URL` → `trading_bot` (PG 18+).
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.

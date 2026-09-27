@@ -106,7 +106,7 @@ TUI: Space pauses/resumes market evaluation; `q` or Esc quits. Logs are structur
 
 ```sh
 ./scripts/verify-backend-gates.sh
-# → OK: … 451 passed; 0 ignored (+ assert-pg-integration-manifest 21 tests)
+# → OK: … 456 passed; 0 ignored (+ assert-pg-integration-manifest 21 tests)
 # Gates + PG (when DATABASE_URL → trading_bot):
 ./scripts/verify-backend-full.sh
 # → OK: backend full verification passed (+ PG 21/21)

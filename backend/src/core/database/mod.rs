@@ -3,10 +3,12 @@
 
 mod bundle;
 mod config;
+pub mod graph_cli;
 mod graph_projection;
 pub mod graph_projection_cli;
 mod graph_projection_outbox;
 mod graph_projection_outbox_worker;
+mod graph_query;
 pub(crate) mod monitor_bootstrap;
 mod neo4j;
 mod neo4j_agent_hierarchy;
@@ -16,6 +18,9 @@ mod postgres;
 
 pub use bundle::AppDatabases;
 pub use config::{load_agents_stack_from_env, postgres_url_from_env, DatabaseConfigError};
+pub use graph_cli::{
+    GraphCli, GraphCommand, GraphQueryAgentsCli, GraphQueryCli, GraphQueryCommand,
+};
 pub use graph_projection::{
     AgentHierarchyProjection, BotCatalogProjection, BotPromotionProjection, GraphProjectionError,
     GraphProjectionPort, OrderIntentProjection, ProjectedSupervisorKind, SubmittedEdgeProjection,
@@ -34,6 +39,7 @@ pub use graph_projection_outbox_worker::{
     fetch_graph_projection_outbox_stats, graph_projection_outbox_degraded,
     spawn_graph_projection_outbox_drain_worker, GraphProjectionOutboxStats,
 };
+pub use graph_query::{GraphQueryError, GraphQueryPort, ProjectedAgentList, ProjectedAgentNode};
 pub use monitor_bootstrap::{
     bootstrap_monitor_postgres, connect_postgres_for_monitor, postgres_for_cli_persist,
     MonitorBootstrapError,
