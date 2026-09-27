@@ -1,44 +1,48 @@
-# SDD: Configuração centralizada (.env)
+# SDD: Configuração centralizada
 
-## Regra
+## Source of truth
 
-Toda leitura de variável de processo vive em `src/core/config/*.rs`. Módulos e presentation importam `crate::core::config::{...}` ou `AppConfig`; **não** há `config.rs` de env em `modules/*` nem `presentation/*`.
+| Camada | Conteúdo |
+|--------|----------|
+| **`.env`** (gitignored) | Secrets e overrides operacionais (DATABASE_URL, Neo4j, Binance, HTTP admin, flags). **Env vence** TOML quando setado. |
+| **`system.toml`** | Defaults **não sensíveis** do sistema (agents/neo4j/monitor/orders/bots/providers estrutura). |
+| **`bot.toml`** | Preset monitor (market, strategy, risk, jev, logging, run_mode). |
+| **`exchanges/binance.toml`** | Contas/endpoints exchange (público). |
+| **PostgreSQL `provider_credentials`** | API keys LLM (primary); env bootstrap deprecated — ver `provider-credentials-db-sdd.md`. |
 
-Bootstrap: `ensure_dotenv_loaded()` em `main` (dotenvy, idempotente).
+Bootstrap: `ensure_dotenv_loaded()` → `SystemConfig::init_from_path(--system-config)` → `Config::load(bot.toml)`.
 
-## Árvore `core/config/`
+## Árvore única `src/core/config/`
 
-| Arquivo | Env keys / notas |
-|---------|------------------|
-| `env_loader.rs` | (carrega `.env`) |
-| `env_parse.rs` | helpers internos |
-| `mod.rs` | TOML `Config`, CLI, reexports |
-| `app.rs` | `AppConfig` agregador (lazy) |
-| `database.rs` | `DATABASE_URL`, `BOT_AGENTS_ENABLED`, `BOT_NEO4J_*` |
-| `neo4j.rs` | doc → vars em `database.rs` |
-| `exchanges.rs` | `BINANCE_TESTNET_*`, `BINANCE_PROD_*` |
-| `providers.rs` | `TYPESAFE_*`, `OPENAI_*`, `NINE_ROUTER_*`, `NVIDIA_*`, `NGC_*` |
-| `monitor.rs` | `PERSIST_MARKET_DATA`, `DATABASE_URL` (bootstrap monitor) |
-| `orders.rs` | `BOT_ORDERS_*`, `BOT_PAPER_FILL_UNIT_PRICE` |
-| `agents.rs` | `BOT_AGENCY` |
-| `bots.rs` | `BOT_RUNTIME_ENABLED` |
-| `http.rs` | `BOT_HTTP_*` |
-| `backtest.rs` | `--persist` → `DATABASE_URL` |
-| `market.rs`, `strategy.rs`, `risk.rs`, `portfolio.rs`, `logging.rs`, `health.rs`, `terminal.rs`, `http_bridge.rs` | sem env (TOML / futuro) |
-| `bot.toml`, `exchanges/binance.toml` | TOML monitor/exchange (não `.env`) |
+```
+core/config/
+  mod.rs              # Config (bot.toml), MonitorCli, reexports
+  bot.toml
+  system.toml
+  env_loader.rs
+  env_parse.rs
+  load.rs
+  system/mod.rs       # SystemConfig loader
+  database/mod.rs + file.rs
+  monitor/mod.rs + file.rs
+  orders/mod.rs + file.rs
+  agents/mod.rs + file.rs
+  bots/mod.rs + file.rs
+  http/mod.rs + file.rs
+  providers/mod.rs + file.rs   # endpoints + resolve_* (keys via PG)
+  backtest/mod.rs + file.rs
+  exchanges/mod.rs + credentials.rs + binance.toml
+```
 
-`core/database/config.rs` reexporta `core::config::database`.
+`core/database/config.rs` — reexport fino de `core::config::database`.
 
-## Seams
+## Removidos (cleanup)
 
-- `MonitorEnvError` mapeado para `StartupError` em `main`.
-- `modules/http_bridge/config.rs` permanece DTO HTTP (snapshot TOML), sem env.
-
-## Riscos
-
-- Testes: `core::test_env_lock` ao mutar env.
-- Compatibilidade: nomes de env inalterados vs `.env.example`.
+- Arquivos `.rs` env-only na raiz (`monitor.rs`, `database.rs`, …).
+- `config.rs` de env em `modules/*` e `presentation/*`.
+- TOML duplicados por domínio (`database/database.toml`, …) → consolidados em `system.toml`.
+- `app.rs` agregador não referenciado.
 
 ## Validação
 
-`scripts/verify-backend-gates.sh` — fmt, clippy, env-centralization rg, tests.
+`scripts/verify-backend-gates.sh` (fmt, clippy, import-direction, env reads em `core/config/**` + `core/providers/credentials/**`).
