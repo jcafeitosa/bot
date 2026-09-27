@@ -123,4 +123,56 @@ impl Database {
         .await?;
         Ok(count)
     }
+
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub async fn table_exists(&self, table: &str) -> Result<bool, PersistenceError> {
+        let exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_schema = 'public' AND table_name = $1
+            )",
+        )
+        .bind(table)
+        .fetch_one(self.pool())
+        .await?;
+        Ok(exists)
+    }
+}
+
+#[cfg(test)]
+mod migration_scaffold_tests {
+    const SCAFFOLD_SQL: &str = include_str!("migrations/0002_agents_bots_scaffold.sql");
+
+    #[test]
+    fn migration_scaffold_sql_declares_core_tables() {
+        for table in [
+            "agent_identities",
+            "agent_identity_events",
+            "bot_catalog_entries",
+        ] {
+            assert!(
+                SCAFFOLD_SQL.contains(table),
+                "0002 scaffold must define table {table}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires DATABASE_URL pointing at PostgreSQL database trading_bot"]
+    async fn postgres_scaffold_tables_exist_after_migrate() {
+        let db = super::Database::connect_from_env()
+            .await
+            .expect("DATABASE_URL must be set for ignored integration test");
+        db.migrate().await.expect("migrations");
+        for table in [
+            "agent_identities",
+            "agent_identity_events",
+            "bot_catalog_entries",
+        ] {
+            assert!(
+                db.table_exists(table).await.expect("table_exists query"),
+                "missing table {table} after migrate"
+            );
+        }
+    }
 }

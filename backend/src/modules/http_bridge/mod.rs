@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 //! HTTP-facing facades so `presentation` does not import domain modules directly.
 
-//! Facades consumed by `presentation::http::routes` (no direct domain imports in routes):
+//! Facades consumed by the HTTP route layer (no direct domain imports in routes):
 //! `agents`, `application`, `backtest`, `bots`, `config`, `exchanges`, `monitor`, `orders`,
 //! `portfolio`, `providers`, `risk`, `strategy`.
 
