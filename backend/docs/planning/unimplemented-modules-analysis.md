@@ -24,7 +24,7 @@ O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco,
 5. Gateway de ferramentas, permissões, aprovações e sandbox.
 6. Memória de conhecimento, memória entre sessões e grafo.
 7. Canais de conversa, voz, aplicações e interface externa.
-8. Execução financeira live, saldos privados e ambiente de produção (seam `modules/orders` valida risco e falha fechado; exchange e HTTP de ordens ausentes).
+8. Execução financeira live, saldos privados e ambiente de produção (seam `modules/orders` + `POST /api/v1/orders/submit` validam risco e falham fechado com 503; adapter exchange real ausente).
 9. Observabilidade operacional completa.
 10. Estado de persistência e recuperação do monitor conforme C17.
 11. Round-trip PostgreSQL operacional conforme V18.
@@ -35,9 +35,9 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 
 | Capacidade prevista | Situação no código | Evidência | Próximo gate |
 |---|---|---|---|
-| Identidade de agentes `IdentityOnly` | Módulo `modules/agents` em memória (registro, hierarquia, lifecycle, advisory Jev); sem schema PostgreSQL nem API HTTP admin. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, contrato HTTP admin e autenticação verificável do owner. |
+| Identidade de agentes `IdentityOnly` | Módulo `modules/agents` em memória + rotas HTTP v1 (`/api/v1/agents/*`); `MonitorAgentHook` com `shared_agent_registry` quando `BOT_AGENCY` no mesmo processo; sem PostgreSQL nem auth owner. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, persistência e autenticação verificável do owner. |
 | Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` (MVC, `full_ranking`, catálogo por config, HTTP catalog/ranking); `backtest` reexporta tipos. Sem runtime live, promoção ou `BotCatalogStore` PostgreSQL. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência; mapeamento formal com agentes autorizadores; runtime executor. |
-| Seam `orders` (fail-closed) | `modules/orders`: `submit_order` → `risk::validate_intent` → `ExecutionDisabled`. | [SDD orders](../sdd/orders-module-sdd.md). | Adapter exchange real, idempotência, HTTP e reconciliação — somente após gates de segurança. |
+| Seam `orders` (fail-closed) | `modules/orders` + `http_bridge/orders` + `POST /api/v1/orders/submit` (422 risk / 503 execution disabled). | [SDD orders](../sdd/orders-module-sdd.md). | Adapter exchange real, idempotência e reconciliação — somente após gates de segurança. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
 | Worker e scheduler | Não existe worker durável, agenda, heartbeat, lease ou retry de execução. | A pesquisa classifica rotinas e operação contínua como fase posterior. | SDD de execução durável, fila/outbox, recuperação e SLO. |

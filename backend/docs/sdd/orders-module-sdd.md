@@ -26,7 +26,8 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Não-objetivos
 
-- HTTP de ordens, idempotência, reconciliação ou produção.
+- Execução live, idempotência, reconciliação ou produção.
+- HTTP que simule sucesso de envio à exchange (o endpoint `POST /api/v1/orders/submit` valida risco e responde **503** `execution_disabled` com o executor padrão).
 - Remover gates `authorize_rest_use` ou habilitar trading live.
 - Duplicar política de risco fora de `modules/risk`.
 

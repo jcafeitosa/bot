@@ -9,7 +9,7 @@ tags:
 ---
 # Arquitetura do backend
 
-> Revisão: 2026-09-26 (pós F1–F6). Layout: `src/core/`, `src/modules/` (MVC), `src/presentation/`. Este documento descreve `backend/src`, `backend/tests` e os SDDs referenciados. Entrada resumida: [README](../../README.md#architecture) e [convenção MVC](../sdd/modules-mvc-convention-sdd.md).
+> Revisão: 2026-09-26 (inclui agents, bots, orders, HTTP). Layout: `src/core/`, `src/modules/` (MVC), `src/presentation/`. Este documento descreve `backend/src`, `backend/tests` e os SDDs referenciados. Entrada resumida: [README](../../README.md#architecture), [catálogo](./module-catalog.md) e [convenção MVC](../sdd/modules-mvc-convention-sdd.md).
 
 ## Visão do sistema
 
@@ -54,8 +54,13 @@ O caminho de monitor não envia ordens. A autorização atual permite apenas bac
 | `modules` | `portfolio` | snapshots paper | Modelos de carteira; não executa ordens. | `src/modules/portfolio/` |
 | `modules` | `backtest` | simulação SMA | Fixture, simulação, relatório; CLI em `cli.rs`. | `src/modules/backtest/` |
 | `modules` | `exchanges` | registro, REST, WS, market data | Integração Binance e gates de capacidade. | `src/modules/exchanges/` |
-| `modules` | `jev` | `JevAdvisor::review` | Consulta TypeSafe opcional; sem autoridade de ordem. | `src/modules/jev/` |
+| `core` | `providers::jev` | `JevAdvisor::review` | Consulta TypeSafe opcional; sem autoridade de ordem. | `src/core/providers/jev/` |
+| `modules` | `agents` | `AgentRegistry`, lifecycle, `run_advisory_step` | Identidade administrativa `IdentityOnly` em memória; HTTP de registro/lifecycle. | [SDD agents](../sdd/agents-module-sdd.md) |
+| `modules` | `bots` | `BotIdentity`, `full_ranking`, catálogo | Executores strategy×timeframe; HTTP catalog/ranking. | [SDD bots](../sdd/bots-module-sdd.md) |
+| `modules` | `orders` | `submit_order`, `FailClosedExecutor` | Valida risco e bloqueia execução (`ExecutionDisabled`); HTTP `POST /api/v1/orders/submit` retorna 503 após risco OK. | [SDD orders](../sdd/orders-module-sdd.md) |
+| `modules` | `http_bridge` | facades por domínio | Camada entre `presentation::http` e módulos de domínio. | `src/modules/http_bridge/` |
 | `presentation` | `terminal` | TUI Ratatui | Renderização e teclado; contrato com monitor via `presentation_contract`. | `src/presentation/terminal/mod.rs`, `modules/monitor/views/` |
+| `presentation` | `http` | Axum, OpenAPI, Scalar | Superfície REST (`serve`); 28 paths documentados; monitor exige handle no processo. | `src/presentation/http/` |
 
 ## Submódulos de exchanges (`src/modules/exchanges/`)
 
@@ -82,7 +87,7 @@ O caminho de monitor não envia ordens. A autorização atual permite apenas bac
 - **Configuração:** `Config::load/validate` é o seam que separa TOML/CLI das regras de operação.
 - **Persistência:** `Database` concentra conexão, migração e gravação transacional; o monitor trata a persistência como capacidade opcional.
 - **Aconselhamento:** `JevAdvisor::review` é um adapter consultivo isolado, com timeout, endpoint validado e payload sem credenciais.
-- **Execução:** `authorize_rest_use` é o gate central atual; qualquer futura ordem precisa de um seam e de autorização próprios.
+- **Execução:** `authorize_rest_use` bloqueia REST privado; `modules/orders::submit_order` valida `OrderIntent` e delega a `OrderExecutionPort` (hoje `FailClosedExecutor`). Exchange live continua fora de escopo.
 
 Esses seams mantêm profundidade: o chamador conhece uma interface pequena e as regras de validação ficam concentradas na implementação. O supervisor do monitor (`modules::monitor::controllers::supervisor`) continua concentrando orquestração; mudanças devem preservar os contratos MVC documentados no SDD de convenção.
 

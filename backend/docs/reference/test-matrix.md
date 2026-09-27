@@ -10,7 +10,7 @@ tags:
 
 # Matriz de testes do backend
 
-> Revisão: 2026-09-26. A matriz descreve os testes presentes no código e o limite da evidência disponível.
+> Revisão: 2026-09-26 (HTTP orders/bots). A matriz descreve os testes presentes no código e o limite da evidência disponível.
 
 ## Testes de integração
 
@@ -49,7 +49,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | Rotas Axum, OpenAPI 27 paths, Scalar `/docs`, subcomando `serve` e `--with-monitor` | Testes em `presentation/http/server.rs` (7); smoke runtime documentado. | Nenhuma rede Binance real. | Passa. |
+| `presentation/http` | Rotas Axum, OpenAPI 28 paths, Scalar `/docs`, subcomando `serve`, bots ranking e orders fail-closed | Testes em `presentation/http/server.rs`; smoke runtime documentado. | Nenhuma rede Binance real. | Passa. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
@@ -59,7 +59,7 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-168 testes unitários passaram (inclui testes HTTP em `presentation/http/server.rs`)
+169 testes unitários passaram (inclui testes HTTP em `presentation/http/server.rs`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 1 teste PostgreSQL ignorado por ausência de DATABASE_URL
 ```
