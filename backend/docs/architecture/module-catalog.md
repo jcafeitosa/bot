@@ -138,7 +138,7 @@ Camada de aplicação fina entre `presentation::http::routes` e os módulos de d
 | `backtest.rs` | Disparo SMA crossover via HTTP. |
 | `strategy.rs` / `application.rs` / `exchanges.rs` / `providers.rs` | Facades auxiliares para rotas stateless. |
 
-Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog persist, agent snapshots, submit fail-closed/accept, runtime promote/demote). Integração HTTP pesada: `presentation/http/server.rs`.
+Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog persist, agent snapshots, submit fail-closed/accept, runtime promote/demote). Integração HTTP: `presentation/http/http_integration_tests.rs` (admin bearer + orders executors); smoke/OpenAPI/meta em `server.rs`.
 
 ## 3e. Camada `presentation::http`
 
@@ -148,6 +148,7 @@ Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog p
 | `state` | `ApiState` (composition root); agents/bots/orders/portfolio (`submit_order_http`, `paper_wallet_snapshot`, `bot_ranking_from_metrics`, catálogo PG); `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); PG ignorados em `state_tests` — [test-matrix](../reference/test-matrix.md). |
 | `server::run` | Bootstrap `AppDatabases`, `ApiState::build_api_state_for_http_serve` (agents PG + env seams + reconciliação hydrate + catálogo), poll reconciliação em background (opcional), Axum + Scalar. |
 | `routes/*` | Superfície v1: agents, bots (catalog `monitor_evaluator` + runtime), orders, monitor, risk, backtest, `config/active` e `config/snapshot` (`monitor_registry[].evaluator`), health, `GET /meta` (`http_seams`). |
+| `http_integration_tests` (test) | Rotas mutantes + submit orders (paper/dev_accept/live_exchange) via `build_router` — [test-matrix § bearer](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token). |
 
 Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `bots/runtime/promote|demote`, `orders/submit`, `orders/reconciliation/poll`, `monitor/commands`.
 
@@ -216,7 +217,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 
 ## 7. Débitos e limites conhecidos
 
-- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **374** testes no bin `bot`, **16** ignorados; PG **14/14** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
+- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **375** testes no bin `bot`, **16** ignorados; PG **14/14** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh` (`DATABASE_URL` → `trading_bot`); paridade runtime HTTP em [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
 - Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) existem como testes `#[ignore]` — exigem `DATABASE_URL` → `trading_bot` (PG 18+).
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.

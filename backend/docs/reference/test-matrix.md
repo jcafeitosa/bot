@@ -81,9 +81,9 @@ O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (lo
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**14/14** testes `#[ignore]` de domínio).
 
-Evidência típica (atualizar após mudanças de teste): **374** aprovados + **16** ignorados = **390** casos no bin `bot` (só aprovados na linha `OK:` do gate); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **14/14** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **375** aprovados + **16** ignorados = **391** casos no bin `bot` (só aprovados na linha `OK:` do gate); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **14/14** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
-Bin `bot`: **374** aprovados, **16** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **375** aprovados, **16** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ### Testes `#[ignore]` no bin `bot` (16)
 
@@ -158,4 +158,5 @@ Atualize esta matriz no mesmo change set quando:
 2. um teste mudar de unidade para integração;
 3. uma dependência externa tornar-se obrigatória;
 4. uma pendência de SDD mudar de estado;
-5. uma execução de integração PostgreSQL produzir evidência reproduzível.
+5. uma execução de integração PostgreSQL produzir evidência reproduzível;
+6. a linha `OK:` de `verify-backend-gates.sh` mudar (passed/ignored no bin `bot`) ou testes HTTP admin/orders mudarem de módulo (`http_integration_tests.rs` vs `server.rs`).
