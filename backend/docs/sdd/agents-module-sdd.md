@@ -26,11 +26,11 @@ No domínio do produto bot, **agente** e **bot** são conceitos distintos. No c�
 
 | Dimensão | `modules/agents` | `modules/bots` | `backtest::BotId` | `modules/monitor` |
 |----------|------------------|-------------------------|-------------------|-------------------|
-| **Existe hoje?** | Sim — fundação `IdentityOnly` em memória | Sim — fundação (sem runtime live/PostgreSQL) | Sim — reexport + simulação em `backtest` | Sim — supervisor de mercado |
+| **Existe hoje?** | Sim — fundação `IdentityOnly` + PG opcional | Sim — catálogo/ranking/HTTP + PG opcional; runtime [Gate 2](./bots-runtime-live-gate2-sdd.md) | Sim — reexport + simulação em `backtest` | Sim — supervisor de mercado |
 | **Propósito** | Identidade e governança administrativa (owner → CEO → … → worker) | Executores versionados de trading, ciclo de promoção/avaliação, artefatos | Identificar uma **instância simulada** (estratégia@versão:timeframe:símbolo) no ranking/backtest | Loop live/paper: candles, sinais, risco, TUI, persistência opcional |
 | **Executa ordens / worker?** | Não — registrar agente não inicia task nem LLM | Será o lugar previsto para runtime de executor (após gates) | Não — só simulação offline | Não envia ordens reais hoje; não é cadastro de identidade |
 | **Relação com hierarquia do produto** | Fonte de verdade da hierarquia administrativa | Subordinado ao desenho de domínio; **não** substitui `AgentId` | Nenhuma — nome “Bot” é legado de simulação | Pode integrar `MonitorAgentHook` no futuro; hoje noop |
-| **Persistência** | Eventos em memória; PostgreSQL após Gate 1 | A definir (versionamento, métricas, promoção) | Métricas/resultados de backtest em memória/JSON da CLI | Estado de sessão, gaps, datasets |
+| **Persistência** | `PgAgentIdentityStore` write-through + hydrate (Gate 1) | `PgBotCatalogStore` + [Gate 1](./bots-catalog-persistence-gate1-sdd.md); promoção runtime Gate 2 | Métricas/resultados de backtest em memória/JSON da CLI | Estado de sessão, gaps, datasets |
 
 **Mensagem para implementadores:** `AgentRegistry::register` cria uma **identidade administrativa**, não um executor de mercado. `BotId::new(...)` compõe uma **chave de experimento** no backtest. O módulo **`bots`** concentra bots versionados e ranking; runtime live e promoção seguem em gates posteriores ([pesquisa de capacidades](../research/agents-capability-research.md) — linha “Bots executores de tarefa/mercado”); até lá, não criar `modules/bots` por analogia com `agents` nem renomear `BotId` para “agente”.
 

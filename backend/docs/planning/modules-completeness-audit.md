@@ -75,6 +75,16 @@ Evidência (2026-09-27): **208** testes no binário `bot`, **5** ignorados (`per
 | Build/testes verdes | `cargo test --locked` → 208 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
+## Roadmap de gates (pós-G1)
+
+| Gate | Módulo | SDD | Implementado |
+|------|--------|-----|--------------|
+| G1 PG scaffold | agents + bots catálogo | [bots-catalog-persistence-gate1-sdd.md](../sdd/bots-catalog-persistence-gate1-sdd.md) | **Parcial** (código + testes `#[ignore]` PG) |
+| G1 HTTP admin seam | presentation/http | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | **Sim** (não é auth owner produto) |
+| G2 orders live | orders | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Não** |
+| G2 bots runtime | bots + monitor | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | **Não** |
+| Auth owner produto | agents | [agents-capability-research.md](../research/agents-capability-research.md) | **Bloqueado** na pesquisa |
+
 ## Fechamento do goal (pendente)
 
-Auth owner de produto (além de `BOT_HTTP_ADMIN_TOKEN`), adapter real de orders ([Gate 2 orders draft](../sdd/orders-live-execution-gate2-sdd.md)), runtime bots ([Gate 2 bots draft](../sdd/bots-runtime-live-gate2-sdd.md)), revisão Critic AGENTS.md. PG scaffold: [Gate 1](../sdd/bots-catalog-persistence-gate1-sdd.md).
+Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **208** testes bin `bot`, **5** ignorados.

@@ -69,7 +69,7 @@ flowchart LR
 | `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor` | Valida `OrderIntent` via `risk`; port fail-closed (`ExecutionDisabled`). HTTP `POST /api/v1/orders/submit` (422 risco / 503 execução). Sem exchange live. | `modules/orders/tests.rs`, `presentation/http/server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
-| `presentation` | `http` | API Axum | OpenAPI (`/openapi.json`), Scalar (`/docs`), subcomando `serve`; `AppDatabases::bootstrap_http_api`; bearer admin opcional (`HttpAdminAuth`); monitor HTTP exige `MonitorHandle`. | `presentation/http/server.rs`, `admin_auth.rs`. |
+| `presentation` | `http` | API Axum + `ApiState` composition root | OpenAPI/Scalar; `serve` + `bootstrap_http_api` + hydrate agents; rotas stateful via `ApiState`, stateless via `http_bridge`; `HttpAdminAuth`. Ver [layer-mapping.md](./layer-mapping.md). | `server.rs`, `state.rs`, `admin_auth.rs`. |
 
 ## 3. Módulo `agents` (`src/modules/agents/`)
 
