@@ -21,13 +21,13 @@ tags:
 - Feed híbrido REST/WS para candles; WS limitado a klines fechados de `1m`.
 - Validação de janelas REST e deduplicação/ordenação no feed.
 - Estratégia SMA (e crossover EMA no monitor/backtest via `MonitorEvaluatorKind`) com períodos por operação ou `[[strategy.monitor_registry]]`.
-- Modos observe/paper; ordem de exchange permanece desabilitada.
+- Modos observe/paper no monitor; ordens reais **prod** REST bloqueadas; seams HTTP/monitor opt-in (`paper`, `recording`, testnet Spot) via `modules/orders` ([Gate 2](../sdd/orders-live-execution-gate2-sdd.md) parcial).
 - Backtest sintético determinístico com taxas, slippage e resumo JSON.
 - Persistência PostgreSQL opt-in, migração automática e gravação idempotente de datasets.
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
-- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + `BotCatalogBackend` mem/PG) e `orders` (seam fail-closed) com testes unitários.
-- API HTTP Axum com OpenAPI/Scalar (**36** paths): agents, bots (`MonitorStrategyRegistry`, catálogo `monitor_evaluator`, runtime promote), risk, strategy, backtest, portfolio, exchanges; orders `GET /execution-status` + `POST /submit` (fail-closed / `live_exchange_not_wired` / `dev_accept` + `RecordingExecutor` em testes); seam admin opcional (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
+- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + runtime `BotRuntimePort` + `evaluate_for_kind`) e `orders` (fail-closed + G2 parcial: idempotência/reconciliação PG, poll HTTP) com testes unitários (**387** no bin `bot`, gate `./scripts/verify-backend-gates.sh`).
+- API HTTP Axum com OpenAPI/Scalar (**36** paths): agents, bots (catálogo `monitor_evaluator`, runtime promote/demote), risk, strategy, backtest, portfolio, exchanges; orders `execution-status`, `submit`, reconciliação GET/POST poll; `GET /meta` (`http_seams`); seam admin (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). Completude: [auditoria](./modules-completeness-audit.md).
 
 ### Evidência existente
 

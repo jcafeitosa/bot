@@ -125,6 +125,8 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; ver `docs/operations/postgres-and-graph-dev.md`. |
 | `NVIDIA_NIM_BASE_URL` | Raiz da integrate API (default `https://integrate.api.nvidia.com`); opcional em TOML como `providers.nim_base_url`. |
 
+Variáveis comentadas e exemplos mínimos: `backend/.env.example` (inclui seams `BOT_ORDERS_*`, `BOT_RUNTIME_ENABLED`, `BOT_HTTP_*`).
+
 Nunca comite `.env` ou credenciais.
 
 ## Persistência
