@@ -27,7 +27,7 @@ tags:
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
 - Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + `BotCatalogBackend` mem/PG) e `orders` (seam fail-closed) com testes unitários.
-- API HTTP Axum com OpenAPI/Scalar (**34** paths): agents, bots (`MonitorStrategyRegistry`, catálogo `monitor_evaluator`, runtime promote), risk, strategy, backtest, portfolio, exchanges; orders `GET /execution-status` + `POST /submit` (fail-closed / `live_exchange_not_wired` / `dev_accept` + `RecordingExecutor` em testes); seam admin opcional (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
+- API HTTP Axum com OpenAPI/Scalar (**36** paths): agents, bots (`MonitorStrategyRegistry`, catálogo `monitor_evaluator`, runtime promote), risk, strategy, backtest, portfolio, exchanges; orders `GET /execution-status` + `POST /submit` (fail-closed / `live_exchange_not_wired` / `dev_accept` + `RecordingExecutor` em testes); seam admin opcional (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
 
 ### Evidência existente
 
@@ -97,7 +97,7 @@ tags:
 
 O script executa `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh` e `cargo test --locked` (bin `bot` + testes de integração do workspace).
 
-Evidência observada: **379** testes unitários no binário `bot` (OpenAPI **36** paths; orders reconciliação GET + `POST …/poll` + poller testnet observe; PG `0004`/`0006`; paper/testnet/recording; bots runtime/`evaluate_for_kind`; agents promote capability), **8** ignorados (PG×6, Neo4j, testnet ccxt manual), `./scripts/verify-backend-gates.sh` **ok**; PG opcional **6/6** via `run-pg-integration-tests.sh`.
+Evidência observada: **383** testes unitários no binário `bot` (OpenAPI **36** paths; orders reconciliação GET + `POST …/poll` + poller testnet observe; PG `0004`/`0006`; paper/testnet/recording; bots runtime/`evaluate_for_kind`; agents promote capability), **8** ignorados (PG×6, Neo4j, testnet ccxt manual), `./scripts/verify-backend-gates.sh` **ok**; PG opcional **6/6** via `run-pg-integration-tests.sh`.
 
 ## Gates de aceitação
 

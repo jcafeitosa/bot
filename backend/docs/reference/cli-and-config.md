@@ -136,6 +136,18 @@ Nunca comite `.env` ou credenciais.
 
 A semântica de estados, gaps e recuperação está no [SDD T-15](../sdd/monitor-persistence-policy-sdd.md). O fluxo de candles e avaliação está no [SDD T-10](../sdd/monitor-pause-resume-sdd.md).
 
+### PG orders retention (Gate 2)
+
+Política operacional sugerida (não há purge automático no binário `bot`):
+
+| Tabela | Retenção sugerida | Ação se violada |
+|--------|-------------------|-----------------|
+| `order_idempotency_keys` | **90 dias** após `completed_at` | Job SQL/manual de delete; dedupe em memória reinicia com o processo |
+| `order_reconciliation` (terminal `reconciled` / `divergent`) | **180 dias** | Arquivar ou apagar linhas antigas após backup |
+| `order_reconciliation` (`pending`) | alerta se **> 7 dias** | `POST /api/v1/orders/reconciliation/poll` + investigar exchange; manter `BOT_ORDERS_RECONCILIATION_POLL_SECS` ≥ **60** com submit live wired |
+
+Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md#threat-model-rascunho).
+
 ## Contratos de segurança
 
 O backend trabalha com dados públicos e não envia ordens no fluxo atual. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).

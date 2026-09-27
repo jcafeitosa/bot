@@ -75,12 +75,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-379 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+383 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 8 testes ignorados (PG×6, Neo4j, testnet ccxt manual; ver `#[ignore]` no código)
 ```
 
-Bin `bot`: **379** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **383** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
 
@@ -88,6 +88,8 @@ Bin `bot`: **379** aprovados, **8** ignorados (incl. `integration_submits_minima
 |------|----------------|-----------------------------------|
 | `POST /api/v1/agents` | `agents_register_requires_admin_bearer_when_enabled` | mesmo teste (201) |
 | `POST /api/v1/agents/{id}/pause` | `agents_pause_requires_admin_bearer_when_enabled` | `agents_pause_succeeds_with_admin_bearer_after_register` |
+| `POST /api/v1/agents/{id}/resume` | `agents_resume_requires_admin_bearer_when_enabled` | `agents_resume_succeeds_with_admin_bearer_after_pause` |
+| `POST /api/v1/agents/{id}/retire` | `agents_retire_requires_admin_bearer_when_enabled` | `agents_retire_succeeds_with_admin_bearer_after_register` |
 | `POST /api/v1/agents/{id}/advisory` | `agents_advisory_requires_admin_bearer_when_enabled` | `agents_advisory_returns_503_with_admin_bearer_when_agent_cannot_consult_jev` (sem Jev) |
 | `POST /api/v1/bots/catalog/persist` | `bots_catalog_persist_requires_admin_bearer_when_enabled` | mesmo teste (200) |
 | `POST /api/v1/bots/runtime/promote` | `bots_runtime_promote_requires_admin_bearer_when_enabled` | `bots_runtime_promote_and_demote_succeed_with_admin_bearer` |
