@@ -46,6 +46,15 @@ if needle not in audit:
         f"FAIL: modules-completeness-audit.md missing baseline {needle}; sync audit with gate"
     )
 
+http_expected = obs.get("http_integration_passed")
+if http_expected is not None:
+    http_needle = f"**{http_expected}** passed"
+    if http_needle not in audit and f"→ **{http_expected}** passed" not in audit:
+        sys.exit(
+            f"FAIL: modules-completeness-audit.md missing http_integration {http_needle}"
+        )
+
+
 readme = Path("README.md").read_text()
 if needle not in readme:
     sys.exit(f"FAIL: README.md missing baseline {needle}")
