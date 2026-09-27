@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **234** testes bin `bot`, **5** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*`, `bots_runtime_promote_http_visible_on_status_and_monitor_snapshot`, `apply_bot_runtime_to_monitor_snapshot_copies_promotion`.
+Evidência parcial (2026-09-27): **246** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*`, `monitor_strategy_from_config`, `strategy_evaluation_binding` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` com `BOT_HTTP_AGENCY_ID`.
 
 ## Validação Gate 2 (quando implementado)
 

@@ -10,8 +10,8 @@ status: draft
 
 # SDD — Módulo `modules/orders`
 
-- **Estado:** implementado (fundação G1 + G2 parcial) — `submit_order`, `FailClosedExecutor`, `HttpOrderExecutor` (default fail-closed; `dev_accept` double local); `client_order_id` opcional com `InMemoryOrderIdempotencyStore` em `submit_order_http`; sem exchange live.
-- **Referências:** [Catálogo de módulos](../architecture/module-catalog.md), `modules/exchanges/rest` (`ExecutionDisabled`), `modules/risk` (`OrderIntent`). Próximo gate: [Gate 2 execução live](./orders-live-execution-gate2-sdd.md) (draft, não implementado).
+- **Estado:** implementado (fundação G1 + G2 parcial) — `submit_order`, `FailClosedExecutor`, `HttpOrderExecutor` (default fail-closed; `dev_accept` double local); `client_order_id` com `OrderIdempotencyStore` / memória + `PgOrderIdempotencyStore` opcional em `ApiState::submit_order_http` (migração `0004_order_idempotency_keys.sql`); sem exchange live.
+- **Referências:** [Catálogo de módulos](../architecture/module-catalog.md), `modules/exchanges/rest` (`ExecutionDisabled`), `modules/risk` (`OrderIntent`). Gate 2: [execução live](./orders-live-execution-gate2-sdd.md) (parcial — idempotência PG wired; exchange pendente).
 
 ## Contexto
 
@@ -26,7 +26,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Não-objetivos
 
-- Execução live, idempotência, reconciliação ou produção.
+- Execução live, reconciliação ou produção (idempotência HTTP parcial: memória + PG opcional; não substitui reconciliação com exchange).
 - HTTP que simule sucesso de envio à exchange real (default **503** `execution_disabled`; opt-in local `BOT_ORDERS_EXECUTION=dev_accept` usa double `AcceptingExecutor`, não rede). Bearer admin quando `BOT_HTTP_ADMIN_TOKEN` — ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md).
 - Remover gates `authorize_rest_use` ou habilitar trading live.
 - Duplicar política de risco fora de `modules/risk`.
@@ -41,10 +41,12 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `AcceptingExecutor` | Double de teste do port. |
 | `HttpOrderExecutor` | Seleção em `ApiState` (`disabled` default; `dev_accept` via `BOT_ORDERS_EXECUTION`). |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
+| `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe síncrono em processo (`http_bridge/orders::submit_order_http`). |
+| `PgOrderIdempotencyStore` | Dedupe durável quando `DATABASE_URL` conecta; `ApiState` consulta PG antes de executar e grava após sucesso. |
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **244** testes bin `bot`.
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **246** testes bin `bot`.
 
 ## Rollback
 

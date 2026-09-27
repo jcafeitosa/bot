@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (244 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (246 unitários + integração).
 
 ## Resumo executivo
 
@@ -41,7 +41,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace).
 
-Evidência (2026-09-27): **246** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
+Evidência (2026-09-27): **246** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -57,11 +57,11 @@ Evidência (2026-09-27): **246** testes no binário `bot`, **6** ignorados (`per
 | Requisito | Evidência | Status |
 |-----------|-----------|--------|
 | Completude bots | `modules/bots/`, `PgBotCatalogStore`, HTTP `/bots/*` | **Parcial** (sem runtime live) |
-| Completude orders | `submit_order`, HTTP 422/503, `HttpOrderExecutor`, `client_order_id` + dedupe em memória | **Parcial** (fail-closed default; sem exchange/PG idempotência) |
+| Completude orders | `submit_order`, HTTP 422/503, `HttpOrderExecutor`, `client_order_id` + dedupe em memória | **Parcial** (fail-closed default; sem exchange; PG idempotência wired com PG) |
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth`, `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando `BOT_HTTP_AGENCY_ID` | **Parcial** (seam admin; não substitui auth owner completo) |
 | Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge`, `ApiState`, monitor snapshot + `strategy_evaluation_binding` no supervisor (`BotSignal.bot_id`, SMA registry `sma-cross@1`) | **Parcial** (auth owner, orders exchange, agente→bot) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 245 + clippy/fmt/import (2026-09-27) | **Feito** |
+| Build/testes verdes | 246 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -72,7 +72,7 @@ Evidência (2026-09-27): **246** testes no binário `bot`, **6** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 245 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 246 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
@@ -81,7 +81,7 @@ Evidência (2026-09-27): **246** testes no binário `bot`, **6** ignorados (`per
 |------|--------|-----|--------------|
 | G1 PG scaffold | agents + bots catálogo | [bots-catalog-persistence-gate1-sdd.md](../sdd/bots-catalog-persistence-gate1-sdd.md) | **Parcial** (código + testes `#[ignore]` PG) |
 | G1 HTTP admin seam | presentation/http | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | **Sim** (não é auth owner produto) |
-| G2 orders live | orders + idempotência HTTP `client_order_id` (memória) | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`; `client_order_id` + store em memória; sem exchange/PG) |
+| G2 orders live | orders + idempotência HTTP `client_order_id` (memória) | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`; `client_order_id` + memória + `PgOrderIdempotencyStore` opcional; sem exchange) |
 | G2 bots runtime | bots + monitor + agents `promote_runtime_bot` quando `BOT_HTTP_AGENCY_ID` | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | **Parcial** (`BotRuntimePort`, HTTP promote/demote, snapshot headless + enrich; `monitor_strategy_from_config` + `strategy_evaluation_binding`; promoção HTTP com checagem de capability quando `BOT_HTTP_AGENCY_ID`; multi-strategy registry pendente) |
 | Auth owner produto | agents | [agents-capability-research.md](../research/agents-capability-research.md) | **Bloqueado** na pesquisa |
 

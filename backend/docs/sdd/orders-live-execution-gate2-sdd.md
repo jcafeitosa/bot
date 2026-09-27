@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: execução de orders (exchange)
 
-- **Estado:** **parcial** — G1 + seam `HttpOrderExecutor` / `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` double local); dedupe em memória via `client_order_id` em `submit_order_http`. Exchange live e idempotência durável (PG) permanecem pendentes.
+- **Estado:** **parcial** — G1 + seam `HttpOrderExecutor` / `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` double local); dedupe em memória via `client_order_id` em `submit_order_http`. Exchange live pendente; idempotência durável via `PgOrderIdempotencyStore` + migração `0004_order_idempotency_keys.sql` quando `DATABASE_URL` conecta (teste `pg_order_idempotency_round_trip` ignorado).
 - **Referências:** [SDD orders G1](./orders-module-sdd.md), [auditoria de completude](../planning/modules-completeness-audit.md), `modules/exchanges/rest`, `modules/risk`.
 
 ## Contexto
@@ -36,7 +36,8 @@ status: draft
 | Símbolo | Contrato |
 |---------|----------|
 | `OrderExecutionPort::execute` | Entrada já validada por risco; retorna `OrderAck` ou erro de domínio mapeável a HTTP. |
-| `InMemoryOrderIdempotencyStore` | Dedupe em processo via `client_order_id` opcional em `POST /orders/submit` (replay retorna `accepted: true` sem re-executar). PG pendente. |
+| `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe em processo; replay HTTP. |
+| `PgOrderIdempotencyStore` | Dedupe durável em `order_idempotency_keys` quando PG no `ApiState`; lookup antes de executar + `INSERT ON CONFLICT DO NOTHING` após sucesso. |
 | `ApiState::order_executor` | `HttpOrderExecutor` via `HttpApiSeams::from_env()` no `for_http_server`; default fail-closed. |
 | `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
 
@@ -46,7 +47,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **244** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`, `duplicate_client_order_id_replays_without_second_execute`.
+Evidência G1 (2026-09-27): **246** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`, `duplicate_client_order_id_replays_without_second_execute`.
 
 ## Validação Gate 2 (quando implementado)
 

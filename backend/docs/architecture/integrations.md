@@ -59,7 +59,7 @@ A persistência:
 - exige `DATABASE_URL`;
 - rejeita qualquer banco diferente de `trading_bot`;
 - abre pool com limite de oito conexões e timeout de aquisição;
-- aplica `src/core/database/migrations/` (market data + scaffold agents/bots);
+- aplica `src/core/database/migrations/` (market data, scaffold agents/bots, `order_idempotency_keys` para dedupe HTTP de orders);
 - grava o manifesto em `market_datasets` e candles em `candles_1m`;
 - usa `ON CONFLICT DO NOTHING` para reexecução idempotente;
 - executa a gravação em transação.
