@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::core::config::{Config, MonitorCli};
 use crate::core::error::BotError;
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, IntoParams, ToSchema)]
 pub struct ConfigSnapshotQuery {
     #[schema(example = "src/core/config/bot.toml")]
     pub config: String,

@@ -39,3 +39,20 @@ pub async fn bot_ranking(
         .map_err(ApiError::from_bot_error)
         .map(Json)
 }
+
+#[utoipa::path(
+    post,
+    path = "/api/v1/bots/catalog/persist",
+    tag = "bots",
+    responses(
+        (status = 200, description = "Build catalog and persist via noop store seam", body = bots::BotCatalogPersistResponse),
+        (status = 400, description = "Invalid config", body = crate::presentation::http::error::ApiErrorBody)
+    )
+)]
+pub async fn bot_catalog_persist(
+    State(state): State<ApiState>,
+) -> Result<Json<bots::BotCatalogPersistResponse>, ApiError> {
+    bots::persist_catalog_for_config(state.app_config())
+        .map_err(ApiError::from_bot_error)
+        .map(Json)
+}

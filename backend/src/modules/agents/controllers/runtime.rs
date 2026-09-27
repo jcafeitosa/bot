@@ -96,4 +96,41 @@ mod tests {
             ids
         );
     }
+
+    #[test]
+    fn monitor_agent_hook_from_env_shares_registry() {
+        use std::sync::Mutex;
+
+        use crate::modules::agents::models::{
+            AgentCapabilities, AgentId, AgentRole, NewAgentSpec, OwnerId, SupervisorRef,
+        };
+        use crate::modules::agents::MonitorAgentHook;
+
+        static ENV_LOCK: Mutex<()> = Mutex::new(());
+        let _guard = ENV_LOCK.lock().unwrap();
+
+        let agency_raw = "env-hook-shared-agency";
+        std::env::set_var("BOT_AGENCY", agency_raw);
+        let hook = monitor_agent_hook_from_env();
+        let agency = crate::modules::agents::models::AgencyId::new(agency_raw).unwrap();
+        let spec = NewAgentSpec {
+            id: AgentId::new("env-hook-analyst").unwrap(),
+            agency: agency.clone(),
+            owner: OwnerId::new("owner-1").unwrap(),
+            display_name: "Analyst".into(),
+            role: AgentRole::Ceo,
+            supervisor: SupervisorRef::Owner(OwnerId::new("owner-1").unwrap()),
+            capabilities: AgentCapabilities { consult_jev: true },
+        };
+        {
+            let registry = shared_agent_registry();
+            let mut reg = registry.lock().unwrap();
+            if reg.get(&agency, &spec.id).is_err() {
+                reg.register(spec, 1).unwrap();
+            }
+        }
+        let ids = hook.evaluation_agents();
+        std::env::remove_var("BOT_AGENCY");
+        assert!(ids.iter().any(|id| id.as_str() == "env-hook-analyst"));
+    }
 }

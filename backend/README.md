@@ -87,6 +87,17 @@ When using the SQLx CLI manually from `backend/`, specify the migration source: 
 
 Supported operation enum values are `hft`, `scalper`, `day-trader`, `swing-trader`; profile values are `conservative`, `moderate`, `aggressive`, `auto`. HFT currently exits with an explicit unsupported-mode error. Select only a timeframe allocated to the operation in `src/core/config/bot.toml`; invalid combinations fail at startup.
 
+
+### HTTP API (optional)
+
+```sh
+cargo run -- serve --bind 127.0.0.1:8080 --config src/core/config/bot.toml
+# OpenAPI: http://127.0.0.1:8080/openapi.json — Scalar UI: http://127.0.0.1:8080/docs
+# Optional: --with-monitor attaches a headless monitor for /api/v1/monitor/*
+```
+
+Routes include agents, bots catalog/ranking, risk, strategy, backtest, portfolio, and `POST /api/v1/orders/submit` (fail-closed: 503 after risk passes). See [docs/index.md](docs/index.md).
+
 TUI: Space pauses/resumes market evaluation; `q` or Esc quits. Logs are structured to stderr and daily-rotated JSON files under `logs/`.
 
 ## Verify

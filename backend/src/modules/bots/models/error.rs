@@ -16,6 +16,7 @@ pub enum BotsError {
     InvalidMetrics,
     DuplicateRun,
     IncompatibleRanking,
+    CatalogStore(String),
 }
 
 impl fmt::Display for BotsError {

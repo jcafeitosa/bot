@@ -37,11 +37,11 @@ pub async fn post_command(
 ) -> Result<(axum::http::StatusCode, Json<MonitorCommandResponse>), ApiError> {
     let handle = state.monitor().ok_or_else(ApiError::monitor_unavailable)?;
     monitor::send_monitor_command(handle, body).map_err(|error| match error {
-        crate::modules::monitor::MonitorSendError::Full => ApiError::new(
+        monitor::MonitorCommandHttpError::ChannelFull => ApiError::new(
             axum::http::StatusCode::CONFLICT,
             "monitor command channel full",
         ),
-        crate::modules::monitor::MonitorSendError::Closed => ApiError::new(
+        monitor::MonitorCommandHttpError::ChannelClosed => ApiError::new(
             axum::http::StatusCode::CONFLICT,
             "monitor command channel closed",
         ),

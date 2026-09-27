@@ -138,7 +138,7 @@ mod tests {
         let doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         let paths = doc["paths"].as_object().expect("paths").len();
         assert!(
-            paths >= 28,
+            paths >= 29,
             "expected expanded openapi surface, got {paths}"
         );
         assert!(doc["paths"]["/api/v1/agents"].is_object());
@@ -226,6 +226,46 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn bots_catalog_persist_returns_persisted_flag() {
+        let app = build_router(ApiState::default());
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/bots/catalog/persist")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(doc["persisted"], true);
+        assert!(doc["bots"].as_array().is_some_and(|a| !a.is_empty()));
+    }
+
+    #[tokio::test]
+    async fn orders_submit_risk_rejected_returns_422() {
+        let app = build_router(ApiState::default());
+        let body = r#"{"symbol":"BTC/USDT","side":"buy","quote_amount":500.0,"estimated_daily_loss":0.0,"open_positions":0,"limits":{"max_order_quote":10.0,"max_daily_loss_quote":20.0,"max_open_positions":1}}"#;
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/orders/submit")
+                    .header("content-type", "application/json")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[tokio::test]
     async fn orders_submit_fail_closed_returns_503() {
         let app = build_router(ApiState::default());
         let body = r#"{"symbol":"BTC/USDT","side":"buy","quote_amount":5.0,"estimated_daily_loss":0.0,"open_positions":0,"limits":{"max_order_quote":10.0,"max_daily_loss_quote":20.0,"max_open_positions":1}}"#;
@@ -293,7 +333,7 @@ mod tests {
     fn openapi_surface_lists_core_paths() {
         let doc = ApiDoc::openapi();
         let paths = &doc.paths.paths;
-        assert_eq!(paths.len(), 28, "update test when adding utoipa paths");
+        assert_eq!(paths.len(), 29, "update test when adding utoipa paths");
         for key in [
             "/api/v1/config/active",
             "/api/v1/agents/{agent_id}/advisory",

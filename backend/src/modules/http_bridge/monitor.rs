@@ -68,6 +68,23 @@ pub fn snapshot_from_domain(snapshot: MonitorSnapshot) -> MonitorSnapshotRespons
 pub fn send_monitor_command(
     handle: &MonitorHandle,
     body: MonitorCommandRequest,
-) -> Result<(), MonitorSendError> {
-    handle.send(body.command.into())
+) -> Result<(), MonitorCommandHttpError> {
+    handle
+        .send(body.command.into())
+        .map_err(MonitorCommandHttpError::from)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MonitorCommandHttpError {
+    ChannelFull,
+    ChannelClosed,
+}
+
+impl From<MonitorSendError> for MonitorCommandHttpError {
+    fn from(value: MonitorSendError) -> Self {
+        match value {
+            MonitorSendError::Full => Self::ChannelFull,
+            MonitorSendError::Closed => Self::ChannelClosed,
+        }
+    }
 }

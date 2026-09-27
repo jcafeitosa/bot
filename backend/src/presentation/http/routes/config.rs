@@ -1,15 +1,7 @@
-use axum::{extract::Query, Json};
-use serde::Deserialize;
-use utoipa::{IntoParams, ToSchema};
+use axum::{extract::Query, extract::State, Json};
 
-use crate::modules::http_bridge::config::{self, ConfigSnapshotResponse};
-use crate::presentation::http::error::ApiError;
-
-#[derive(Debug, Deserialize, IntoParams, ToSchema)]
-pub struct ConfigSnapshotQuery {
-    #[param(example = "src/core/config/bot.toml")]
-    pub config: String,
-}
+use crate::modules::http_bridge::config::{self, ConfigSnapshotQuery, ConfigSnapshotResponse};
+use crate::presentation::http::{error::ApiError, state::ApiState};
 
 #[utoipa::path(
     get,
@@ -24,11 +16,9 @@ pub struct ConfigSnapshotQuery {
 pub async fn config_snapshot(
     Query(query): Query<ConfigSnapshotQuery>,
 ) -> Result<Json<ConfigSnapshotResponse>, ApiError> {
-    config::load_config_snapshot(config::ConfigSnapshotQuery {
-        config: query.config,
-    })
-    .map_err(ApiError::from_bot_error)
-    .map(Json)
+    config::load_config_snapshot(query)
+        .map_err(ApiError::from_bot_error)
+        .map(Json)
 }
 
 #[utoipa::path(
@@ -37,8 +27,6 @@ pub async fn config_snapshot(
     tag = "config",
     responses((status = 200, description = "Config loaded at API startup", body = ConfigSnapshotResponse))
 )]
-pub async fn config_active(
-    axum::extract::State(state): axum::extract::State<crate::presentation::http::state::ApiState>,
-) -> Json<ConfigSnapshotResponse> {
+pub async fn config_active(State(state): State<ApiState>) -> Json<ConfigSnapshotResponse> {
     Json(config::map_config(state.app_config()))
 }

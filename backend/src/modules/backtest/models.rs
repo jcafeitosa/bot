@@ -179,6 +179,7 @@ pub enum DomainError {
     InvalidMetrics,
     DuplicateRun,
     IncompatibleRanking,
+    CatalogStore(String),
     AggregateOverflow,
 }
 
@@ -200,6 +201,7 @@ impl From<BotsError> for DomainError {
             BotsError::InvalidMetrics => Self::InvalidMetrics,
             BotsError::DuplicateRun => Self::DuplicateRun,
             BotsError::IncompatibleRanking => Self::IncompatibleRanking,
+            BotsError::CatalogStore(message) => Self::CatalogStore(message),
         }
     }
 }

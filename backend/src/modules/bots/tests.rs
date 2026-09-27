@@ -1,8 +1,9 @@
 use crate::core::config::OperationMode;
 use crate::modules::backtest::models::StrategyDefinition;
 use crate::modules::bots::{
-    build_catalog_from_config, full_ranking, rank_bots, BotId, BotIdentity, BotMetrics, BotsError,
-    EvaluationWindow, RunId, StrategyId, StrategyVersion,
+    build_catalog_from_config, full_ranking, persist_catalog_snapshot, rank_bots, BotCatalogStore,
+    BotId, BotIdentity, BotMetrics, BotsError, EvaluationWindow, InMemoryBotCatalogStore, RunId,
+    StrategyId, StrategyVersion,
 };
 
 fn metric(strategy: &str, timeframe: &str, run: &str, pnl: f64) -> BotMetrics {
@@ -97,4 +98,26 @@ fn catalog_lists_strategy_timeframe_combos_for_mode() {
         catalog.len(),
         OperationMode::Scalper.supported_timeframes().len()
     );
+}
+
+#[test]
+fn in_memory_catalog_store_round_trip() {
+    let strategy = StrategyDefinition {
+        id: StrategyId::new("sma-cross").unwrap(),
+        version: StrategyVersion(1),
+        name: "SMA".into(),
+        fast_period: 5,
+        slow_period: 20,
+    };
+    let mut config = crate::core::config::Config {
+        operation: OperationMode::DayTrader,
+        ..Default::default()
+    };
+    config.market.timeframe = "15m".into();
+    config.validate().unwrap();
+    let mut store = InMemoryBotCatalogStore::new();
+    let built = persist_catalog_snapshot(&config, &strategy, &mut store).unwrap();
+    let loaded = store.load_catalog().unwrap();
+    assert_eq!(built.len(), loaded.len());
+    assert_eq!(built[0].id, loaded[0].id);
 }
