@@ -117,6 +117,8 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 
 **Monitor:** em modo live testnet, `supervisor` gera `client_order_id` determinístico (`mon:…`) e chama `record_monitor_spot_submit_reconciliation` no mesmo `shared_live_order_reconciliation_ledger` que o HTTP.
 
+**Testes:** ledger partilhado — `lock_shared_live_order_reconciliation_ledger_for_test()`; com `EnvTestGuard`, ordem **env → ledger**; gate `verify-backend-gates.sh` usa `--test-threads=1` ([test-matrix](../reference/test-matrix.md)).
+
 **HTTP:** `GET /api/v1/orders/execution-status`; `GET /api/v1/orders/reconciliation/{client_order_id}` (memória + fallback PG); `POST /api/v1/orders/reconciliation/poll` → `ApiState::reconcile_pending_orders_once` (admin bearer); `POST /api/v1/orders/submit` (**503** `execution_disabled` / `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`, `paper` ou `live_exchange` wired) → `ApiState::submit_order_http`; `GET /meta` inclui `order_reconciliation_pending` (max memória/PG); job opcional `BOT_ORDERS_RECONCILIATION_POLL_SECS` no `serve` quando `live_exchange_wired`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` definido; `BOT_ORDERS_EXECUTION` em `HttpApiSeams::from_env`.
 
 ## 3d. Camada `presentation::http`
