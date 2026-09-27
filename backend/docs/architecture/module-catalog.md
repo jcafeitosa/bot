@@ -11,7 +11,7 @@ tags:
 
 # Catálogo completo de módulos do backend
 
-> Revisão: 2026-09-26 (inclui `modules/agents`, `modules/bots`, `modules/orders`). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/database/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
+> Revisão: 2026-09-27 (inclui `modules/agents`, `modules/bots`, `modules/orders`). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/database/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
 
 ## 1. Mapa de execução
 
@@ -62,7 +62,7 @@ flowchart LR
 | `modules` | `backtest` | `run_sma_crossover`, CLI | Simulação e fixture sintética. | `tests/backtest_fixture.rs`. |
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
-| `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly` em memória; lifecycle e advisory Jev sem worker nem API HTTP. **Não** é o módulo `bots`. | `modules/agents/tests.rs`. |
+| `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly`; registry em memória; rotas HTTP `/api/v1/agents/*`; espelhamento PG opcional (`PgAgentIdentityStore`). **Não** é o módulo `bots`. | `modules/agents/tests.rs`. |
 | `modules` | `bots` | `BotIdentity`, `full_ranking`, `build_catalog_from_config` | Executores strategy×timeframe versionados; catálogo e ranking em memória; HTTP catalog, persist/snapshot em memória (`ApiState`), ranking. Sem runtime live nem PostgreSQL (Gate 1). | `modules/bots/tests.rs`. |
 | `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor` | Valida `OrderIntent` via `risk`; port fail-closed (`ExecutionDisabled`). HTTP `POST /api/v1/orders/submit` (422 risco / 503 execução). Sem exchange live. | `modules/orders/tests.rs`, `presentation/http/server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |

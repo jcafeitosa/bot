@@ -12,7 +12,7 @@ status: draft
 
 - **Estado:** draft G1 — revisão independente pendente.
 - **Referências:** [Pesquisa de capacidades](../research/agents-capability-research.md), [Módulos não implementados](../planning/unimplemented-modules-analysis.md), [Convenção MVC](./modules-mvc-convention-sdd.md), [Proposta 0001](../proposals/0001-backend-core-modules-mvc.md).
-- **Premissas:** Gate 1 da pesquisa (auth do owner, bootstrap, PostgreSQL) permanece bloqueado; esta entrega implementa **fundação executável em memória** com invariantes `IdentityOnly` e seam de advisory delegando a [`core::providers::jev`](../../src/core/providers/jev/mod.rs). Persistência durável e autenticação do owner no transporte ficam para Gate 1; rotas HTTP de registro/lifecycle existem sem auth verificável do owner.
+- **Premissas:** Auth verificável do owner no transporte permanece bloqueada; **registro HTTP** usa `AgentRegistry` em memória com **espelhamento best-effort** em PostgreSQL (`PgAgentIdentityStore` + `persist_agent_after_mutation`) quando `DATABASE_URL` conecta. Fundação **IdentityOnly** com invariantes `IdentityOnly` e seam de advisory delegando a [`core::providers::jev`](../../src/core/providers/jev/mod.rs). Persistência durável e autenticação do owner no transporte ficam para Gate 1; rotas HTTP de registro/lifecycle existem sem auth verificável do owner.
 
 ## 1. Contexto e objetivo
 
@@ -37,7 +37,7 @@ No domínio do produto bot, **agente** e **bot** são conceitos distintos. No c�
 ### Não objetivos
 
 - Autenticação verificável do owner, bootstrap único ou autorização por agência no transporte.
-- Schema/migração PostgreSQL para identidades (planejado após Gate 1).
+- Leitura durável do registry a partir de PostgreSQL (hoje só write-through nas mutações HTTP).
 - Runtime durável, scheduler, gateway MCP, canais externos, execução financeira.
 - Alterar comportamento do monitor, risco ou estratégia nesta fatia (apenas documentar hook futuro).
 - Expandir `modules/bots` com runtime live ou PostgreSQL nesta fatia (gates próprios).
