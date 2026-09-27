@@ -9,9 +9,9 @@
     "pg_integration": "./scripts/run-pg-integration-tests.sh"
   },
   "observed": {
-    "bot_tests_passed": 500,
+    "bot_tests_passed": 503,
     "bot_tests_ignored": 0,
-    "http_integration_passed": 60,
+    "http_integration_passed": 62,
     "pg_script_tests": 26
   },
   "blockers": [

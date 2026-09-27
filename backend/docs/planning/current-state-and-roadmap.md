@@ -15,7 +15,7 @@ tags:
 
 ### Produto executável
 
-- CLI com caminho de monitor (padrão) e subcomandos `backtest`, `serve` (API HTTP), `graph query` (F3 read-only) e `graph-projection drain` (outbox Neo4j).
+- CLI com caminho de monitor (padrão) e subcomandos `backtest`, `serve` (API HTTP), `graph query` (F3 read-only) e `graph-projection drain` (outbox Neo4j). Stack grafo no processo: `BOT_GRAPH_ENABLED` (preferido) ou `BOT_AGENTS_ENABLED` (legado) + `BOT_NEO4J_*`.
 - Configuração TOML com overrides de CLI e validação de ambiente, operação, modo, risco e timeframe.
 - Monitor terminal com TUI, pausa, retomada e saída.
 - Feed híbrido REST/WS para candles; WS limitado a klines fechados de `1m`.
@@ -26,7 +26,7 @@ tags:
 - Persistência PostgreSQL opt-in, migração automática e gravação idempotente de datasets.
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
-- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + runtime `BotRuntimePort` + `evaluate_for_kind`) e `orders` (fail-closed + G2 parcial: idempotência/reconciliação PG com claim antes da execução, poll HTTP, **503** `order_store_unavailable`) com projeção Neo4j write-only + outbox PG + leitura F3 `GraphQueryPort` (CLI `graph query agents` / `supervision-chain` / `bots-for-agent` / `code-impact`; HTTP admin read-only `GET /admin/graph/*`) — [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md) (**496** testes bin `bot`, **0** ignorados; gate `./scripts/verify-backend-gates.sh`; PG **26/26** opcional; **60** `http_integration`).
+- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + runtime `BotRuntimePort` + `evaluate_for_kind`) e `orders` (fail-closed + G2 parcial: idempotência/reconciliação PG com claim antes da execução, poll HTTP, **503** `order_store_unavailable`) com projeção Neo4j write-only + outbox PG + leitura F3 `GraphQueryPort` (CLI `graph query agents` / `supervision-chain` / `bots-for-agent` / `code-impact`; HTTP admin read-only `GET /admin/graph/*`) — [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md) (**503** testes bin `bot`, **0** ignorados; gate `./scripts/verify-backend-gates.sh`; PG **26/26** opcional; **62** `http_integration`).
 - Product owner bootstrap PG (`0010`, env ACK) + bind HTTP registro/promote — [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md) (**parcial**, não IdP).
 - API HTTP Axum com OpenAPI/Scalar (**42** paths): agents, bots (catálogo `monitor_evaluator`, runtime promote/demote), risk, strategy, backtest, portfolio, exchanges; orders `execution-status`, `submit`, reconciliação GET/POST poll; `GET /meta` (`http_seams`); seam admin (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency; CRUD `/admin/provider-credentials*`; F3 `GET /admin/graph/*`) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md); facades documentadas em [module-catalog §3d](../architecture/module-catalog.md#3d-facade-http_bridge-srcmoduleshttp_bridge). Completude: [auditoria](./modules-completeness-audit.md).
 
@@ -100,7 +100,7 @@ tags:
 
 O script de gates executa `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1` e cinco suítes em `tests/` (`backtest_fixture`, `config_cli`, `monitor_startup_cli`, `redirect_origin_test`, `redirect_policy_test`) — sem repetir `cargo test --locked` completo (evita flake do bin `bot` em paralelo). `verify-backend-full.sh` repete os gates e `./scripts/run-pg-integration-tests.sh` (**26/26**).
 
-Evidência observada: **496** testes unitários no binário `bot` (OpenAPI **42** paths; boot `build_api_state_for_http_serve`; `http_integration_tests.rs` **60** passed; F3 HTTP admin graph read-only; orders reconciliação GET + `POST …/poll` + poller; PG `0004`/`0006`/`0007`/`0009`/`0010`; config em camadas [system.toml + `.env`](../sdd/centralized-config-sdd.md); paper/testnet/recording; bots runtime/`evaluate_for_kind` + `MonitorEvaluatorKind`; agents promote capability), **0** ignorados (PG×26 no script, Neo4j, testnet ccxt manual), `./scripts/verify-backend-gates.sh` **ok**; PG **26/26** via `verify-backend-full.sh` ou `run-pg-integration-tests.sh`. Goal amplo e handoff Critic: [modules-completeness-audit](./modules-completeness-audit.md).
+Evidência observada: **503** testes unitários no binário `bot` (OpenAPI **42** paths; boot `build_api_state_for_http_serve`; `http_integration_tests.rs` **62** passed; F3 HTTP admin graph read-only; orders reconciliação GET + `POST …/poll` + poller; PG `0004`/`0006`/`0007`/`0009`/`0010`; config em camadas [system.toml + `.env`](../sdd/centralized-config-sdd.md); paper/testnet/recording; bots runtime/`evaluate_for_kind` + `MonitorEvaluatorKind`; agents promote capability), **0** ignorados (PG×26 no script, Neo4j, testnet ccxt manual), `./scripts/verify-backend-gates.sh` **ok**; PG **26/26** via `verify-backend-full.sh` ou `run-pg-integration-tests.sh`. Goal amplo e handoff Critic: [modules-completeness-audit](./modules-completeness-audit.md).
 
 ## Gates de aceitação
 
