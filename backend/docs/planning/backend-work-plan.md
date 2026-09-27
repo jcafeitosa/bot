@@ -39,7 +39,7 @@ C9/C10, C12/C13, C14/C15 e C16 foram executados com pares independentes e veredi
 
 Cada CL registra testes relevantes, `cargo fmt --check`, `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked`, `git diff --check`, diff revisado e veredito do Critic. G4 reúne regressão de monitor/backtest, revisão de segurança do redirect e revisão de dados da persistência. Não há deploy ou habilitação de ordens neste plano.
 
-O teste PostgreSQL ignorado no `cargo test` padrão e V18 requerem database `trading_bot` **descartável e isolado**. Evidência opcional reproduzível: `./scripts/run-pg-integration-tests.sh` (14 testes) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector); job CI `postgres-integration` em `.github/workflows/backend-ci.yml` executa o mesmo script. Execução local: [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md). V18 formal (rollback após erro, limpeza auditada) permanece pendente além dos round-trips automatizados.
+O teste PostgreSQL ignorado no `cargo test` padrão e V18 requerem database `trading_bot` **descartável e isolado**. Evidência opcional reproduzível: `./scripts/run-pg-integration-tests.sh` (15 testes) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector); job CI `postgres-integration` em `.github/workflows/backend-ci.yml` executa o mesmo script. Execução local: [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md). V18 formal (rollback após erro, limpeza auditada) permanece pendente além dos round-trips automatizados.
 
 ## Próximas ações do Orquestrador
 
@@ -58,6 +58,6 @@ Rastreada em [modules-completeness-audit.md](./modules-completeness-audit.md) (g
 | Bots runtime G2 | Parcial: EMA/SMA + catálogo `monitor_evaluator`; `shared_bot_runtime` + testes paridade ([test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial)); HTTP promote com capability | Auth owner; orders live no monitor; E2E `BOT_RUNTIME_ENABLED` opcional |
 | Orders G2 | Parcial: paper/recording/testnet; reconciliação GET/POST poll + `observe_testnet_spot_order_by_client_id`; idempotência PG `0004`/`0006`; retenção ops em [cli-and-config](../reference/cli-and-config.md#pg-orders-retention-gate-2) | LGTM **Critic** + purge PG automatizado (opcional); prod REST bloqueado |
 | Agents G1 | Registry + PG + promote capability; `BOT_HTTP_OWNER_ID` + `agents_register_rejects_owner_mismatch_when_bound`; checklist [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist) | Owner humano verificável + bootstrap (pesquisa bloqueia) |
-| Evidência | `./scripts/verify-backend-gates.sh` verde; **385** testes bin `bot`, **17** ignorados; PG **14/14** via CI `postgres-integration` ou local `./scripts/verify-backend-full.sh` | Revisão Critic AGENTS.md (instância separada) |
+| Evidência | `./scripts/verify-backend-gates.sh` verde; **385** testes bin `bot`, **17** ignorados; PG **15/15** via CI `postgres-integration` ou local `./scripts/verify-backend-full.sh` | Revisão Critic AGENTS.md (instância separada) |
 
 Esta trilha não substitui C17/V18; compartilha gates (`verify-backend-gates.sh`) e verificação PG opcional (`verify-backend-full.sh`).
