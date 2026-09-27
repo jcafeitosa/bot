@@ -34,9 +34,10 @@ tags:
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
 | `http_bridge/config` | `map_config` expõe `monitor_registry` com `evaluator` (`map_config_preserves_ema_evaluator_on_registry_entry`). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
-| `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` em `server.rs`. |
+| `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` (paper, live_exchange wired/recording, reserved) em `server.rs`. |
+| `http_bridge/portfolio` | `paper_wallet_snapshot_reflects_in_process_ledger`; HTTP paper submit + `GET /portfolio/paper-snapshot` em `server.rs`. |
 | `http_bridge/bots` | Catálogo com `monitor_evaluator` (`catalog_for_config_exposes_ema_evaluator_from_registry`); promote/catalog gates v1/v2. |
-| `orders` | `RecordingExecutor` (`submit_invokes_*`, `recording_executor_accumulates_successful_executions`); `ReservedLiveExchangeExecutor`; idempotência PG (ignorado). |
+| `orders` | `PaperLedgerExecutor`; `ExchangeSpotExecutor` + `submit_spot_order` (`testnet_backend_is_not_wired_yet`); `RecordingExecutor`; `ReservedLiveExchangeExecutor`; idempotência PG (ignorado). |
 | `bots` | `MonitorEvaluatorKind`; `strategy_evaluation_binding_uses_ema_evaluator_from_registry`; runtime promote; catálogo multi-estratégia. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
 | `backtest` | `run_sma_crossover` respeita `StrategyDefinition::evaluator`; fees, slippage, stop/take-profit (`ema_crossover_backtest_uses_strategy_evaluator`). |
@@ -49,7 +50,7 @@ tags:
 | `exchanges/live` | Endpoint seguro, rejeição de origem não confiável, filtro de candle aberto e payload inválido. |
 | `exchanges/registry` | Registro, consulta e duplicidade de contas. |
 | `exchanges/resources` | Recursos autorizados e plano por ambiente. |
-| `exchanges/rest` | Somente backfill público Spot em dev é autorizado; usos privados falham. |
+| `exchanges/rest` | Backfill público Spot dev; `OrderSubmit` só com seam `BOT_ORDERS_EXCHANGE_SUBMIT=recording`; demais privados fail-closed. |
 | `exchanges/router` | Mapeamento de necessidade para transporte e streams default. |
 | `exchanges/stream` | Assinatura e validação de evento. |
 | `exchanges/ws` | Configuração e plano `1m` validado. |
@@ -75,12 +76,13 @@ cargo test --locked
 6 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, pg identity, pg order idempotency, market, neo4j)
 ```
 
-Bin `bot`: 317 aprovados, 6 ignorados. PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **323** aprovados, **6** ignorados. PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ## Lacunas explícitas
 
 - Não há teste end-to-end contra Binance real; isso é intencional para evitar dependência de rede e credenciais.
-- Não há teste de ordem, saldo privado ou produção porque esses caminhos são bloqueados.
+- Não há teste de ordem REST testnet real: `BOT_ORDERS_EXCHANGE_SUBMIT=testnet` permanece unwired; recording + paper ledger são os caminhos determinísticos em CI.
+- Não há teste de saldo privado ou produção porque esses caminhos são bloqueados.
 - A integração Jev externa é validada por contrato/configuração; disponibilidade do serviço e qualidade da recomendação não são gates operacionais.
 - O listener HTTP local requer permissão de loopback no ambiente de execução.
 - Cada alteração no vendor de `ccxt-core` deve repetir os testes puros e de transporte.
