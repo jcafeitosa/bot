@@ -73,6 +73,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 | `agents` | Domain (registry) + infra (PG write-through) | `register_*` / `pause|resume|retire_*_and_persist`, `run_agent_advisory`; `shared_agent_registry` + `BOT_AGENCY` |
 | `bot_catalog` | Infra (`BotCatalogBackend`) | `ApiState::persist_bot_catalog` / `bot_catalog_snapshot`; memória ou PG |
 | `order_executor` | Presentation seam (`HttpOrderExecutor`) | `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` = double local); `for_http_server` lê env |
+| `bot_runtime` | Presentation seam (`BotRuntimePort`) | `BOT_RUNTIME_ENABLED=true` → `InMemoryBotRuntime`; default `FailClosedBotRuntime`; HTTP `/bots/runtime/*` |
 | `http_admin_auth` | Presentation seam | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` |
 | `databases` | Infra | Postgres + Neo4j opcional para `/readyz` |
 | `monitor` | Domain handle via infra | `monitor_snapshot` / `accept_monitor_command` quando `--with-monitor` |
@@ -91,6 +92,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `run_agent_advisory` | Agents + Jev |
 | `persist_agent_after_mutation` | Agents PG write-through |
 | `bot_catalog_for_config`, `persist_bot_catalog`, `bot_catalog_snapshot` | Bots |
+| `bot_runtime_status`, `promote_bot_http`, `demote_bot_http` | Bots runtime seam (Gate 2 parcial) |
 | `submit_order_http` | Orders (risco + port; default fail-closed) |
 | `monitor_snapshot`, `accept_monitor_command` | Monitor |
 | `active_config_snapshot`, `providers_status_snapshot` | Config / providers |
