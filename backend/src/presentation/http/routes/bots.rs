@@ -45,16 +45,19 @@ pub async fn bot_ranking(
     path = "/api/v1/bots/catalog/persist",
     tag = "bots",
     responses(
-        (status = 200, description = "Build catalog and persist via noop store seam", body = bots::BotCatalogPersistResponse),
+        (status = 200, description = "Build catalog and persist via store seam", body = bots::BotCatalogPersistResponse),
         (status = 400, description = "Invalid config", body = crate::presentation::http::error::ApiErrorBody)
     )
 )]
 pub async fn bot_catalog_persist(
     State(state): State<ApiState>,
 ) -> Result<Json<bots::BotCatalogPersistResponse>, ApiError> {
-    let response =
-        state.with_bot_catalog(|store| bots::persist_catalog_for_config(state.app_config(), store));
-    response.map_err(ApiError::from_bot_error).map(Json)
+    let config = state.app_config().clone();
+    let mut guard = state.bot_catalog().lock().await;
+    bots::persist_catalog_for_config(&config, &mut *guard)
+        .await
+        .map_err(ApiError::from_bot_error)
+        .map(Json)
 }
 
 #[utoipa::path(
@@ -62,15 +65,16 @@ pub async fn bot_catalog_persist(
     path = "/api/v1/bots/catalog/snapshot",
     tag = "bots",
     responses(
-        (status = 200, description = "Last in-memory catalog snapshot from POST /bots/catalog/persist", body = BotCatalogResponse),
+        (status = 200, description = "Last catalog snapshot from POST /bots/catalog/persist", body = BotCatalogResponse),
         (status = 400, description = "Store read error", body = crate::presentation::http::error::ApiErrorBody)
     )
 )]
 pub async fn bot_catalog_snapshot(
     State(state): State<ApiState>,
 ) -> Result<Json<BotCatalogResponse>, ApiError> {
-    state
-        .with_bot_catalog(|store| bots::catalog_from_memory_store(store))
+    let guard = state.bot_catalog().lock().await;
+    bots::catalog_from_store(&*guard)
+        .await
         .map_err(ApiError::from_bot_error)
         .map(Json)
 }

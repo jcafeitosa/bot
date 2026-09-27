@@ -6,7 +6,6 @@ use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
 
-use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
 use crate::modules::agents::shared_agent_registry;
 use crate::modules::config_api::Config;
@@ -19,20 +18,10 @@ pub async fn run(
     app_config: Config,
     monitor: Option<crate::modules::monitor::MonitorHandle>,
 ) -> anyhow::Result<()> {
-    let database = match std::env::var("DATABASE_URL") {
-        Ok(url) => match Database::connect_from_url(&url).await {
-            Ok(db) => Some(db),
-            Err(error) => {
-                tracing::warn!(target: "api", %error, "DATABASE_URL present but connection failed; readyz will report degraded database checks");
-                None
-            }
-        },
-        Err(_) => None,
-    };
-
+    let databases = crate::core::database::AppDatabases::bootstrap_http_api().await;
     let jev = JevAdvisor::from_env(app_config.jev.clone()).ok().flatten();
     let state =
-        ApiState::with_agent_registry(monitor, database, jev, app_config, shared_agent_registry());
+        ApiState::with_agent_registry(monitor, databases, jev, app_config, shared_agent_registry());
     let monitor_attached = state.monitor().is_some();
     let app = build_router(state);
 
@@ -400,7 +389,12 @@ mod tests {
         snapshot.symbol = "BTC/USDT".to_string();
         handle.publish_snapshot(snapshot).unwrap();
 
-        let app = build_router(ApiState::new(Some(handle), None, None, Config::default()));
+        let app = build_router(ApiState::new(
+            Some(handle),
+            crate::core::database::AppDatabases::empty(),
+            None,
+            Config::default(),
+        ));
 
         let snap_resp = app
             .clone()

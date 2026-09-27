@@ -1,6 +1,7 @@
 //! Process liveness and dependency readiness probes (no domain policy).
 
-use crate::core::persistence::{Database, PersistenceError};
+use crate::core::database::{AppDatabases, DatabaseError, PostgresDatabase};
+use crate::core::persistence::Database;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProbeStatus {
@@ -21,12 +22,43 @@ pub struct ReadinessReport {
     pub components: Vec<ComponentProbe>,
 }
 
-/// Liveness: the process accepted the check (no external I/O).
 pub fn liveness() -> ProbeStatus {
     ProbeStatus::Up
 }
 
-/// Readiness: optional PostgreSQL when a [`Database`] handle is wired (e.g. HTTP API).
+pub async fn readiness_databases(databases: &AppDatabases) -> ReadinessReport {
+    let mut components = vec![ComponentProbe {
+        name: "process",
+        status: ProbeStatus::Up,
+        detail: None,
+    }];
+
+    if let Some(db) = databases.postgres_handle() {
+        let pg = db.as_postgres();
+        components.push(postgres_probe(pg).await);
+        components.push(postgres_extensions_probe(pg).await);
+    }
+
+    if let Some(graph) = databases.neo4j() {
+        let probe = match graph.ping().await {
+            Ok(()) => ComponentProbe {
+                name: "neo4j",
+                status: ProbeStatus::Up,
+                detail: Some("ok".into()),
+            },
+            Err(_) => ComponentProbe {
+                name: "neo4j",
+                status: ProbeStatus::Down,
+                detail: Some("graph connection failed".into()),
+            },
+        };
+        components.push(probe);
+    }
+
+    finish_report(components)
+}
+
+#[allow(dead_code)]
 pub async fn readiness(database: Option<&Database>) -> ReadinessReport {
     let mut components = vec![ComponentProbe {
         name: "process",
@@ -35,34 +67,64 @@ pub async fn readiness(database: Option<&Database>) -> ReadinessReport {
     }];
 
     if let Some(db) = database {
-        let probe = match db.ping().await {
-            Ok(()) => ComponentProbe {
-                name: "database",
-                status: ProbeStatus::Up,
-                detail: Some("ok".into()),
-            },
-            Err(error) => ComponentProbe {
-                name: "database",
-                status: ProbeStatus::Down,
-                detail: Some(readiness_error_detail(&error)),
-            },
-        };
-        components.push(probe);
+        let pg = db.as_postgres();
+        components.push(postgres_probe(pg).await);
+        components.push(postgres_extensions_probe(pg).await);
     }
 
+    finish_report(components)
+}
+
+fn finish_report(components: Vec<ComponentProbe>) -> ReadinessReport {
     let ready = components
         .iter()
         .all(|component| component.status == ProbeStatus::Up);
     ReadinessReport { ready, components }
 }
 
-fn readiness_error_detail(error: &PersistenceError) -> String {
+async fn postgres_probe(pg: &PostgresDatabase) -> ComponentProbe {
+    match pg.ping().await {
+        Ok(()) => ComponentProbe {
+            name: "postgres",
+            status: ProbeStatus::Up,
+            detail: Some("ok".into()),
+        },
+        Err(error) => ComponentProbe {
+            name: "postgres",
+            status: ProbeStatus::Down,
+            detail: Some(readiness_error_detail(&error)),
+        },
+    }
+}
+
+async fn postgres_extensions_probe(pg: &PostgresDatabase) -> ComponentProbe {
+    match pg.extension_health().await {
+        Ok(health) if health.ok => ComponentProbe {
+            name: "postgres_extensions",
+            status: ProbeStatus::Up,
+            detail: Some("timescaledb,vector".into()),
+        },
+        Ok(health) => ComponentProbe {
+            name: "postgres_extensions",
+            status: ProbeStatus::Down,
+            detail: Some(format!("missing: {}", health.missing.join(","))),
+        },
+        Err(error) => ComponentProbe {
+            name: "postgres_extensions",
+            status: ProbeStatus::Down,
+            detail: Some(readiness_error_detail(&error)),
+        },
+    }
+}
+
+fn readiness_error_detail(error: &DatabaseError) -> String {
     match error {
-        PersistenceError::Connect(_) => "connection failed".into(),
-        PersistenceError::MissingUrl => "database url missing".into(),
-        PersistenceError::WrongDatabase => "wrong database name".into(),
-        PersistenceError::InvalidUrl => "invalid database url".into(),
-        PersistenceError::Migrate(_) => "migration failed".into(),
+        DatabaseError::Connect(_) => "connection failed".into(),
+        DatabaseError::MissingUrl => "database url missing".into(),
+        DatabaseError::WrongDatabase => "wrong database name".into(),
+        DatabaseError::InvalidUrl => "invalid database url".into(),
+        DatabaseError::Migrate(_) => "migration failed".into(),
+        DatabaseError::UnsupportedVersion => "postgresql 18+ required".into(),
     }
 }
 
@@ -80,6 +142,12 @@ mod tests {
         let report = readiness(None).await;
         assert!(report.ready);
         assert_eq!(report.components.len(), 1);
-        assert_eq!(report.components[0].name, "process");
+    }
+
+    #[tokio::test]
+    async fn readiness_databases_empty_only_checks_process() {
+        let report = readiness_databases(&AppDatabases::empty()).await;
+        assert!(report.ready);
+        assert_eq!(report.components.len(), 1);
     }
 }

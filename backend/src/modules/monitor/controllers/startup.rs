@@ -2,6 +2,7 @@ use std::future::Future;
 
 use thiserror::Error;
 
+use crate::core::database::DatabaseError;
 use crate::core::persistence::{Database, PersistenceError};
 
 #[derive(Debug, Error, PartialEq, Eq)]

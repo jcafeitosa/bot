@@ -7,7 +7,10 @@ pub mod adapters;
 pub mod controllers;
 pub mod models;
 
-pub use adapters::{BotCatalogStore, InMemoryBotCatalogStore, NoopBotCatalogStore};
+pub use adapters::{
+    BotCatalogBackend, BotCatalogStore, InMemoryBotCatalogStore, NoopBotCatalogStore,
+    PgBotCatalogStore,
+};
 pub use controllers::{
     build_bot_definition, build_catalog_from_config, enumerate_timeframes_for_mode, full_ranking,
     persist_catalog_snapshot, rank_bots,
