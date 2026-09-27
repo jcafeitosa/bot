@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: execução de orders (exchange)
 
-- **Estado:** **parcial** — G1 + seam `HttpOrderExecutor` / `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` double local). Exchange live, idempotência e auth owner permanecem fora de escopo até aprovação deste gate.
+- **Estado:** **parcial** — G1 + seam `HttpOrderExecutor` / `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` double local); dedupe em memória via `client_order_id` em `submit_order_http`. Exchange live e idempotência durável (PG) permanecem pendentes.
 - **Referências:** [SDD orders G1](./orders-module-sdd.md), [auditoria de completude](../planning/modules-completeness-audit.md), `modules/exchanges/rest`, `modules/risk`.
 
 ## Contexto
@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **237** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`.
+Evidência G1 (2026-09-27): **242** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`, `duplicate_client_order_id_replays_without_second_execute`.
 
 ## Validação Gate 2 (quando implementado)
 

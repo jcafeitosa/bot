@@ -10,7 +10,7 @@ status: draft
 
 # SDD — Módulo `modules/orders`
 
-- **Estado:** implementado (fundação G1) — `submit_order`, `FailClosedExecutor`, `HttpOrderExecutor` em `presentation/http/order_execution.rs` (default fail-closed; `BOT_ORDERS_EXECUTION=dev_accept` só double local); sem exchange live.
+- **Estado:** implementado (fundação G1 + G2 parcial) — `submit_order`, `FailClosedExecutor`, `HttpOrderExecutor` (default fail-closed; `dev_accept` double local); `client_order_id` opcional com `InMemoryOrderIdempotencyStore` em `submit_order_http`; sem exchange live.
 - **Referências:** [Catálogo de módulos](../architecture/module-catalog.md), `modules/exchanges/rest` (`ExecutionDisabled`), `modules/risk` (`OrderIntent`). Próximo gate: [Gate 2 execução live](./orders-live-execution-gate2-sdd.md) (draft, não implementado).
 
 ## Contexto
@@ -44,7 +44,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **237** testes bin `bot`.
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **242** testes bin `bot`.
 
 ## Rollback
 

@@ -72,7 +72,7 @@ modules/agents/
 |---------|---------------------|----------|
 | `AgentId`, `AgencyId`, `OwnerId` | Admin futuro, testes | Strings normalizadas, não vazias, tamanho máximo 64. |
 | `AgentRole`, `SupervisorRef` | Registro | CEO → `SupervisorRef::Owner`; demais → agente supervisor com papel compatível. |
-| `AgentDefinition`, `AgentCapabilities` | Registro | `IdentityOnly` por padrão; `consult_jev` explícito para advisory. |
+| `AgentDefinition`, `AgentCapabilities` | Registro | `IdentityOnly` por padrão; `consult_jev` explícito para advisory; `promote_runtime_bot` para autorizar `promoted_by` em `POST /bots/runtime/promote` quando `BOT_HTTP_AGENCY_ID` está definido (`assert_runtime_promotion_authorized`). |
 | `AgentRegistry` | Composition root / API futura | `register`, `get`, `list_agency`, eventos append-only em memória. |
 | `transition_pause/resume/retire` | Owner futuro | Idempotente onde aplicável; aposentado é terminal. |
 | `run_advisory_step` | Monitor (futuro), testes | Falha se agente inexistente, agência errada, inativo/aposentado ou sem `consult_jev`; delega a `JevAdvisor::review`. |
@@ -87,6 +87,7 @@ modules/agents/
 3. Cadeia de supervisão sem ciclos; CEO reporta ao owner; cada nível reporta ao nível imediatamente acima.
 4. Agência isola consultas: registro e leitura filtrados por `AgencyId`.
 5. Advisory exige `AgentCapabilities.consult_jev == true` e estado `Active`.
+6. Promoção de runtime bot via HTTP: com `BOT_HTTP_AGENCY_ID`, `promoted_by` deve ser um `AgentId` ativo da agência com `promote_runtime_bot == true`; sem bind de agência, a checagem não é aplicada (seam admin apenas).
 
 ## 5. Alternativas
 

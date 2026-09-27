@@ -65,7 +65,7 @@ flowchart LR
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly`; registry em memória compartilhado; rotas HTTP `/api/v1/agents/*`; write-through e cold-start via `PgAgentIdentityStore` + `load_agent_identity_snapshot` no `serve`. **Não** é o módulo `bots`. | `modules/agents/tests.rs`, `http_bridge/agents.rs`. |
-| `modules` | `bots` | `BotIdentity`, `full_ranking`, `build_catalog_from_config` | Executores strategy×timeframe versionados; catálogo/ranking; `BotCatalogBackend` (memória ou `PgBotCatalogStore`); HTTP catalog/persist/snapshot. Seam `BotRuntimePort` + `shared_bot_runtime`; HTTP runtime + enrich/publish snapshot monitor (headless `--with-monitor`); executor de estratégia no supervisor por `BotId` promovido pendente. | `modules/bots/tests.rs`, `pg_catalog.rs`. |
+| `modules` | `bots` | `BotIdentity`, `full_ranking`, `monitor_strategy_from_config` | Catálogo/ranking; `BotRuntimePort` + `shared_bot_runtime`; HTTP runtime + snapshot monitor; supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`; `monitor_strategy_from_config` alinha catálogo HTTP e SMA promovido. | `modules/bots/tests.rs`, `evaluation_binding.rs`, `pg_catalog.rs`. |
 | `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor`, `HttpOrderExecutor`, `InMemoryOrderIdempotencyStore` | Valida `OrderIntent` via `risk`; HTTP fail-closed por default (`BOT_ORDERS_EXECUTION`); opt-in `dev_accept`; `client_order_id` opcional com dedupe em memória no `ApiState`. | `modules/orders/tests.rs`, `http_bridge/orders.rs`, `presentation/http/order_execution.rs`, `server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
@@ -86,7 +86,7 @@ Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-mo
 
 **Persistência:** `PgAgentIdentityStore` (migração `0002_agents_bots_scaffold.sql`); mutações HTTP espelham best-effort; boot `serve` restaura snapshot só se o registry compartilhado estiver vazio (`apply_agent_identity_snapshot`).
 
-**Limites:** sem autenticação verificável do owner no transporte (seam `BOT_HTTP_ADMIN_TOKEN` / `BOT_HTTP_OWNER_ID` apenas); sem scheduler, gateway MCP ou canais externos.
+**Limites:** sem autenticação verificável do owner no transporte (seam `BOT_HTTP_ADMIN_TOKEN` / `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`); `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando agência vinculada; sem scheduler, gateway MCP ou canais externos.
 
 **Agents vs bots vs backtest:** `bots::BotId` e `backtest::BotId` (reexport) compõem a mesma chave canônica `strategy@version:timeframe:symbol`; isso não é `AgentId`. O monitor opera o loop de mercado e pode, no futuro, usar `MonitorAgentHook`; hoje permanece noop. Tabela completa: [SDD bots](../sdd/bots-module-sdd.md), [SDD agents — Relação com bots](../sdd/agents-module-sdd.md).
 
