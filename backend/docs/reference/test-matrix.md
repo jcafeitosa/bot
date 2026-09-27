@@ -36,7 +36,7 @@ tags:
 | `http_bridge/orders` | `submit_order_http` com `FailClosedExecutor` → `ExecutionDisabled`; com `AcceptingExecutor` → `accepted: true`; `client_order_id` duplicado não reexecuta o port (`duplicate_client_order_id_replays_without_second_execute`). |
 | `http_bridge/bots` | `assert_catalog_contains_bot`, `assert_bot_promotion_allowed` (catálogo + `bot_id_matches_market`); `catalog_for_config_includes_monitor_strategy_periods`; testes em `catalog_gate_tests`. |
 | `orders` | `submit_order` rejeita acima do cap de risco; após risco OK retorna `ExecutionDisabled`; `AcceptingExecutor` cobre caminho aceito no port; `InMemoryOrderIdempotencyStore` + `pg_order_idempotency_round_trip` (ignorado). |
-| `bots` | Identidade, ranking, catálogo por modo, `BotRuntimePort` + `shared_bot_runtime()` (fail-closed + in-memory), `MonitorStrategyRegistry` (`monitor_strategy_registry_resolves_multiple_versions`, `promoted_sma_cross_*`), `strategy_evaluation_binding` com promoção ativa, métricas coerentes com `BotId`. |
+| `bots` | Identidade, ranking, `build_catalog_from_monitor_registry` (multi-estratégia registrada), `BotRuntimePort` + `shared_bot_runtime()`, `MonitorStrategyRegistry`, `strategy_evaluation_binding`, métricas coerentes com `BotId`. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
 | `backtest` | Fees, next-open, slippage na venda, stop/take-profit, histórico insuficiente e ausência de lookahead. |
 | `domain` | Ranking, métricas, janela de avaliação e tipos de identidade. |

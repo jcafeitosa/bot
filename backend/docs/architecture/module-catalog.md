@@ -100,7 +100,7 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 | `models` | `BotIdentity`, `BotId`, `BotDefinition`, `BotMetrics`, erros e tipos de ranking. |
 | `controllers` | `build_catalog_from_config`, `full_ranking` / `rank_bots`. |
 | `adapters` | `BotCatalogStore`; `BotRuntimePort` (`FailClosedBotRuntime`, `InMemoryBotRuntime`); `BotCatalogBackend` (memória ou PG via `AppDatabases`). |
-| `controllers` | `persist_catalog_snapshot` grava catálogo derivado da config no store. |
+| `controllers` | `persist_monitor_catalog_snapshot` / `build_catalog_from_monitor_registry` (registry × timeframes). |
 
 **HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking`, `GET /api/v1/bots/runtime/status`, `POST /api/v1/bots/runtime/promote|demote` via `presentation/http/routes/bots.rs` (catálogo em `ApiState`; runtime via `BotRuntimePort`, default fail-closed, `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime` no processo `serve`; snapshot monitor enriquecido).
 
