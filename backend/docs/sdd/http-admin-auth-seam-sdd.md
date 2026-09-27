@@ -341,13 +341,15 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
   - A lista "Documentação que afirma fail-closed" do TM já está alinhada (só resta `admin_auth.rs:1`).
 - O Critic citou `state.rs:157` como "construtor de produção". É código de produção (`pub`, fora de `#[cfg(test)]`); no HEAD não há chamador fora de testes. Mesmo assim vira `#[cfg(test)]` (A3).
 
-### Dependências, riscos, validação, rollout
+### Dependências, riscos, validação, rollout (texto legado a reconciliar)
 
-- **Dependências:** nenhuma fatia W0 bloqueia. Habilita W0-07 (SEC-CRED-07 depende de SEC-ADM-01) e reduz o abuso de W0-12. G4 precisa de CI verde (W0-02). Decisão do opt-out (owner) bloqueia G3.
-- **Riscos:** quebra de uso local sem token (mitigado por A4 e mensagem clara); Docker/Kubernetes passam a exigir `allowed_hosts` ou header de probe (A5); clientes externos de `/meta`, `/config/active`, `/monitor/snapshot` e dos GETs do SEC-ADM-05 passam a precisar de token (A2.4); 101 testes mudam para o helper com `Host`; mover o registro de rotas para a tabela mexe em todas as rotas (mitigado por F3); conflito de merge com outras fatias que tocam `state.rs` (W0-12/W0-13), a sequenciar.
-- **Validação:** `backend/scripts/verify-backend-gates.sh`; Critic de segurança confere SEC-ADM-06 (sem retorno antecipado) e SEC-ADM-08 (captura de logs).
-- **Rollout:** próximo build local; quem roda `serve` gera token (A4) e, em Docker, configura `allowed_hosts`. Nenhum deploy autorizado.
-- **Rollback:** reverter o commit restaura o comportamento aberto (reabre F-ADM-01); sem migração nem dado a desfazer.
+> **Obsoleto onde conflitar:** os bullets abaixo foram escritos para a decisão de startup obrigatório, já substituída pela decisão do owner de 2026-09-27. Não usar o rollback abaixo como plano da nova fatia. O rollout/rollback normativo para esta proposta está na seção “Riscos, rollout e rollback” acima.
+
+- **Dependências:** nenhuma fatia W0 bloqueia. Habilita W0-07 (SEC-CRED-07 depende de SEC-ADM-01) e reduz o abuso de W0-12. G4 precisa de CI verde (W0-02). Acordo dos seams públicos bloqueia G3.
+- **Riscos:** caminho de rota novo sem classificação pode ficar aberto; configuração de auth ausente deve produzir 503 sem parar `serve`; 503 pode ser tratado como indisponibilidade por probes; GETs sensíveis e os cálculos POST ainda precisam de classificação confirmada; conflito de merge com outras fatias que tocam `state.rs` (W0-12/W0-13), a sequenciar.
+- **Validação:** nenhum teste foi executado nesta entrega de SDD; validação comportamental planejada na seção aprovada acima, após acordo de seams.
+- **Rollout:** implementar em ambiente local/staging, conferir listener e rotas públicas sem token, e observar respostas/handler calls 503, 401 e bearer válido; nenhum deploy autorizado.
+- **Rollback:** reverter o middleware/guard e bindings desta fatia de forma que rotas protegidas nunca voltem a executar abertas sem token; se essa propriedade não puder ser preservada no rollback, manter a instância atual e corrigir antes de reverter. Não há migração nem dado persistente a desfazer.
 
 ## Gate 1 — fatia HTTP (owner binding verificável no seam)
 
