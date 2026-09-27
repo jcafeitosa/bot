@@ -54,7 +54,7 @@ modules/bots/
 | `BotMetrics` | backtest report, ranking | Campos de identidade coerentes com `BotId`. |
 | `build_catalog_from_config` | testes legados | Uma estratégia × timeframes do modo. |
 | `build_catalog_from_monitor_registry` | HTTP `GET /bots/catalog`, persist | Uma entrada por (estratégia registrada × timeframe). |
-| `MonitorStrategyRegistry` | monitor + catálogo HTTP | Resolve SMA por `strategy@version`; extensível. |
+| `MonitorStrategyRegistry` / `MonitorEvaluatorKind` | monitor + catálogo HTTP + backtest | `sma_cross` (default) ou `ema_cross` por `strategy@version`; supervisor e `run_sma_crossover` usam `evaluate_for_kind`. |
 | `full_ranking` / `rank_bots` | backtest CLI, agregadores | Escopo único (window, dataset_hash, quote); ordenação PnL ↓, drawdown ↑, bot_id. |
 | `BotCatalogStore` | HTTP, boot API | `InMemoryBotCatalogStore`, `PgBotCatalogStore`, `BotCatalogBackend`; HTTP persist/snapshot usa PG quando disponível. Auth owner Gate 1 pendente. |
 
@@ -72,6 +72,6 @@ modules/bots/
 ## 6. Pendências
 
 - Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
-- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): `MonitorStrategyRegistry` (extensível; default `sma-cross@1` do config); materializar catálogo/backtest para estratégias adicionais; mapeamento formal executor versionado ↔ agentes autorizadores.
+- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): promoção HTTP + `evaluate_for_kind` (SMA/EMA); mapeamento formal executor versionado ↔ agentes autorizadores; auth owner produto.
 - Baseline: `./scripts/verify-backend-gates.sh` verde; bin `bot` **302** testes (`promoted_sma_cross_identity_uses_config_periods` + gates).
 - Auth owner verificável no transporte (fora do seam `BOT_HTTP_*`).

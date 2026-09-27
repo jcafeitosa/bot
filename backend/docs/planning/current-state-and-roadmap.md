@@ -20,14 +20,14 @@ tags:
 - Monitor terminal com TUI, pausa, retomada e saída.
 - Feed híbrido REST/WS para candles; WS limitado a klines fechados de `1m`.
 - Validação de janelas REST e deduplicação/ordenação no feed.
-- Estratégia SMA com períodos por operação.
+- Estratégia SMA (e crossover EMA no monitor/backtest via `MonitorEvaluatorKind`) com períodos por operação ou `[[strategy.monitor_registry]]`.
 - Modos observe/paper; ordem de exchange permanece desabilitada.
 - Backtest sintético determinístico com taxas, slippage e resumo JSON.
 - Persistência PostgreSQL opt-in, migração automática e gravação idempotente de datasets.
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
 - Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + `BotCatalogBackend` mem/PG) e `orders` (seam fail-closed) com testes unitários.
-- API HTTP Axum com OpenAPI/Scalar (**34** paths): agents, bots (`MonitorStrategyRegistry`, runtime promote), risk, strategy, backtest, portfolio, exchanges; orders `GET /execution-status` + `POST /submit` (fail-closed / `live_exchange_not_wired` / `dev_accept`); seam admin opcional (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
+- API HTTP Axum com OpenAPI/Scalar (**34** paths): agents, bots (`MonitorStrategyRegistry`, catálogo `monitor_evaluator`, runtime promote), risk, strategy, backtest, portfolio, exchanges; orders `GET /execution-status` + `POST /submit` (fail-closed / `live_exchange_not_wired` / `dev_accept` + `RecordingExecutor` em testes); seam admin opcional (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
 
 ### Evidência existente
 
@@ -97,7 +97,7 @@ tags:
 
 O script executa `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh` e `cargo test --locked` (bin `bot` + testes de integração do workspace).
 
-Evidência observada: **302** testes unitários no binário `bot` (inclui HTTP OpenAPI 34 paths, `GET /meta` (`http_seams` + contratos `meta_and_*`), `RecordingExecutor` (orders), bots catalog/runtime + `strategy_evaluation_binding`, orders fail-closed/`dev_accept` + dedupe, agents `assert_runtime_promotion_authorized`), **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j), integração redirect/config/fixture **ok**, gates **ok**.
+Evidência observada: **302** testes unitários no binário `bot` (inclui HTTP OpenAPI 34 paths, `GET /meta` (`http_seams` + contratos `meta_and_*`), `RecordingExecutor` (orders), bots catalog `monitor_evaluator` + runtime/`evaluate_for_kind`, orders fail-closed/`dev_accept` + dedupe, agents `assert_runtime_promotion_authorized`), **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j), integração redirect/config/fixture **ok**, gates **ok**.
 
 ## Gates de aceitação
 
