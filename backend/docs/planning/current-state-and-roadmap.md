@@ -26,7 +26,7 @@ tags:
 - Persistência PostgreSQL opt-in, migração automática e gravação idempotente de datasets.
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
-- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + runtime `BotRuntimePort` + `evaluate_for_kind`) e `orders` (fail-closed + G2 parcial: idempotência/reconciliação PG, poll HTTP) com testes unitários (**386** no bin `bot`, gate `./scripts/verify-backend-gates.sh`).
+- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + runtime `BotRuntimePort` + `evaluate_for_kind`) e `orders` (fail-closed + G2 parcial: idempotência/reconciliação PG com claim antes da execução, poll HTTP) com testes unitários (**406** no bin `bot`, gate `./scripts/verify-backend-gates.sh`).
 - API HTTP Axum com OpenAPI/Scalar (**36** paths): agents, bots (catálogo `monitor_evaluator`, runtime promote/demote), risk, strategy, backtest, portfolio, exchanges; orders `execution-status`, `submit`, reconciliação GET/POST poll; `GET /meta` (`http_seams`); seam admin (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md); facades documentadas em [module-catalog §3d](../architecture/module-catalog.md#3d-facade-http_bridge-srcmoduleshttp_bridge). Completude: [auditoria](./modules-completeness-audit.md).
 
 ### Evidência existente
@@ -35,7 +35,7 @@ tags:
 - Teste de fixture cobre presets/timeframes suportados e fechamento de trade.
 - Testes puros de origem cobrem mesma origem, downgrade, userinfo, histórico vazio e limite de redirects.
 - Testes HTTP cobrem bloqueio entre origens e aceitação dentro da origem inicial; a execução foi validada fora do sandbox com loopback permitido.
-- Teste PostgreSQL existe, mas é ignorado por padrão e exige banco dedicado.
+- Testes PostgreSQL de domínio skip sem `DATABASE_URL`; script `run-pg-integration-tests.sh` com banco `trading_bot`.
 - O [mapa de módulos anterior](../sdd/backend-module-map-sdd.md) e a [arquitetura consolidada](../architecture/backend-module-reference.md) registram os módulos presentes.
 
 ## Designs e correções já registrados
