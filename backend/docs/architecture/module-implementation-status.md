@@ -82,7 +82,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Veredito
 
-**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**254** testes bin `bot`, **6** ignorados).
+**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**255** testes bin `bot`, **6** ignorados).
 
 **COMPLETUDE_MODULOS_GOAL=parcial** — fundação bots/orders/agents/HTTP documentada e testada; pendem orders live, runtime bots, auth owner de produto e revisão Critic ([auditoria](../planning/modules-completeness-audit.md)).
 

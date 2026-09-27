@@ -41,7 +41,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace).
 
-Evidência (2026-09-27): **254** testes no binário `bot`, **6** ignorados (5 execuções consecutivas de `cargo test --locked --bin bot` sem falhas) (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration).
+Evidência (2026-09-27): **255** testes no binário `bot`, **6** ignorados (5 execuções consecutivas de `cargo test --locked --bin bot` sem falhas) (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -88,7 +88,7 @@ Evidência (2026-09-27): **254** testes no binário `bot`, **6** ignorados (5 ex
 
 ## Fechamento do goal (pendente)
 
-Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **254** testes bin `bot`, **6** ignorados; OpenAPI **33** paths (`openapi_surface_lists_core_paths` em `server.rs`).
+Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **255** testes bin `bot`, **6** ignorados; OpenAPI **33** paths (`openapi_surface_lists_core_paths` em `server.rs`).
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
