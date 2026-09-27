@@ -28,7 +28,7 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 
 ## Fora de escopo
 
-- Prova de identidade do owner humano, bootstrap único (binding de agência por env é seam, não prova de tenant).
+- Prova de identidade do owner humano, bootstrap único (binding de agência por env é seam, não prova de tenant). Itens **Não** do checklist [agents G1](./agents-module-sdd.md#critérios-de-fechamento-g1-checklist) permanecem bloqueadores do goal de completude ([auditoria](../planning/modules-completeness-audit.md)).
 - Proteção de rotas de simulação (`risk/*`, `backtest/*`) — permanecem abertas quando admin token ativo.
 
 ## Observabilidade (read-only)

@@ -132,3 +132,17 @@ modules/agents/
 - `assert_runtime_promotion_authorized`: capability, lifecycle, `promotion_rejects_invalid_bot_id` (`bot_promotion.rs`).
 - Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **305** testes (**6** ignorados PG/Neo4j).
 - **Gap Gate 1 produto:** autenticação/autorização do owner humano além de `BOT_HTTP_*` — ver [pesquisa de capacidades](../research/agents-capability-research.md); bloqueia fechamento do goal de completude de módulos.
+
+## Critérios de fechamento G1 (checklist)
+
+| Critério | Evidência atual | Fechado |
+|----------|-----------------|--------|
+| `AgentRegistry` + hierarquia + lifecycle | `modules/agents/tests.rs`, `http_bridge/agents.rs` | Sim |
+| `IdentityOnly` (sem tools/ordens) | SDD + invariantes de módulo | Sim |
+| Espelhamento/hidratação PG | `PgAgentIdentityStore`, boot `server.rs` | **Parcial** (teste PG ignorado) |
+| Seam HTTP admin (`BOT_HTTP_*`) | [http-admin-auth-seam-sdd.md](./http-admin-auth-seam-sdd.md) | Sim (não é auth owner) |
+| Capability `promote_runtime_bot` + HTTP promote | `bot_promotion.rs`, migração `0005`, `server.rs` | Sim (seam) |
+| Autenticação verificável do owner humano | pesquisa § Etapa 1 item 4 | **Não** |
+| Bootstrap inicial único e auditado | pesquisa § bloqueador | **Não** |
+| Revisão Critic G1 + contrato público acordado | AGENTS.md | **Não** |
+| `./scripts/verify-backend-gates.sh` verde | **305** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |
