@@ -51,8 +51,8 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 |---|---|---|
 | `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |
 | `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `MonitorStrategyRegistry` + `strategy_evaluation_binding` + `BotSignal.bot_id`. Catálogo HTTP inclui `monitor_fast_period` / `monitor_slow_period` / `monitor_evaluator` (`sma_cross` ou `ema_cross` via `[[strategy.monitor_registry]]`). |
-| `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit` | Status expõe `mode` (`disabled` / `dev_accept` / `paper` / `live_exchange` / `live_exchange_reserved`) e `live_exchange_wired` (`true` com `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording`; senão `false`). Submit: fail-closed **503**; `live_exchange_not_wired` só em `live_exchange`; `paper` e `dev_accept` **200** após risco; **422** se risco rejeita; `client_order_id` opcional com dedupe memória/PG. |
-| `portfolio` | `GET /portfolio/paper-snapshot?quote=…` | Saldo paper + `positions[]` quando fills têm preço (`BOT_PAPER_FILL_UNIT_PRICE` no modo paper); baseline 1000 na quote. |
+| `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit` | Status: `mode` + `live_exchange_wired` (`recording` ou `testnet`+credenciais). Submit: fail-closed **503**; `paper`/`dev_accept` **200** após risco; `client_order_id` dedupe; corpo opcional `paper_fill_unit_price` (modo paper → portfolio `positions`). |
+| `portfolio` | `GET /portfolio/paper-snapshot?quote=…` | Saldo paper + `positions[]` quando fills têm preço (`paper_fill_unit_price` no submit ou `BOT_PAPER_FILL_UNIT_PRICE`); baseline 1000 na quote. |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
 
