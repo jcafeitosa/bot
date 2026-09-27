@@ -42,7 +42,8 @@ status: draft
 | `HttpOrderExecutor::live_exchange_wired` / `ApiState::live_exchange_wired` | Fonte única para `GET /meta` e `GET /orders/execution-status`; `true` no modo `LiveExchange` (hoje via seam `recording`; testnet REST pendente). |
 | `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
 | `PaperLedgerExecutor` | `BOT_ORDERS_EXECUTION=paper` → ledger in-process após risco; `live_exchange_wired` permanece `false`. |
-| `ExchangeSpotExecutor` | `live_exchange` wired: `authorize_rest_use` + `RecordingSpotOrderSubmitPort` (seam determinístico). |
+| `submit_spot_order` / `LiveExchangeSubmitBackend` | `BOT_ORDERS_EXCHANGE_SUBMIT`: `recording` wired; `testnet` reconhecido mas unwired (testes de contrato). |
+| `ExchangeSpotExecutor` | `live_exchange` wired: `gate_order_submit` + `submit_spot_order` (recording hoje). |
 | `ReservedLiveExchangeExecutor` | `BOT_ORDERS_EXECUTION=live_exchange` sem backend → `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired` até adapter real. |
 | `RecordingExecutor` | Double in-process (contagem de chamadas); `submit_invokes_recording_executor_once_after_risk` + `submit_order_http_records_execution_with_recording_executor` (sem rede). |
 
