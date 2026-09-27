@@ -12,7 +12,7 @@ tags:
 - **Autor:** System Designer Builder `/root/resume_designer`
 - **Revisor:** Crítico de Arquitetura `/root/resume_design_critic`
 - **Data:** 2026-09-26
-- **Estado:** G1 técnico aprovado por `/root/resume_design_critic`; acordo do usuário sobre seams e G3 pendentes
+- **Estado:** G1 técnico aprovado por `/root/resume_design_critic`; quatro interfaces SDD aprovadas pelo usuário em 2026-09-26; C14 implementado e em revisão independente, C15 pendente
 - **Escopo:** monitor TUI do backend Rust em `dev`, `observe`/`paper`; nenhuma ordem é habilitada
 
 ## Contexto e problema
@@ -77,7 +77,7 @@ Durante `Paused`/`Resuming`, WS descartado não é persistido e REST não é con
 
 ## Entregas, TDD e validação
 
-**C14 — Estado Pause/Resume e reconciliação (Builder Backend; Critic Backend independente).** Depois de G1 e acordo dos seams: teste red do fluxo observável por `UiCommand`/estado confirmado/`AppEvent` e fonte REST falsa com relógio controlado: pausa recebe >64 WS sem avaliação; retomada ignora WS até REST válido; avalia apenas o último candle uma vez; REST inválido/atrasado/falho mantém `RESUMING` e recupera em novo poll; WS ausente/fechado ainda retoma; Pause durante reconciliação invalida resultado. Um WS alinhado com OHLCV válido mas timestamp futuro não eleva watermark, não entra no feed em `Running` e não prende a retomada. Um REST normal e um JEV em `Running` bloqueados por fixtures não atrasam a confirmação de Pause nem publicam avaliação depois dela. Com JEV bloqueado para candle A, entregar candle B antes de liberar A: nenhum sinal/estado/posição de A pode ser publicado, e B é avaliado uma vez; repetir após a primeira janela REST de retomada. Com REST normal bloqueado após capturar janela até A, entregar WS B e então liberar REST: a janela antiga não substitui o feed, não é persistida, não causa replay e B permanece o último candle. O estado confirmado prevalece sobre Refresh antigo. Implementação mínima green; testes existentes de feed/monitor continuam passando. Manter a costura de injeção interna ao monitor, sem publicar API externa adicional.
+**C14 — Estado Pause/Resume e reconciliação (Builder Backend `/root/c14_builder`; Critic Backend `/root/c14_critic`).** Com G1 e seams aprovados, a implementação usa o loop operacional `run_market_loop` em `app.rs`, `MonitorState` confirmado por `watch` em `ui/mod.rs`, fonte REST e relógio injetáveis apenas internamente, e tarefas REST/avaliação canceláveis por geração. O teste de comando por estado começou vermelho por ausência de `MonitorState`/`space_command` e ficou verde após o estado confirmado. Testes locais cobrem pausa com REST/Jev bloqueados; >64 WS durante pausa e retomada por REST uma vez; WS futuro; janela REST normal anterior ao WS corrente sem chegar ao sink de persistência; descarte de avaliação A após WS B; falha/atraso REST com retry sem WS ou com WS encerrado; e conclusão de persistência aceita no shutdown. O Critic ainda deve avaliar o diff e os riscos remanescentes; G3 não está aprovado neste documento.
 
 **C15 — Envio WS sem bloqueio e documentação (Builder Backend; Critic Backend independente).** Teste red do produtor com canal capacidade 1 saturado: enviar segundo candle fechado retorna sem aguardar receiver e mantém capacidade limitada; canal fechado encerra envio; mensagens inválidas seguem ignoradas. Implementação mínima green; atualizar `backend/README.md` e logs do monitor para semântica de pausa/retomada e perda recuperável. O Critic verifica que `try_send` não converte `Full` em encerramento do WS. Cada CL executa `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` e `cargo test`; teste integrado com servidor/clock falso verifica o caminho end-to-end sem Binance real.
 
@@ -93,6 +93,6 @@ O teste do documento é comportamental, não código: o Crítico confronta cada 
 
 ## Questões abertas e gate
 
-- **Acordo do usuário pendente:** os três seams da seção de contratos, inclusive o estado `RESUMING` e a política de descarte por canal cheio, devem ser aceitos antes de escrever testes.
-- **G1 técnico aprovado:** `/root/resume_design_critic` confirmou resolução dos três achados em revisão independente; a aprovação não autoriza testes antes do acordo do usuário sobre seams.
-- **G2/G3 pendentes:** instâncias Builder/Critic e critérios por CL serão confirmados pelo Orquestrador; nenhuma implementação/teste começou por este SDD.
+- **Acordo do usuário registrado:** as interfaces dos quatro SDDs, incluindo os três seams T-10, foram aprovadas em 2026-09-26 antes dos testes C14.
+- **G1 técnico aprovado:** `/root/resume_design_critic` confirmou resolução dos três achados em revisão independente.
+- **G2 atribuído; G3 C14 em revisão:** Builder `/root/c14_builder`, Critic `/root/c14_critic`. C15 continua pendente, inclusive `try_send` no produtor WS. Nenhum gate é declarado aprovado por esta atualização de status.
