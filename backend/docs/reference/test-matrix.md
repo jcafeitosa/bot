@@ -59,12 +59,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-169 testes unitários passaram (inclui testes HTTP em `presentation/http/server.rs`)
+173 testes unitários passaram (inclui testes HTTP em `presentation/http/server.rs`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 1 teste PostgreSQL ignorado por ausência de DATABASE_URL
 ```
 
-A soma observada foi 82 testes aprovados e 1 ignorado. O teste de PostgreSQL não representa aprovação da integração; exige uma instância descartável do banco `trading_bot`.
+A soma observada foi 183 testes aprovados e 1 ignorado. O teste de PostgreSQL não representa aprovação da integração; exige uma instância descartável do banco `trading_bot`.
 
 ## Lacunas explícitas
 

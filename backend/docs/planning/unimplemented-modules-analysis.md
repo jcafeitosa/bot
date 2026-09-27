@@ -66,7 +66,7 @@ A primeira etapa descrita na pesquisa é `IdentityOnly`, com:
 
 ### O que existe
 
-`modules/agents` implementa tipos de identidade (`AgentId`, `AgencyId`, papéis, supervisor), `AgentRegistry` em memória, transições de ciclo de vida, eventos de auditoria em memória e `run_advisory_step` via `core::providers::jev`. `MonitorAgentHook` permanece noop até integração futura com o supervisor. **Não há** migração PostgreSQL, repositório durável, API HTTP administrativa nem autenticação do owner. Os tipos de domínio de trading em `market`/`strategy` permanecem separados da identidade administrativa de agentes.
+`modules/agents` implementa tipos de identidade (`AgentId`, `AgencyId`, papéis, supervisor), `AgentRegistry` em memória, transições de ciclo de vida, eventos de auditoria em memória e `run_advisory_step` via `core::providers::jev`. `MonitorAgentHook` permanece noop até integração futura com o supervisor. **Não há** migração PostgreSQL, repositório durável, autenticação do owner no transporte (HTTP de registro existe sem auth). Os tipos de domínio de trading em `market`/`strategy` permanecem separados da identidade administrativa de agentes.
 
 ### Bloqueios
 
