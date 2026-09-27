@@ -19,7 +19,7 @@ O binário tem três pontos de entrada funcionais:
 
 - **Monitor (TUI):** `main → core::config → modules::monitor::startup → supervisor → … → presentation::terminal`.
 - **Backtest (CLI):** `main → modules::backtest::cli → fixture 1m → modules::backtest → JSON`.
-- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (33 paths utoipa).
+- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (**34** paths utoipa, incl. `GET /orders/execution-status`).
 
 O backend não envia ordens. O uso REST autorizado hoje é o backfill público de candles Spot da conta `dev`; observe e paper são os modos operacionais disponíveis.
 
@@ -66,7 +66,7 @@ flowchart LR
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly`; registry em memória compartilhado; rotas HTTP `/api/v1/agents/*`; write-through e cold-start via `PgAgentIdentityStore` + `load_agent_identity_snapshot` no `serve`. **Não** é o módulo `bots`. | `modules/agents/tests.rs`, `http_bridge/agents.rs`. |
 | `modules` | `bots` | `BotIdentity`, `full_ranking`, `MonitorStrategyRegistry` | Catálogo/ranking; `BotRuntimePort` + `shared_bot_runtime`; HTTP promote via `assert_bot_promotion_allowed`; catálogo HTTP com `monitor_fast_period`/`monitor_slow_period`; supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`. | `monitor_strategy.rs`, `http_bridge/bots.rs`, `evaluation_binding.rs`, `pg_catalog.rs`. |
-| `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor`, `HttpOrderExecutor`, `OrderIdempotencyStore`, `InMemoryOrderIdempotencyStore`, `PgOrderIdempotencyStore` | Valida `OrderIntent` via `risk`; HTTP fail-closed por default (`BOT_ORDERS_EXECUTION`); opt-in `dev_accept`; `client_order_id` com dedupe em memória e, com PG, em `order_idempotency_keys` (`ApiState::submit_order_http`). | `modules/orders/tests.rs`, `adapters/pg_idempotency.rs`, `http_bridge/orders.rs`, `presentation/http/order_execution.rs`, `server.rs`. |
+| `modules` | `orders` | `submit_order`, `ReservedLiveExchangeExecutor`, `OrderIdempotencyStore`, `HttpOrderExecutor` | Risk → port; HTTP `GET /orders/execution-status`, `POST /submit`; `live_exchange`/`paper` → `live_exchange_not_wired`; idempotência memória/PG. | `orders/tests.rs`, `http_bridge/orders.rs`, `order_execution.rs`, `server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
 | `presentation` | `http` | API Axum + `ApiState` composition root | OpenAPI/Scalar; `serve` + `bootstrap_http_api` + hydrate agents; rotas stateful via `ApiState`, stateless via `http_bridge`; `HttpAdminAuth`. Ver [layer-mapping.md](./layer-mapping.md). | `server.rs`, `state.rs`, `admin_auth.rs`. |

@@ -27,7 +27,7 @@ tags:
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
 - Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + `BotCatalogBackend` mem/PG) e `orders` (seam fail-closed) com testes unitários.
-- API HTTP Axum com OpenAPI/Scalar: agents, bots, risk, strategy, backtest, portfolio, exchanges, `POST /api/v1/orders/submit` (default 503 após risco; `BOT_ORDERS_EXECUTION=dev_accept` para double local); seam admin opcional (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
+- API HTTP Axum com OpenAPI/Scalar (**34** paths): agents, bots (`MonitorStrategyRegistry`, runtime promote), risk, strategy, backtest, portfolio, exchanges; orders `GET /execution-status` + `POST /submit` (fail-closed / `live_exchange_not_wired` / `dev_accept`); seam admin opcional (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
 
 ### Evidência existente
 

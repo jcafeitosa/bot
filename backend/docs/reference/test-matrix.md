@@ -54,7 +54,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | Rotas Axum, OpenAPI, `ApiState` (`persist_catalog_then_promote`, agency-bound promote capability, agents capabilities no GET, orders idempotency), boot catálogo PG, `server` promote HTTP. | `server.rs`, `state.rs` (`state_tests`), `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **34** paths; `GET /orders/execution-status`; orders submit + idempotency; bots runtime/catalog; agents agency bind; `server` promote HTTP. | `server.rs`, `state.rs` (`state_tests`), `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada

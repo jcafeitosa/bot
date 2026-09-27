@@ -19,7 +19,7 @@ tags:
 | `modules/bots` | `MonitorStrategyRegistry`, `[[strategy.monitor_registry]]`, catálogo multi-estratégia, runtime HTTP | `monitor_strategy.rs`, `catalog.rs`, `server.rs` | Evaluators não-SMA; auth owner |
 | `modules/orders` | `ReservedLiveExchangeExecutor`, idempotência PG/memória, `GET /orders/execution-status` | `order_execution.rs`, `http_bridge/orders.rs`, `server.rs` | Adapter exchange real; auth owner |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hydrate no `serve` + `require_bound_agency` | `modules/agents/tests.rs`, `server.rs`, rotas agents | Auth owner produto (fora do seam `HttpAdminAuth`) |
-| `presentation/http` | OpenAPI ~33 paths, Scalar `/docs`, `HttpAdminAuth` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
+| `presentation/http` | OpenAPI **34** paths, Scalar `/docs`, `HttpAdminAuth`, `GET /orders/execution-status` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 
@@ -93,5 +93,5 @@ Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
 | Adapter exchange orders | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | Threat model + Critic |
-| Registry multi-estratégia monitor | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | Parâmetros por `strategy@version` |
+| Evaluators não-SMA no monitor | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | Backtest + supervisor além de SMA |
 | Auth owner verificável | [agents-capability-research.md](../research/agents-capability-research.md) | Bootstrap + segurança |
