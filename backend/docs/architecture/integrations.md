@@ -16,9 +16,9 @@ tags:
 | Binance Spot Test Network REST | `modules::exchanges::binance` + `MarketDataSource` | Backfill público de candles OHLCV. | Ativo em `dev`; origem restrita. |
 | Binance Spot Test Network WebSocket | `modules::exchanges::live` + `tokio-tungstenite` | Klines fechados `1m` no monitor. | Ativo apenas em `1m`; REST permanece fallback. |
 | `ccxt-core` / `ccxt-exchanges` | Patch local em `vendor/ccxt-core-0.1.5` | Cliente HTTP e adapter da exchange. | Vendorizado; política de redirect sob gate de segurança. |
-| PostgreSQL | `core::persistence::Database` | Migrações e gravação opcional de datasets/candles. | Opt-in; exige banco dedicado `trading_bot`. |
+| PostgreSQL | `core::database` + `core::persistence::Database` | Migrações (PG 18+, Timescale/pgvector), datasets/candles, espelho agents/bots Gate 1. | Opt-in; `DATABASE_URL` → `trading_bot`. |
 | TypeSafe/Jev | `JevAdvisor` | Avaliação consultiva de regime, qualidade do sinal e anomalia. | Opcional; não autoriza ordens. |
-| HTTP API (Axum) | `modules::http_bridge` + `presentation::http` | OpenAPI 30 paths; agents, bots, orders fail-closed, monitor quando `--with-monitor`. | Ativo em `serve`. |
+| HTTP API (Axum) | `modules::http_bridge` + `presentation::http` | OpenAPI; agents/bots PG opcional; `BOT_HTTP_ADMIN_TOKEN` em rotas mutantes; orders fail-closed. | Ativo em `serve`. |
 | Terminal | Ratatui + Crossterm | Dashboard, comandos de pausa/retomada/saída e logs. | Caminho operacional principal. |
 
 ## Binance REST
@@ -59,7 +59,7 @@ A persistência:
 - exige `DATABASE_URL`;
 - rejeita qualquer banco diferente de `trading_bot`;
 - abre pool com limite de oito conexões e timeout de aquisição;
-- aplica apenas `src/core/persistence/migrations/`;
+- aplica `src/core/database/migrations/` (market data + scaffold agents/bots);
 - grava o manifesto em `market_datasets` e candles em `candles_1m`;
 - usa `ON CONFLICT DO NOTHING` para reexecução idempotente;
 - executa a gravação em transação.
@@ -87,5 +87,6 @@ Os contratos operacionais estão na [referência de CLI e configuração](../ref
 | Mensagem WS inválida | Parser e validação antes do feed. | Monitorar métricas/rejeições estruturadas. |
 | Banco errado | Nome `trading_bot` obrigatório. | Provisionamento operacional documentado fora do código. |
 | Vazamento de segredo | Variáveis de ambiente e payload Jev reduzido. | Rotação e runbook de incidente de credencial. |
+| API mutante sem auth | `BOT_HTTP_ADMIN_TOKEN` opcional (bearer). | Auth verificável do owner e bootstrap (Gate 1). |
 | Perda de WS | REST mantém fallback. | Alertas operacionais para degradação prolongada. |
 | Jev indisponível | Erro consultivo não vira ordem. | Definir política de observabilidade e retry por ambiente. |

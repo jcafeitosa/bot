@@ -98,7 +98,7 @@ cargo test --locked
 ./scripts/check-import-direction.sh
 ```
 
-Evidência observada: **192** testes unitários no binário `bot` (inclui HTTP OpenAPI, bots ranking, orders fail-closed), **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j), integração redirect/config/fixture **ok**, import direction **ok**, clippy **sem warnings**.
+Evidência observada: **193** testes unitários no binário `bot` (inclui HTTP OpenAPI, bots ranking, orders fail-closed), **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j), integração redirect/config/fixture **ok**, import direction **ok**, clippy **sem warnings**.
 
 ## Gates de aceitação
 

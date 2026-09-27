@@ -92,6 +92,8 @@ A validação de período SMA e timeframe é feita junto com a configuração. C
 | `NINE_ROUTER_BASE_URL` | Alias documentado para a mesma raiz; precede `OPENAI_BASE_URL`. |
 | `NVIDIA_API_KEY` / `NGC_API_KEY` | Bearer para NVIDIA NIM (`core::providers::nvidia_nim`); `NGC_API_KEY` é fallback. |
 | `BOT_AGENCY` | Quando definida, `serve --with-monitor` usa `RegistryMonitorAgentHook` para a agência (registry compartilhado com HTTP agents). |
+| `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes exigem `Authorization: Bearer <token>` (fail-closed; não substitui auth do owner). |
+| `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; ver `docs/operations/postgres-and-graph-dev.md`. |
 | `NVIDIA_NIM_BASE_URL` | Raiz da integrate API (default `https://integrate.api.nvidia.com`); opcional em TOML como `providers.nim_base_url`. |
 
 Nunca comite `.env` ou credenciais.
@@ -100,7 +102,7 @@ Nunca comite `.env` ou credenciais.
 
 - O backtest usa `--persist` para gravar o dataset sintético.
 - O monitor só persiste com `PERSIST_MARKET_DATA=1`, `DATABASE_URL` e timeframe `1m`.
-- As migrações ativas ficam em `src/core/persistence/migrations/`.
+- As migrações ativas ficam em `src/core/database/migrations/` (via `PostgresDatabase::migrate` / `Database::migrate`).
 - Falha de conexão não deve ser tratada como prova de histórico completo.
 
 A semântica de estados, gaps e recuperação está no [SDD T-15](../sdd/monitor-persistence-policy-sdd.md). O fluxo de candles e avaliação está no [SDD T-10](../sdd/monitor-pause-resume-sdd.md).
@@ -109,5 +111,3 @@ A semântica de estados, gaps e recuperação está no [SDD T-15](../sdd/monitor
 
 O backend trabalha com dados públicos e não envia ordens no fluxo atual. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).
 
-
-| `BOT_HTTP_ADMIN_TOKEN` | Quando definido, habilita `HttpAdminAuth` no `ApiState` (seam fail-closed; wiring nas rotas mutantes em evolução). |
