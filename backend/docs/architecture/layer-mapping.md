@@ -89,7 +89,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 cargo test --locked --bin bot
 ```
 
-Evidência: **205** testes no bin `bot`, **5** ignorados (PG/Neo4j).
+Evidência: **207** testes no bin `bot`, **5** ignorados (PG/Neo4j).
 
 ## Documentos relacionados
 
