@@ -13,7 +13,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 ## Comece aqui
 
 - [Guia de execução e operação](./operations/runbook.md) — pré-requisitos, inicialização, modos suportados, persistência, diagnóstico e `./scripts/verify-backend-gates.sh`.
-- [PostgreSQL e grafo (dev)](./operations/postgres-and-graph-dev.md) — `DATABASE_URL`, PG **22/22**, retenção orders G2 ([cli-and-config § retention](./reference/cli-and-config.md#pg-orders-retention-gate-2)).
+- [PostgreSQL e grafo (dev)](./operations/postgres-and-graph-dev.md) — `DATABASE_URL`, PG 18+, manifesto PG **28**, retenção orders G2 ([cli-and-config § retention](./reference/cli-and-config.md#pg-orders-retention-gate-2)).
 - [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente (`backend/.env.example`), validações e [verificação local (gates)](./reference/cli-and-config.md#verificação-local-gates).
 - [API HTTP (OpenAPI + Scalar)](./reference/cli-and-config.md#subcomando-serve-http) — subcomando `serve`, `/openapi.json`, `/docs`, `GET /meta` (`http_seams`), agents e `--with-monitor`.
 - [Referência de módulos do backend](./architecture/backend-module-reference.md) — visão consolidada, interfaces, seams, fluxos e limites.
@@ -23,7 +23,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [Integrações do backend](./architecture/integrations.md) — Binance, ccxt, PostgreSQL, Jev, terminal e controles.
 - [Estratégia Neo4j unificado (dual-store)](./architecture/unified-neo4j-graph-strategy.md) — PG SoT transacional + Neo4j grafo complementar pareado em produção alvo.
 - [Estado atual e planejamento](./planning/current-state-and-roadmap.md) — feito, pendências, bloqueios, gates e roadmap.
-- [Auditoria de completude de módulos](./planning/modules-completeness-audit.md) — bots/orders/agents/HTTP; baseline **470**/**0** ignored; PG **22/22**; goal **parcial** (auth owner + Critic).
+- [Auditoria de completude de módulos](./planning/modules-completeness-audit.md) — bots/orders/agents/HTTP; baseline **518**/**0** ignored (registro local); manifesto PG **28**; CI sem run verde; goal **parcial** (auth owner + Critic).
 - README do backend — visão geral, arquitetura e comandos rápidos.
 
 ## Pesquisa
@@ -41,7 +41,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 ## Planejamento
 
-- [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md) — snapshot JSON: [modules-completeness-evidence.json](./planning/modules-completeness-evidence.json) — baseline `./scripts/verify-backend-gates.sh` (**470** passed, **0** ignored; PG **22/22** no CI `postgres-integration` ou local com `DATABASE_URL`); [ENTREGA G4 Builder](./planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) (**PENDENTE** Critic); [pacote Critic (handoff)](./planning/modules-completeness-audit.md#pacote-para-revisão-critic-handoff); checklists [agents G1](./sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [orders G2](./sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](./sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist)
+- [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md) — snapshot JSON: [modules-completeness-evidence.json](./planning/modules-completeness-evidence.json) — baseline `./scripts/verify-backend-gates.sh` (**518** passed, **0** ignored, registro local; manifesto PG **28** — execução local/CI não comprovada); [ENTREGA G4 Builder](./planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) (**PENDENTE** Critic); [pacote Critic (handoff)](./planning/modules-completeness-audit.md#pacote-para-revisão-critic-handoff); checklists [agents G1](./sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [orders G2](./sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](./sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist)
 - [Status de implementação MVC mínimo](./architecture/module-implementation-status.md) — checklist `core`/`modules`/`presentation` e veredito vs goal de completude
 - [Plano de execução das correções pendentes do backend](./planning/backend-work-plan.md) — sequência de entregas, gates, dependências e bloqueios atuais.
 - [Errata normativa de autoridade do plano org](./planning/org-plan-authority-errata.md) — grants e `revocation_epoch` têm SoT PostgreSQL `org`; projections não autorizam.
@@ -71,7 +71,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD — Product owner bootstrap (G1 fatia)](./sdd/agents-owner-bootstrap-g1-sdd.md) — PG `0010`, env ACK, bind de registro; não substitui IdP.
 - [SDD — HTTP admin bearer seam](./sdd/http-admin-auth-seam-sdd.md) — `BOT_HTTP_ADMIN_TOKEN`, binds opcionais de owner/agency; não substitui auth owner Gate 1.
 - [SDD — Configuração centralizada](./sdd/centralized-config-sdd.md) — `system.toml`, `.env`, `bot.toml`, árvore `core/config/`.
-- [SDD — Provider credentials (PostgreSQL)](./sdd/provider-credentials-db-sdd.md) — migração `0007`, cache em memória; `loads_credentials_from_postgres` no script PG **22/22**.
+- [SDD — Provider credentials (PostgreSQL)](./sdd/provider-credentials-db-sdd.md) — migração `0007`, cache em memória; `loads_credentials_from_postgres` no manifesto PG (**28**).
 - [SDD — Outbox PG → Neo4j (F2.1)](./sdd/graph-projection-outbox-sdd.md) — migração `0009`, enqueue/drain best-effort.
 - [SDD — GraphQueryPort read-only (F3)](./sdd/graph-query-port-f3-sdd.md) — `list_agents`, `supervision_chain`, `bots_for_agent`; CLI `graph query …`; não substitui PG como SoT.
 - [SDD — Projeção Neo4j orders (F3)](./sdd/orders-neo4j-projection-sdd.md) — `OrderIntent` redigido; F3.1 aresta `SUBMITTED`.

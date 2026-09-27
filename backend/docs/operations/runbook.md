@@ -83,7 +83,7 @@ cargo run --locked -- graph-projection drain --limit 32
 
 Saída JSON: `{ "processed", "succeeded", "failed" }`. Fail-closed com mensagem clara se PG ou Neo4j ausentes.
 
-**F3 — leitura advisory (sem mutação):** CLI `cargo run --locked -- graph query agents --limit 32` (também `supervision-chain`, `bots-for-agent`, `code-impact --module-path …`). HTTP admin read-only com bearer: ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). Não habilite `live_exchange` nem prod REST como recuperação de grafo.
+**F3 — leitura advisory (sem mutação):** CLI `cargo run --locked -- graph query agents --limit 32` (também `supervision-chain`, `bots-for-agent`, `code-impact --module-path …`; `code-impact` depende do push externo do grafo de código via `scripts/sync-code-graph-neo4j.sh` + CLI `graphify` — sem ele retorna lista vazia). HTTP admin read-only com bearer: ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). Não habilite `live_exchange` nem prod REST como recuperação de grafo.
 
 
 ## Orders PG — retenção Gate 2 (purge)
@@ -127,4 +127,4 @@ HTTP mutante/bearer (paridade local):
 cargo test --locked --bin bot http_integration -- --test-threads=1
 ```
 
-Baseline esperada (2026-09-27): linha `OK:` do gate → **512** passed, **0** ignored no bin `bot`; `http_integration` → **62** passed; com PG (18+) → `run-pg-integration-tests.sh` executa o manifesto de **27** testes (nenhuma execução registrada em evidência até 27/09). Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.
+Baseline esperada (2026-09-27): linha `OK:` do gate → **518** passed, **0** ignored no bin `bot`; `http_integration` → **62** passed; com PG (18+) → `run-pg-integration-tests.sh` executa o manifesto de **28** testes (nenhuma execução registrada em evidência até 27/09). Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.

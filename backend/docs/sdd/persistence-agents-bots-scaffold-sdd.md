@@ -35,7 +35,7 @@ Adicionar `0002_agents_bots_scaffold.sql` em `src/core/database/migrations/` com
 |------|----------------|
 | `Database::migrate` | Aplica 0001 + 0002 quando `DATABASE_URL` aponta para `trading_bot`. |
 | Teste unitário `migration_scaffold_sql_declares_core_tables` | Falha se o SQL scaffold perder nomes de tabela esperados (sem PG). |
-| `postgres_scaffold_tables_exist_after_migrate` | Script PG **22/22** / skip sem `DATABASE_URL`; verifica tabelas pós-migrate (incl. `graph_projection_outbox` / `0009`). |
+| `postgres_scaffold_tables_exist_after_migrate` | Manifesto PG (**28**) / skip sem `DATABASE_URL`; verifica tabelas pós-migrate (incl. `graph_projection_outbox` / `0009`). |
 
 **Fora de escopo (scaffold original):** rotas com auth owner, live trading, orders reais. Repositórios Rust: [agents-pg-registry-sdd](./agents-pg-registry-sdd.md), [Gate 1 bots](./bots-catalog-persistence-gate1-sdd.md).
 

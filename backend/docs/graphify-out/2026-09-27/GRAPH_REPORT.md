@@ -1,7 +1,7 @@
 # Graph Report - docs  (2026-09-27)
 
 ## Corpus Check
-- 74 files · ~97,311 words
+- 74 files · ~97,259 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ffdab580`
+- Built from commit: `2550967f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -95,8 +95,8 @@
   reference/test-matrix.md → operations/postgres-and-graph-dev.md
 - `provider-credentials-db-sdd` --references--> `postgres-and-graph-dev`  [EXTRACTED]
   sdd/provider-credentials-db-sdd.md → operations/postgres-and-graph-dev.md
-- `index` --references--> `unimplemented-modules-analysis`  [EXTRACTED]
-  index.md → planning/unimplemented-modules-analysis.md
+- `index` --references--> `backend-work-plan`  [EXTRACTED]
+  index.md → planning/backend-work-plan.md
 
 ## Communities (59 total, 2 thin omitted)
 
@@ -282,7 +282,7 @@ Nodes (9): Diagnóstico rápido, runbook, Encerramento e recuperação, Escopo, 
 
 ### Community 46 - "SDD — Outbox PG para projeção Neo4j (fatia F2.1)"
 Cohesion: 0.22
-Nodes (9): 1. Contexto, 2. Objetivo (F2.1), 3. Schema, 4. Fail-closed, 5. Validação, 6. F2.1.2 (*implemented*), 7. F2.1.3 (*partial* — CLI drain), 8. F2.1.3+ (*partial* — enqueue na mesma TX) (+1 more)
+Nodes (9): 1. Contexto, 2. Objetivo (F2.1), 3. Schema, 4. Fail-closed, 5. Validação, 6. F2.1.2 (*implemented*), 7. F2.1.3 (*partial* — CLI drain), 8. F2.1.3+ (*partial* — enqueue na mesma TX, fatia orders) (+1 more)
 
 ### Community 47 - "persistence-agents-bots-scaffold-sdd"
 Cohesion: 0.22
