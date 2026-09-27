@@ -1,6 +1,9 @@
+use std::path::PathBuf;
+
 use serde::Deserialize;
 use utoipa::ToSchema;
 
+use crate::core::config::{MonitorCli, SystemConfig};
 use crate::core::error::BotError;
 use crate::modules::backtest::cli::{execute_backtest, BacktestCli};
 
@@ -13,9 +16,18 @@ pub struct BacktestRequest {
 }
 
 pub async fn run_sma_crossover(body: BacktestRequest) -> Result<serde_json::Value, BotError> {
+    let config_path = PathBuf::from(body.config);
     let cli = BacktestCli {
-        config: body.config.into(),
+        config: Some(config_path.clone()),
         persist: body.persist,
     };
-    execute_backtest(&cli).await
+    let global = MonitorCli {
+        config: config_path,
+        environment: None,
+        operation: None,
+        risk_profile: None,
+        mode: None,
+        system_config: SystemConfig::default_path(),
+    };
+    execute_backtest(&cli, &global).await
 }

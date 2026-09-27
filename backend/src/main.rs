@@ -2,7 +2,9 @@ mod core;
 mod modules;
 mod presentation;
 
-use crate::core::config::{Config, MonitorEnvError};
+use std::path::Path;
+
+use crate::core::config::{load, Config, MonitorEnvError};
 use crate::modules::monitor::StartupError;
 use anyhow::Result;
 
@@ -39,13 +41,40 @@ struct TopCli {
     command: Option<BotCommand>,
 }
 
+fn bot_config_path_for_cli(cli: &TopCli) -> std::path::PathBuf {
+    match &cli.command {
+        Some(BotCommand::Backtest(args)) => args
+            .config
+            .clone()
+            .unwrap_or_else(|| cli.monitor.config.clone()),
+        Some(BotCommand::Serve(args)) => args
+            .config
+            .clone()
+            .unwrap_or_else(|| cli.monitor.config.clone()),
+        None => cli.monitor.config.clone(),
+    }
+}
+
+fn ensure_bot_config_readable(path: &Path) -> Result<()> {
+    load::read_bot_config_file(path)?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     crate::core::config::ensure_dotenv_loaded();
     let cli = TopCli::parse();
     crate::core::config::SystemConfig::init_from_path(&cli.monitor.system_config)?;
+    match &cli.command {
+        Some(BotCommand::Backtest(_)) | None => {
+            ensure_bot_config_readable(&bot_config_path_for_cli(&cli))?;
+        }
+        Some(BotCommand::Serve(_)) => {}
+    }
     match cli.command {
-        Some(BotCommand::Backtest(args)) => modules::backtest::cli::run(&args).await?,
+        Some(BotCommand::Backtest(args)) => {
+            modules::backtest::cli::run(&args, &cli.monitor).await?
+        }
         Some(BotCommand::Serve(args)) => {
             let mut monitor_cli = cli.monitor.clone();
             if let Some(path) = args.config {

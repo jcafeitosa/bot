@@ -1,10 +1,16 @@
 //! Shared TOML + env override helpers (TOML defaults committed, env for secrets/overrides).
 
-use std::env;
+use std::{env, fs, path::Path};
 
 use serde::de::DeserializeOwned;
 
 use crate::core::error::{BotError, BotResult};
+
+/// Read `bot.toml` from an explicit path. Missing paths and directories are errors (no bundled fallback).
+pub fn read_bot_config_file(path: &Path) -> BotResult<String> {
+    fs::read_to_string(path)
+        .map_err(|e| BotError::Configuration(format!("cannot read config {}: {e}", path.display())))
+}
 
 pub fn parse_embedded_toml<T: DeserializeOwned>(embedded: &str, label: &str) -> T {
     toml::from_str(embedded).unwrap_or_else(|e| {

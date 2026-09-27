@@ -14,22 +14,19 @@ use crate::{
 
 #[derive(Debug, Parser)]
 pub struct BacktestCli {
-    #[arg(long, default_value = "src/core/config/bot.toml")]
-    pub config: PathBuf,
+    /// Override `bot.toml` for this run (defaults to the global `--config` when omitted).
+    #[arg(long)]
+    pub config: Option<PathBuf>,
     /// Persist synthetic dataset to PostgreSQL when DATABASE_URL is set.
     #[arg(long)]
     pub persist: bool,
 }
 
-pub async fn execute_backtest(cli: &BacktestCli) -> BotResult<serde_json::Value> {
-    let monitor = MonitorCli {
-        config: cli.config.clone(),
-        environment: None,
-        operation: None,
-        risk_profile: None,
-        mode: None,
-        system_config: crate::core::config::SystemConfig::default_path(),
-    };
+pub async fn execute_backtest(
+    cli: &BacktestCli,
+    global: &MonitorCli,
+) -> BotResult<serde_json::Value> {
+    let monitor = monitor_cli_for_backtest(cli, global);
     let config = Config::load(&monitor)?;
     let timeframe = Timeframe::new(parse_timeframe_minutes(&config.market.timeframe)?)
         .map_err(|e| crate::core::error::BotError::MarketData(e.to_string()))?;
@@ -95,10 +92,21 @@ pub async fn execute_backtest(cli: &BacktestCli) -> BotResult<serde_json::Value>
     }))
 }
 
-pub async fn run(cli: &BacktestCli) -> BotResult<()> {
-    let summary = execute_backtest(cli).await?;
+pub async fn run(cli: &BacktestCli, global: &MonitorCli) -> BotResult<()> {
+    let summary = execute_backtest(cli, global).await?;
     println!("{summary}");
     Ok(())
+}
+
+fn monitor_cli_for_backtest(cli: &BacktestCli, global: &MonitorCli) -> MonitorCli {
+    MonitorCli {
+        config: cli.config.clone().unwrap_or_else(|| global.config.clone()),
+        environment: global.environment,
+        operation: global.operation,
+        risk_profile: global.risk_profile,
+        mode: global.mode,
+        system_config: global.system_config.clone(),
+    }
 }
 
 async fn persist_dataset_if_configured(dataset: &HistoricalDataset) -> BotResult<()> {

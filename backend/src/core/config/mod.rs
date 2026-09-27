@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::path::{Path, PathBuf};
 
 use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
@@ -263,9 +263,11 @@ pub struct Credentials {
 
 impl Config {
     pub fn load(cli: &MonitorCli) -> BotResult<Self> {
-        let raw = fs::read_to_string(&cli.config).map_err(|e| {
-            BotError::Configuration(format!("cannot read config {}: {e}", cli.config.display()))
-        })?;
+        Self::load_from_path(&cli.config, cli)
+    }
+
+    pub fn load_from_path(path: &Path, cli: &MonitorCli) -> BotResult<Self> {
+        let raw = load::read_bot_config_file(path)?;
         let mut config: Self = toml::from_str(&raw)
             .map_err(|e| BotError::Configuration(format!("invalid TOML: {e}")))?;
         if let Some(v) = cli.environment {
@@ -472,6 +474,24 @@ mod tests {
         assert_eq!(c.run_mode, RunMode::Observe);
         assert!(c.validate().is_ok());
     }
+
+    #[test]
+    fn load_rejects_missing_bot_config_path() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let missing = dir.path().join("absent-bot.toml");
+        let cli = MonitorCli {
+            config: missing.clone(),
+            environment: None,
+            operation: None,
+            risk_profile: None,
+            mode: None,
+            system_config: SystemConfig::default_path(),
+        };
+        let err = Config::load(&cli).unwrap_err().to_string();
+        assert!(err.contains(missing.to_str().expect("utf8 path")));
+        assert!(err.contains("cannot read config"));
+    }
+
     #[test]
     fn production_fails_closed_even_when_acknowledged() {
         let c = Config {
