@@ -26,6 +26,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 ## Pesquisa
 
 - [Pesquisa de capacidades para o módulo `agents`](./research/agents-capability-research.md) — comparação de referências e limites para a primeira etapa `IdentityOnly`.
+- [Análise de capacidades do módulo `org`](./research/org-module-capability-analysis.md) — escopo provisório de organizações, cargos, posições, ocupantes e governança; ainda não é SDD aprovado.
 
 ## Fontes preservadas
 

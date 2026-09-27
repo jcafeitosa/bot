@@ -15,7 +15,7 @@ status: provisional
 
 Esta análise é provisória: identifica responsabilidades e dependências para o futuro módulo `org`, mas não aprova schema, API ou implementação. A proposta separa `org` (estrutura e atribuições) de `agents` (identidade, ciclo de vida e capacidades). As premissas discutidas são catálogo reutilizável de cargos, posições concretas, ocupantes humanos ou agentes, no máximo um ocupante ativo por posição e PostgreSQL desde o início. Cargo pode sugerir capabilities, mas associação de cargo não as ativa até existir autorização verificável e auditada do owner.
 
-A documentação atual chama a etapa agents de `IdentityOnly`, limita o supervisor a owner/agente e lista autenticação verificável do owner e bootstrap seguro como pendências. Consulte [SDD agents](../sdd/agents-module-sdd.md), [pesquisa de capacidades de agents](./agents-capability-research.md), [análise de módulos previstos](../planning/unimplemented-modules-analysis.md), [catálogo de módulos](../architecture/module-catalog.md) e [convenção MVC](../sdd/modules-mvc-convention-sdd.md).
+A documentação atual chama a etapa agents de `IdentityOnly`, limita o supervisor a owner/agente e lista autenticação verificável do owner e bootstrap seguro como pendências. Consulte [[sdd/agents-module-sdd]], [[research/agents-capability-research]], [[planning/unimplemented-modules-analysis]], [[architecture/module-catalog]] e [[sdd/modules-mvc-convention-sdd]].
 
 ## Lacuna atual
 
