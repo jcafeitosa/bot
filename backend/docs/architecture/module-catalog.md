@@ -115,7 +115,7 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 | `controllers` | `submit_order` — valida request e `risk::validate_intent`; dedupe `client_order_id` via `OrderIdempotencyStore`. |
 | `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor`, `PaperLedgerExecutor`, `RecordingExecutor`, `ExchangeSpotExecutor` + `submit_spot_order` (`recording` / `testnet`+credenciais → `binance_spot_testnet_submit`), `ReservedLiveExchangeExecutor`; idempotência memória/PG; reconciliação memória + `PgOrderReconciliationStore` (`0006_order_reconciliation.sql`). |
 
-**HTTP:** `GET /api/v1/orders/execution-status` (modo `HttpOrderExecutor` / `live_exchange_wired`); `POST /api/v1/orders/submit` (**503** `execution_disabled` ou `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`, `paper` ou `live_exchange` wired) via `presentation/http/routes/orders.rs` → `ApiState::submit_order_http`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido; `BOT_ORDERS_EXECUTION` resolvido em `HttpApiSeams::from_env`.
+**HTTP:** `GET /api/v1/orders/execution-status`; `GET /api/v1/orders/reconciliation/{client_order_id}` (memória + fallback PG); `POST /api/v1/orders/submit` (**503** `execution_disabled` / `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`, `paper` ou `live_exchange` wired) → `ApiState::submit_order_http`; `GET /meta` inclui `order_reconciliation_pending` (max memória/PG); bearer admin quando `BOT_HTTP_ADMIN_TOKEN` definido; `BOT_ORDERS_EXECUTION` em `HttpApiSeams::from_env`.
 
 ## 3d. Camada `presentation::http`
 
