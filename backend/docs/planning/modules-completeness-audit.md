@@ -59,7 +59,7 @@ Evidência (2026-09-27): **328** testes no binário `bot`, **6** ignorados (`per
 | Requisito | Evidência | Status |
 |-----------|-----------|--------|
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor + backtest `evaluate_for_kind` (SMA/EMA) | **Parcial** (sem orders live; auth owner) |
-| Completude orders | `submit_order`, `PaperLedgerExecutor`, `exchange_order_gate`, execution-status, `live_exchange_not_wired`, idempotência | **Parcial** (adapter exchange REST ausente) |
+| Completude orders | `submit_order`, `PaperLedgerExecutor`, `exchange_order_gate` (+ política REST testnet com `BINANCE_TESTNET_*`), `ExchangeSpotExecutor` (recording), execution-status, idempotência | **Parcial** (adapter REST ccxt submit unwired) |
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
 | Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `config/active` + catálogo com `evaluator`/`monitor_evaluator`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` snapshot; PG hydrate | **Parcial** (auth owner, exchange REST real) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
