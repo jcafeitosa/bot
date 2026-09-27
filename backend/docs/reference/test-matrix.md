@@ -32,7 +32,7 @@ tags:
 | `risk` | Limite conservador/agressivo, tamanho, stop/take profit e incompatibilidade de modo. |
 | `agents` | Registry, hierarquia, lifecycle, advisory, `assert_runtime_promotion_authorized`, `restore_from_snapshot`, `PgAgentIdentityStore` SQL mapping. |
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
-| `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP com promoção ativa. |
+| `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http` fail-closed / accepting; `client_order_id` dedupe; HTTP `orders_submit_live_exchange_reserved_returns_503_with_code`. |
 | `http_bridge/bots` | `assert_catalog_contains_bot`, `assert_bot_promotion_allowed` (catálogo + `bot_id_matches_market`); `catalog_for_config_includes_monitor_strategy_periods`; testes em `catalog_gate_tests`. |
 | `orders` | `submit_order` + `ReservedLiveExchangeExecutor` (`LiveExchangeNotWired`); `InMemoryOrderIdempotencyStore` + `pg_order_idempotency_round_trip` (ignorado). |

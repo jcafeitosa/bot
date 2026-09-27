@@ -33,10 +33,10 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 
 ## Observabilidade (read-only)
 
-`GET /api/v1/meta` inclui `http_seams` read-only: `http_admin_auth_enabled` (token admin ativo), `http_owner_binding_active` / `http_agency_binding_active` (booleanos — não expõem IDs; espelham `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`). Não substitui auditoria de rotas mutantes.
+`GET /api/v1/meta` inclui `http_seams` read-only: `http_admin_auth_enabled` (token admin ativo), `http_owner_binding_active` / `http_agency_binding_active` (booleanos — não expõem IDs; espelham `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`), `order_execution_mode` / `live_exchange_wired` (alinhados com `GET /orders/execution-status`), `bot_runtime_enabled` (alinhado com `GET /bots/runtime/status` → `runtime_enabled`). Não substitui auditoria de rotas mutantes.
 
 ## Validação
 
-- Testes unitários `admin_auth.rs`.
-- Testes HTTP `server.rs`: bearer obrigatório (agents register, bots persist, orders submit, monitor commands), `owner_mismatch`, `agents_list_rejects_agency_mismatch_when_bound`, `agents_register_rejects_agency_mismatch_when_bound`, `bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent`.
+- Testes unitários `admin_auth.rs` (`binding_active_flags_reflect_env_bindings_without_leaking_ids`).
+- Testes HTTP `server.rs`: `meta_includes_http_seams_snapshot`, `meta_reports_http_bindings_when_configured`, `meta_reports_owner_binding_when_configured`, `meta_and_orders_execution_status_agree_on_seams`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`; bearer obrigatório (agents register, bots persist, orders submit, monitor commands), `owner_mismatch`, `agents_list_rejects_agency_mismatch_when_bound`, `agents_register_rejects_agency_mismatch_when_bound`, `bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent`.
 - `./scripts/verify-backend-gates.sh`.
