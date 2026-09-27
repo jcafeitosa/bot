@@ -43,7 +43,7 @@ O teste PostgreSQL ignorado e V18 requerem database `trading_bot` **descartável
 
 ## Próximas ações do Orquestrador
 
-1. Atualizar C10 e registrar a revisão documental do resultado HTTP.
+1. Registrar a revisão documental de C10 e manter o resultado HTTP no SDD T-05.
 2. Ativar Builder e Critic separados para cada CL restante antes do primeiro teste.
 3. Encaminhar cada entrega ao Critic, resolver achados, atualizar README/SDDs e registrar evidências por gate.
 4. Executar V18 e reavaliar G4 quando houver banco de teste isolado acessível.

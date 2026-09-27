@@ -32,7 +32,7 @@ tags:
 - Testes de configuração cobrem arquivo padrão, caminho explícito, arquivo ausente e arquivo ilegível.
 - Teste de fixture cobre presets/timeframes suportados e fechamento de trade.
 - Testes puros de origem cobrem mesma origem, downgrade, userinfo, histórico vazio e limite de redirects.
-- Testes HTTP cobrem bloqueio entre origens e aceitação dentro da origem inicial quando loopback está disponível.
+- Testes HTTP cobrem bloqueio entre origens e aceitação dentro da origem inicial; a execução foi validada fora do sandbox com loopback permitido.
 - Teste PostgreSQL existe, mas é ignorado por padrão e exige banco dedicado.
 - O [mapa de módulos anterior](../sdd/backend-module-map-sdd.md) e a [arquitetura consolidada](../architecture/backend-module-reference.md) registram os módulos presentes.
 
@@ -51,12 +51,12 @@ tags:
 ## Pendências e bloqueios
 
 1. Fechar T-03 com revisão independente e acordo dos seams públicos.
-3. Confirmar a implementação de T-10 com testes de pausa, retomada, cancelamento e geração.
-4. Completar T-15 com testes de persistência opt-in, falha de escrita, gap e reconciliação.
-5. Confirmar T-13 no estado atual do worktree e garantir que não há caminhos legados ativos.
-6. Revisar o contrato de Jev, timeout, telemetria e comportamento quando o endpoint falha.
-7. Definir observabilidade operacional: métricas de WS/REST, estado de persistência, idade do último candle, falhas de Jev e runbook de credenciais.
-8. Ingerir localmente as fontes externas da pesquisa de agentes antes de promovê-la a conhecimento consolidado.
+2. Confirmar a implementação de T-10 com testes de pausa, retomada, cancelamento e geração.
+3. Completar T-15 com testes de persistência opt-in, falha de escrita, gap e reconciliação.
+4. Confirmar T-13 no estado atual do worktree e garantir que não há caminhos legados ativos.
+5. Revisar o contrato de Jev, timeout, telemetria e comportamento quando o endpoint falha.
+6. Definir observabilidade operacional: métricas de WS/REST, estado de persistência, idade do último candle, falhas de Jev e runbook de credenciais.
+7. Ingerir localmente as fontes externas da pesquisa de agentes antes de promovê-la a conhecimento consolidado.
 
 ## Plano recomendado
 
