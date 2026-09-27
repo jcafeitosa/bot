@@ -12,7 +12,7 @@ status: draft
 
 # SDD — Scaffold PostgreSQL `agents` / `bots`
 
-- **Estado:** draft — fatia pós-objetivo literal; **não** habilita Gate 1 auth, **não** conecta `AgentRegistry` ou `BotCatalogStore` ao banco.
+- **Estado:** draft — fatia pós-objetivo literal; **não** habilita Gate 1 auth, **não** conecta `AgentRegistry` ao banco; catálogo bots via `PgBotCatalogStore` é fatia posterior.
 - **Referências:** [agents-module-sdd](./agents-module-sdd.md), [bots-module-sdd](./bots-module-sdd.md), [unimplemented-modules-analysis](../planning/unimplemented-modules-analysis.md) § V18 / Gate 1.
 
 ## 1. Contexto
@@ -21,7 +21,7 @@ Identidades de agentes e catálogo de bots vivem em memória. O backend já migr
 
 ## 2. Objetivo
 
-Adicionar `0002_agents_bots_scaffold.sql` em `src/core/persistence/migrations/` com:
+Adicionar `0002_agents_bots_scaffold.sql` em `src/core/database/migrations/` com:
 
 | Tabela | Propósito |
 |--------|-----------|
@@ -37,7 +37,7 @@ Adicionar `0002_agents_bots_scaffold.sql` em `src/core/persistence/migrations/` 
 | Teste unitário `migration_scaffold_sql_declares_core_tables` | Falha se o SQL scaffold perder nomes de tabela esperados (sem PG). |
 | Teste ignorado `postgres_scaffold_tables_exist_after_migrate` | Opcional em CI com PG; verifica `information_schema` pós-migrate. |
 
-**Fora de escopo:** `PgAgentRegistry`, `PgBotCatalogStore`, rotas com auth, live trading, orders reais.
+**Fora de escopo (na fatia scaffold):** `PgAgentRegistry`, rotas com auth, live trading, orders reais. `PgBotCatalogStore` foi implementado depois — ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md).
 
 ## 4. Mapeamento modelo → coluna
 

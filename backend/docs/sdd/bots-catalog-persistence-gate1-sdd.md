@@ -1,31 +1,40 @@
 ---
-title: SDD — Gate 1 persistência do catálogo bots (PostgreSQL)
-description: Schema, adapter PostgresBotCatalogStore e critérios de aceite após InMemoryBotCatalogStore
+title: SDD — Gate 1 persistência agents/bots (PostgreSQL)
+description: Schema scaffold, PgBotCatalogStore e critérios de aceite
 tags:
   - sdd
   - backend
   - bots
+  - agents
   - persistence
 status: draft
 ---
 
-# SDD — Gate 1: `BotCatalogStore` PostgreSQL
+# SDD — Gate 1: PostgreSQL para agents e catálogo bots
 
-- **Estado:** draft — não implementado; `InMemoryBotCatalogStore` + HTTP persist/snapshot já existem.
-- **Referências:** [SDD bots](./bots-module-sdd.md), migrações `src/core/persistence/migrations/`.
+- **Estado:** parcial — migrações em `src/core/database/migrations/` (incl. `0002_agents_bots_scaffold.sql`); **`PgBotCatalogStore`** implementado; identity PG e auth owner **pendentes**.
+- **Referências:** [SDD bots](./bots-module-sdd.md), [SDD agents](./agents-module-sdd.md).
 
-## Objetivo
+## Implementado
 
-Migração `0002_bot_catalog.sql`, `PostgresBotCatalogStore`, teste integração ignorado (`trading_bot`).
+- `PgBotCatalogStore` (`modules/bots/adapters/pg_catalog.rs`) — `save_catalog` / `load_catalog` em `bot_catalog_entries`.
+- `BotCatalogBackend::from_databases` — PostgreSQL quando `AppDatabases` tem pool; senão memória.
+- Teste ignorado `pg_catalog_store_round_trip`.
 
-## Schema proposto
+## Pendente
 
-Tabela `bot_catalog_snapshot`: `id`, `config_hash`, `captured_at`, `payload` (JSONB de `BotDefinition[]`).
+- `PgAgentRegistry` / persistência de identities.
+- Auth owner nas rotas HTTP.
+- Evolução SDD para `approved` + revisão Critic (AGENTS.md).
 
 ## Validação
 
-`cargo test --locked` + `cargo test bot_catalog_store_round_trip -- --ignored` com `DATABASE_URL`.
+```text
+cargo fmt --check && cargo clippy --locked -- -D warnings && cargo test --locked --bin bot
+cargo test pg_catalog_store_round_trip -- --ignored
+cargo test postgres_scaffold_tables_exist_after_migrate -- --ignored
+```
 
 ## Rollback
 
-Remover migração e adapter; HTTP permanece em memória.
+Desabilitar seleção PG em `BotCatalogBackend::from_databases`; HTTP volta a memória apenas.

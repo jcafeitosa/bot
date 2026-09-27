@@ -53,9 +53,8 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD T-13 — Remoção de arquivos legados de configuração e migração](./sdd/legacy-file-cleanup-sdd.md)
 - [SDD T-15 — Política de persistência opcional do monitor](./sdd/monitor-persistence-policy-sdd.md)
 - [SDD T-16 — Mapa de módulos do backend no README](./sdd/backend-module-map-sdd.md)
-- [SDD — Gate 1 catálogo bots](./sdd/bots-catalog-persistence-gate1-sdd.md)
-- [SDD — Módulo bots (estratégia × timeframe)](./sdd/- [SDD — Gate 1 persistência catálogo bots](./sdd/bots-catalog-persistence-gate1-sdd.md) — draft PostgreSQL.
-bots-module-sdd.md) — identidade versionada, catálogo, ranking e HTTP.
+- [SDD — Gate 1 persistência catálogo bots](./sdd/bots-catalog-persistence-gate1-sdd.md) — draft PostgreSQL (`0002_agents_bots_scaffold.sql`).
+- [SDD — Módulo bots (estratégia × timeframe)](./sdd/bots-module-sdd.md) — identidade versionada, catálogo, ranking e HTTP.
 - [SDD — Módulo orders (fail-closed)](./sdd/orders-module-sdd.md) — validação de risco e port de execução bloqueado.
 - [SDD — Módulo agents (fundação IdentityOnly)](./sdd/agents-module-sdd.md) — registro em memória, hierarquia, lifecycle e seam Jev; Gate 1 pendente.
 

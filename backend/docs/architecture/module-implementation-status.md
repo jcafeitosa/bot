@@ -9,8 +9,8 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-27  
-**Escopo:** árvore alvo do objetivo literal (sem PG **wiring** em runtime, sem live trading, sem `technical_analysis`).  
+**Data da verificação:** 2026-09-27 (core::database dual-store)  
+**Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
 **Correção aplicada nesta verificação:** `InMemoryBotCatalogStore` deixou de ser `#[cfg(test)]` para compilar o seam HTTP de catálogo de bots (`presentation/http/state.rs`, `http_bridge/bots.rs`).  
 **Fatia pós-goal:** `0002_agents_bots_scaffold.sql` — schema PostgreSQL para agents/bots; memória continua fonte de verdade no processo até Gate 1 auth + repositórios.
 
@@ -20,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --all-targets -- -D warnings` | PASS | exit 0 |
-| `cargo test --locked` | PASS | 184+ testes; 2 ignorados (PostgreSQL round-trip + scaffold tables) |
+| `cargo test --locked` | PASS | 181 testes; 4 ignorados (PG round-trip, scaffold, pg catalog, Neo4j) (PostgreSQL round-trip + scaffold tables) |
 | `./scripts/verify-backend-gates.sh (fmt, clippy, import-direction, tests)` | PASS | `OK: import direction heuristics passed` |
 
 ## Critério de linha
@@ -36,6 +36,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | config | `core/config/mod.rs` | Infra (`Config`, validação) | `core::config::tests`, `tests/config_cli.rs` |
 | error | `core/error.rs` | Infra (`BotError`) | Usado em todos os módulos + HTTP |
 | logging | `core/logging.rs` | Infra (`init`) | `main.rs` (`core::logging::init`) |
+| database | `core/database/` | Infra (PG 18+, Neo4j, `AppDatabases`) | `core::database::tests`, HTTP bootstrap |
 | persistence | `core/persistence/` | Infra (`Database`, dataset) | `market/models` integration (ignored PG), monitor startup |
 | health | `core/health/mod.rs` | Infra (liveness/readiness) | `core::health::tests` |
 | notifications | `core/notifications/` | Infra + `stub` adapter | `core::notifications::tests` |
@@ -53,7 +54,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | exchanges | `modules/exchanges/` | M+A; `controllers` reexporta orquestração | `exchanges::tests`, adapters tests |
 | monitor | `modules/monitor/` | M+C+views | supervisor/handle/startup tests; `main` monitor path |
 | agents | `modules/agents/` | M+C+A (`adapters/jev`) | `modules/agents/tests.rs`, HTTP agents routes |
-| bots | `modules/bots/` | M+C+A (`InMemoryBotCatalogStore`) | `modules/bots/tests.rs`, HTTP bots routes |
+| bots | `modules/bots/` | M+C+A (`PgBotCatalogStore`, `BotCatalogBackend`) | `modules/bots/tests.rs`, HTTP bots routes |
 | orders | `modules/orders/` | M+C+A (`FailClosedExecutor`) | `modules/orders/tests.rs`, HTTP 503 fail-closed |
 | http_bridge | `modules/http_bridge/` | Facades por domínio | `bridge_tests::persist_catalog_bridge_wires_store_seam` |
 | config_api | `modules/config_api.rs` | Reexport tipado (evita `presentation` → `core::config`) | Rotas HTTP `config` |
@@ -72,11 +73,11 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 |-----------|--------|
 | Sem live trading / ordens reais | OK — `orders::FailClosedExecutor`, `ExecutionDisabled`, REST order paths disabled em exchanges |
 | Sem módulo `technical_analysis` | OK — ausente em `src/` |
-| Agents / bots / orders fail-closed | OK — orders 503 após risco; bots catálogo em memória; agents advisory sem autoridade de ordem |
+| Agents / bots / orders fail-closed | OK — orders 503 após risco; bots catálogo PG ou memória; agents advisory sem autoridade de ordem |
 
 ## Lacunas conhecidas (não bloqueiam o objetivo literal)
 
-- PostgreSQL Gate 1 para catálogo de bots e identidades de agents: **schema scaffold** (`0002_agents_bots_scaffold.sql`); wiring `BotCatalogStore` / `AgentRegistry` + auth owner ainda pendente.
+- `PgBotCatalogStore` wired quando `DATABASE_URL` ok; `PgAgentRegistry` + auth owner ainda pendente.
 - `core/error` e `core/logging` sem testes dedicados: aceitável como infraestrutura com cobertura indireta.
 
 ## Veredito

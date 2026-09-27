@@ -36,7 +36,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Capacidade prevista | Situação no código | Evidência | Próximo gate |
 |---|---|---|---|
 | Identidade de agentes `IdentityOnly` | Módulo `modules/agents` em memória + rotas HTTP v1 (`/api/v1/agents/*`); `MonitorAgentHook` com `shared_agent_registry` quando `BOT_AGENCY` no mesmo processo; sem PostgreSQL nem auth owner. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, persistência e autenticação verificável do owner. |
-| Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` + `http_bridge/bots`; HTTP catalog/ranking/persist/snapshot; `InMemoryBotCatalogStore` em `ApiState`. Sem runtime live, promoção ou PostgreSQL. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência; mapeamento formal com agentes autorizadores; runtime executor. |
+| Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` + `http_bridge/bots`; HTTP catalog/ranking/persist/snapshot; `BotCatalogBackend` em `ApiState` (PG quando `DATABASE_URL` conecta). Sem runtime live, promoção ou PostgreSQL. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência; mapeamento formal com agentes autorizadores; runtime executor. |
 | Seam `orders` (fail-closed) | `modules/orders` + `http_bridge/orders` + `POST /api/v1/orders/submit` (422 risk / 503 execution disabled). | [SDD orders](../sdd/orders-module-sdd.md). | Adapter exchange real, idempotência e reconciliação — somente após gates de segurança. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
@@ -94,7 +94,7 @@ Bots especializados como **artefatos versionados**, com limites de autoridade, m
 
 ### O que existe hoje
 
-`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, `ApiState` com `InMemoryBotCatalogStore`; rotas `GET /catalog`, `POST /ranking`, `POST /catalog/persist`, `GET /catalog/snapshot`. `backtest` delega tipos e ranking ao módulo `bots`. **Ainda não há** PostgreSQL de catálogo, promoção automática nem executor em produção.
+`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, `ApiState` com `InMemoryBotCatalogStore`; rotas `GET /catalog`, `POST /ranking`, `POST /catalog/persist`, `GET /catalog/snapshot`. `backtest` delega tipos e ranking ao módulo `bots`. **Há** `PgBotCatalogStore` + tabela `bot_catalog_entries`; **ainda não há** auth owner, promoção automática nem executor em produção, promoção automática nem executor em produção.
 
 ### Decisão
 
