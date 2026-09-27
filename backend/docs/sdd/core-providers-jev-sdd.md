@@ -48,12 +48,4 @@ Não há documentação de **9router** no repositório; o alvo de deploy é conf
 | `OPENAI_BASE_URL` | Base OpenAI-compatible (`/v1/chat/completions` via cliente). |
 | `NINE_ROUTER_BASE_URL` | Alias documentado para 9router; precede `OPENAI_BASE_URL` na resolução de base. |
 
-## Riscos e rollback
-
-- **Risco:** imports quebrados em consumidores de `modules::jev`. **Mitigação:** reexport estável `core::providers::JevAdvisor`; README lista breaking change.
-- **Rollback:** reverter commit e restaurar `modules/jev` (sem alteração de schema ou persistência).
-
-## Validação
-
-- `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test --locked`, `./scripts/check-import-direction.sh`.
-- Testes unitários: validação de endpoint HTTPS; POST advisory via httpmock.
+NVIDIA NIM (provider adicional, não usado pelo Jev default): ver [core-providers-nim-sdd.md](./core-providers-nim-sdd.md).
