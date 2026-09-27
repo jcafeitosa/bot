@@ -11,20 +11,20 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (agents vs bots). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. O módulo `modules/agents` existe como **fundação IdentityOnly em memória**; **`modules/bots` não existe** (distinto de `agents` e de `backtest::BotId`); Gate 1 (auth do owner, bootstrap, PostgreSQL) permanece pendente — ver [SDD agents](../sdd/agents-module-sdd.md).
+> Revisão: 2026-09-26 (bots + orders foundation). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** permanece **IdentityOnly em memória** (Gate 1 auth/PostgreSQL pendente). **`modules/bots`** existe como fundação strategy×timeframe (catálogo, ranking, HTTP); runtime live e persistência continuam fora. **`modules/orders`** existe como seam fail-closed (`submit_order` + `FailClosedExecutor`); execução real permanece bloqueada.
 
 ## Resumo
 
 O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco, TUI, integrações públicas Binance, persistência básica opcional, logging e Jev consultivo. Os módulos abaixo ainda não existem como capacidade completa:
 
 1. Identidade **persistente** e administração de agentes (registro em memória existe; persistência e API administrativa não).
-2. **Módulo `bots`** — executores versionados de trading, avaliação e promoção (projeto futuro; **não** é `modules/agents` nem o tipo `BotId` do backtest).
+2. **Módulo `bots` completo** — runtime live, promoção automática e PostgreSQL de catálogo (fundação em `src/modules/bots/` já cobre identidade, ranking e HTTP; ver [SDD bots](../sdd/bots-module-sdd.md)).
 3. Autenticação do owner, autorização por agência e bootstrap seguro.
 4. Runtime de execução de agentes, worker, scheduler e recuperação.
 5. Gateway de ferramentas, permissões, aprovações e sandbox.
 6. Memória de conhecimento, memória entre sessões e grafo.
 7. Canais de conversa, voz, aplicações e interface externa.
-8. Execução financeira, saldos privados, ordens e ambiente de produção.
+8. Execução financeira live, saldos privados e ambiente de produção (seam `modules/orders` valida risco e falha fechado; exchange e HTTP de ordens ausentes).
 9. Observabilidade operacional completa.
 10. Estado de persistência e recuperação do monitor conforme C17.
 11. Round-trip PostgreSQL operacional conforme V18.
@@ -36,14 +36,15 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Capacidade prevista | Situação no código | Evidência | Próximo gate |
 |---|---|---|---|
 | Identidade de agentes `IdentityOnly` | Módulo `modules/agents` em memória (registro, hierarquia, lifecycle, advisory Jev); sem schema PostgreSQL nem API HTTP admin. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, contrato HTTP admin e autenticação verificável do owner. |
-| Módulo `bots` (executores versionados) | **Não existe** `src/modules/bots/`. `backtest::BotId` é só chave de simulação (`strategy@version:timeframe:symbol`); `BotSignal.bot_id` em contratos é opcional para transporte de sinal, não cadastro de bot. | [Pesquisa agents](../research/agents-capability-research.md) — “Bots executores”; [SDD agents — Relação com bots](../sdd/agents-module-sdd.md). | SDD dedicado, gates após identidade/auth; não fundir com `AgentRegistry` nem renomear `BotId` sem migração explícita. |
+| Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` (MVC, `full_ranking`, catálogo por config, HTTP catalog/ranking); `backtest` reexporta tipos. Sem runtime live, promoção ou `BotCatalogStore` PostgreSQL. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência; mapeamento formal com agentes autorizadores; runtime executor. |
+| Seam `orders` (fail-closed) | `modules/orders`: `submit_order` → `risk::validate_intent` → `ExecutionDisabled`. | [SDD orders](../sdd/orders-module-sdd.md). | Adapter exchange real, idempotência, HTTP e reconciliação — somente após gates de segurança. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
 | Worker e scheduler | Não existe worker durável, agenda, heartbeat, lease ou retry de execução. | A pesquisa classifica rotinas e operação contínua como fase posterior. | SDD de execução durável, fila/outbox, recuperação e SLO. |
 | Gateway de ferramentas | Não existe MCP/tool gateway, política por ação ou aprovação. | Pesquisa: ferramentas, sandbox e aprovações estão excluídos da primeira etapa. | Modelo de permissões, política fail-closed e auditoria. |
 | Memória e conhecimento | Não existe memória conversacional, memória semântica ou grafo de conhecimento. | Pesquisa separa histórico administrativo de memória de agente e adia essa fase. | Proveniência, revisão, compartilhamento, retenção e aposentadoria. |
 | Canais externos | Não existem canais de chat, voz, mobile, navegador ou computador persistente. | Pesquisa marca canais e dispositivos fora da etapa atual. | Contrato de interação, identidade por canal e controles de privacidade. |
-| Execução financeira | Não existe ordem, saldo privado, produção ou execução real. | `exchanges/rest` autoriza somente `PublicSpotBackfill` em `dev`; `authorize_rest_use` falha para usos privados. | Projeto independente de execução, risco, custódia, aprovação e segurança. |
+| Execução financeira live | Domínio de intenção em `modules/orders` (fail-closed); sem saldo privado, produção ou REST de ordens. | `exchanges/rest` autoriza somente `PublicSpotBackfill` em `dev`; `authorize_rest_use` falha para usos privados. | Adapter verificado, idempotência, reconciliação e revisão de segurança antes de qualquer port real. |
 | Observabilidade | Há logging estruturado, mas não há catálogo completo de métricas, SLI/SLO, alertas ou runbook de incidentes. | Roadmap lista WS/REST, persistência, idade de candle, Jev e credenciais como pendências. | Definir métricas, cardinalidade, alertas, dashboards e runbooks. |
 | Persistência de runtime | A camada `persistence` grava datasets, mas o estado de recuperação do monitor ainda não está completo. | SDD T-15 marca C17/G4 pendentes: `DEGRADED`, `HEALTHY`, `GAP`, suspeita de commit e recuperação. | Implementar C17 após C14/C15/C16 e revisar G4. |
 | Integração PostgreSQL | Existe conexão, migração e persistência básica; a integração operacional completa não foi executada. | V18 está bloqueada por banco descartável; o teste PostgreSQL é ignorado por padrão. | Executar migração, commit, rollback, idempotência e limpeza em `trading_bot` isolado. |
@@ -78,26 +79,26 @@ A primeira etapa descrita na pesquisa é `IdentityOnly`, com:
 
 ### Distinção explícita: agents, bots (futuro), backtest, monitor
 
-| | `modules/agents` | `modules/bots` (futuro) | `backtest::BotId` | `modules/monitor` |
+| | `modules/agents` | `modules/bots` | `backtest::BotId` | `modules/monitor` |
 |---|---|---|---|---|
-| Status | Implementado (memória) | Não implementado | Implementado (simulação) | Implementado (mercado live/paper) |
-| Papel | Governança e identidade `IdentityOnly` | Executor versionado e ciclo de vida de bot de trading | ID composto para ranking/backtest | Supervisor operacional de candles/sinais |
+| Status | Implementado (memória) | Fundação (memória + HTTP catalog/ranking) | Reexport de `bots::BotId`; simulação em `backtest` | Implementado (mercado live/paper) |
+| Papel | Governança e identidade `IdentityOnly` | Executor strategy×timeframe versionado (sem runtime live) | Chave canônica compartilhada com `bots` | Supervisor operacional de candles/sinais |
 
 Cadastrar um **agente** não cria um **bot** executor. Rodar backtest com um **BotId** não registra agente nem bot futuro. O monitor não substitui nenhum dos dois cadastros.
 
-## 1b. Módulo `bots` (futuro — não confundir com agents)
+## 1b. Módulo `bots` (fundação — não confundir com agents)
 
-### O que está previsto
+### O que está previsto (completo)
 
-Bots especializados como **artefatos versionados**, com limites de autoridade, métricas, avaliação e ciclo de promoção — separados da hierarquia administrativa de agentes e separados do identificador de simulação `BotId` usado hoje no backtest.
+Bots especializados como **artefatos versionados**, com limites de autoridade, métricas, avaliação, ciclo de promoção e runtime live — separados da hierarquia administrativa de agentes.
 
-### O que existe
+### O que existe hoje
 
-Apenas o **nome** “bot” em contextos legados de simulação: `BotId`, `BotDefinition`, `BotMetrics` em `modules/backtest`, e campo opcional `BotSignal.bot_id` em `application_contracts`. Nenhum registro durável de executor, versionamento de promoção ou runtime de bot.
+`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, rotas HTTP `GET /api/v1/bots/catalog` e `POST /api/v1/bots/ranking`. `backtest` delega tipos e ranking ao módulo `bots`. **Ainda não há** PostgreSQL de catálogo, promoção automática nem executor em produção.
 
 ### Decisão
 
-Não implementar `modules/bots` como alias de `modules/agents`. Não tratar `backtest::BotId` como identidade de produto. Quando o SDD de `bots` existir, definir mapeamento explícito (se houver) entre executor versionado, estratégia simulada e agentes autorizadores.
+Não tratar `modules/bots` como alias de `modules/agents`. `BotId` é domínio de produto para executor versionado (chave `strategy@version:timeframe:symbol`), não `AgentId`. Definir mapeamento explícito com agentes autorizadores antes de runtime live.
 
 ## 2. Controle, autenticação e autorização
 

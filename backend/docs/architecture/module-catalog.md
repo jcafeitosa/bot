@@ -11,7 +11,7 @@ tags:
 
 # Catálogo completo de módulos do backend
 
-> Revisão: 2026-09-27 (inclui `modules/agents`). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/persistence/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
+> Revisão: 2026-09-26 (inclui `modules/agents`, `modules/bots`, `modules/orders`). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/persistence/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
 
 ## 1. Mapa de execução
 
@@ -83,6 +83,29 @@ Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-mo
 **Limites:** sem PostgreSQL de identidades, sem autenticação do owner no transporte, sem runtime durável, scheduler, gateway MCP ou canais externos.
 
 **Agents vs bots vs backtest:** `bots::BotId` e `backtest::BotId` (reexport) compõem a mesma chave canônica `strategy@version:timeframe:symbol`; isso não é `AgentId`. O monitor opera o loop de mercado e pode, no futuro, usar `MonitorAgentHook`; hoje permanece noop. Tabela completa: [SDD bots](../sdd/bots-module-sdd.md), [SDD agents — Relação com bots](../sdd/agents-module-sdd.md).
+
+
+## 3b. Módulo `bots` (`src/modules/bots/`)
+
+Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e ranking migrados do núcleo de backtest; simulação permanece em `backtest`.
+
+| Submódulo | Contrato e comportamento |
+|---|---|
+| `models` | `BotIdentity`, `BotId`, `BotDefinition`, `BotMetrics`, erros e tipos de ranking. |
+| `controllers` | `build_catalog_from_config`, `full_ranking` / `rank_bots`. |
+| `adapters` | `BotCatalogStore` trait; `NoopBotCatalogStore` até Gate 1 PostgreSQL. |
+
+**HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/ranking` via `presentation/http/routes/bots.rs`.
+
+## 3c. Módulo `orders` (`src/modules/orders/`)
+
+Seam fail-closed ([SDD orders](../sdd/orders-module-sdd.md)).
+
+| Submódulo | Contrato e comportamento |
+|---|---|
+| `models` | `SubmitOrderRequest`, `OrderSide`, `OrdersError`. |
+| `controllers` | `submit_order` — valida request e `risk::validate_intent`. |
+| `adapters` | `OrderExecutionPort`, `FailClosedExecutor` (`ExecutionDisabled`). |
 
 ## 4. Módulos de exchanges (`src/modules/exchanges/`)
 

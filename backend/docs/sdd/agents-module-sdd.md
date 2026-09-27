@@ -22,17 +22,17 @@ O produto bot define uma hierarquia humana e de agentes (owner → CEO → Level
 
 ## Relação com bots, backtest e monitor
 
-No domínio do produto bot, **agente** e **bot** são conceitos distintos. No código Rust atual, só existe `modules/agents`; **`modules/bots` não existe** (sem pasta, sem `pub mod bots`). Não confundir com `BotId` em `modules/backtest`, que é apenas chave de simulação.
+No domínio do produto bot, **agente** e **bot** são conceitos distintos. No código Rust atual existem `modules/agents` (governança) e **`modules/bots`** (executores strategy×timeframe — fundação em memória + HTTP; ver [SDD bots](./bots-module-sdd.md)). `backtest::BotId` reexporta a mesma chave canônica que `bots::BotId`; não é `AgentId`.
 
-| Dimensão | `modules/agents` | `modules/bots` (futuro) | `backtest::BotId` | `modules/monitor` |
+| Dimensão | `modules/agents` | `modules/bots` | `backtest::BotId` | `modules/monitor` |
 |----------|------------------|-------------------------|-------------------|-------------------|
-| **Existe hoje?** | Sim — fundação `IdentityOnly` em memória | **Não** — planejado em SDD/gates próprios | Sim — tipo em `backtest/models.rs` | Sim — supervisor de mercado |
+| **Existe hoje?** | Sim — fundação `IdentityOnly` em memória | Sim — fundação (sem runtime live/PostgreSQL) | Sim — reexport + simulação em `backtest` | Sim — supervisor de mercado |
 | **Propósito** | Identidade e governança administrativa (owner → CEO → … → worker) | Executores versionados de trading, ciclo de promoção/avaliação, artefatos | Identificar uma **instância simulada** (estratégia@versão:timeframe:símbolo) no ranking/backtest | Loop live/paper: candles, sinais, risco, TUI, persistência opcional |
 | **Executa ordens / worker?** | Não — registrar agente não inicia task nem LLM | Será o lugar previsto para runtime de executor (após gates) | Não — só simulação offline | Não envia ordens reais hoje; não é cadastro de identidade |
 | **Relação com hierarquia do produto** | Fonte de verdade da hierarquia administrativa | Subordinado ao desenho de domínio; **não** substitui `AgentId` | Nenhuma — nome “Bot” é legado de simulação | Pode integrar `MonitorAgentHook` no futuro; hoje noop |
 | **Persistência** | Eventos em memória; PostgreSQL após Gate 1 | A definir (versionamento, métricas, promoção) | Métricas/resultados de backtest em memória/JSON da CLI | Estado de sessão, gaps, datasets |
 
-**Mensagem para implementadores:** `AgentRegistry::register` cria uma **identidade administrativa**, não um executor de mercado. `BotId::new(...)` compõe uma **chave de experimento** no backtest. O módulo **`bots`** futuro será onde viverão bots versionados e avaliados ([pesquisa de capacidades](../research/agents-capability-research.md) — linha “Bots executores de tarefa/mercado”); até lá, não criar `modules/bots` por analogia com `agents` nem renomear `BotId` para “agente”.
+**Mensagem para implementadores:** `AgentRegistry::register` cria uma **identidade administrativa**, não um executor de mercado. `BotId::new(...)` compõe uma **chave de experimento** no backtest. O módulo **`bots`** concentra bots versionados e ranking; runtime live e promoção seguem em gates posteriores ([pesquisa de capacidades](../research/agents-capability-research.md) — linha “Bots executores de tarefa/mercado”); até lá, não criar `modules/bots` por analogia com `agents` nem renomear `BotId` para “agente”.
 
 ### Não objetivos
 
@@ -40,7 +40,7 @@ No domínio do produto bot, **agente** e **bot** são conceitos distintos. No c�
 - Schema/migração PostgreSQL para identidades (planejado após Gate 1).
 - Runtime durável, scheduler, gateway MCP, canais externos, execução financeira.
 - Alterar comportamento do monitor, risco ou estratégia nesta fatia (apenas documentar hook futuro).
-- Implementar ou antecipar `modules/bots` nesta fatia (executores versionados = projeto posterior).
+- Expandir `modules/bots` com runtime live ou PostgreSQL nesta fatia (gates próprios).
 
 ## 2. Convenção MVC
 

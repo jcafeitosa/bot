@@ -71,5 +71,5 @@ modules/bots/
 ## 6. Pendências
 
 - Gate 1: implementar `BotCatalogStore` com PostgreSQL.
-- Endpoint HTTP dedicado `GET/POST …/bots/ranking` (hoje ranking só via payload do backtest SMA).
+- Endpoints HTTP `GET /api/v1/bots/catalog` e `POST /api/v1/bots/ranking` implementados; evoluir contrato OpenAPI conforme novos campos.
 - Mapeamento formal executor versionado ↔ agentes autorizadores.
