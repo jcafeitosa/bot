@@ -16,10 +16,10 @@ use ratatui::{
 };
 use tokio::sync::{mpsc, watch};
 
-use crate::modules::monitor::views::terminal_dashboard::{
-    AppEvent, Dashboard, MonitorSignalLabel, MonitorState, UiCommand,
+use crate::modules::monitor::{
+    AppEvent, Dashboard, MonitorCommand, MonitorHandle, MonitorSendError, MonitorSignalLabel,
+    MonitorState, UiCommand,
 };
-use crate::modules::monitor::{MonitorCommand, MonitorHandle, MonitorSendError};
 
 fn space_command(state: MonitorState) -> UiCommand {
     match state {
@@ -89,8 +89,14 @@ pub async fn run(
 }
 
 fn send_monitor_command(handle: &MonitorHandle, command: MonitorCommand) {
-    if let Err(MonitorSendError::Full) = handle.send(command) {
-        tracing::warn!(target: "ui", "monitor command channel full");
+    match handle.send(command) {
+        Ok(()) => {}
+        Err(MonitorSendError::Full) => {
+            tracing::warn!(target: "ui", "monitor command channel full");
+        }
+        Err(MonitorSendError::Closed) => {
+            tracing::warn!(target: "ui", "monitor command channel closed");
+        }
     }
 }
 

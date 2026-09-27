@@ -160,6 +160,36 @@ impl HistoricalDataset {
         Self::from_1m(symbol, source, market_candles)
     }
 
+    pub fn persist_input(&self) -> crate::core::persistence::MarketDatasetPersistInput {
+        use crate::core::persistence::{
+            CandleRow, MarketDatasetManifestRow, MarketDatasetPersistInput,
+        };
+        MarketDatasetPersistInput {
+            manifest: MarketDatasetManifestRow {
+                dataset_id: self.manifest.dataset_id.clone(),
+                symbol: self.manifest.symbol.clone(),
+                base_timeframe: self.manifest.base_timeframe.clone(),
+                start_ms: self.manifest.start_ms,
+                end_ms: self.manifest.end_ms,
+                candle_count: self.manifest.candle_count,
+                gap_count: self.manifest.gap_count,
+                source: self.manifest.source.clone(),
+            },
+            candles: self
+                .candles
+                .iter()
+                .map(|c| CandleRow {
+                    timestamp_ms: c.timestamp_ms,
+                    open: c.open,
+                    high: c.high,
+                    low: c.low,
+                    close: c.close,
+                    volume: c.volume,
+                })
+                .collect(),
+        }
+    }
+
     pub fn fingerprint(&self) -> String {
         // Stable FNV-1a fingerprint of normalized manifest and IEEE-754 data; not cryptographic.
         let mut hash: u64 = 0xcbf29ce484222325;
@@ -245,7 +275,7 @@ pub enum MarketError {
     InvalidSymbol,
     #[error("missing 1m candle at timestamp {0}")]
     Gap(i64),
-    #[error("partial or misaligned {0}m aggregate bucket")]
+    #[error("partial or misaligned aggregate bucket starting at timestamp {0}")]
     IncompleteBucket(i64),
 }
 
@@ -308,6 +338,19 @@ mod tests {
     }
 
     #[test]
+    fn persist_input_matches_candle_count() {
+        let data = HistoricalDataset::from_1m(
+            "BTC/USDT",
+            "fixture",
+            vec![candle(0, 10.), candle(60_000, 11.)],
+        )
+        .unwrap();
+        let input = data.persist_input();
+        assert_eq!(input.candles.len(), data.manifest.candle_count);
+        assert_eq!(input.manifest.dataset_id, data.manifest.dataset_id);
+    }
+
+    #[test]
     fn rejects_duplicate_timestamp() {
         assert_eq!(
             HistoricalDataset::from_1m("BTC/USDT", "fixture", vec![candle(0, 10.), candle(0, 11.)])
@@ -321,6 +364,7 @@ mod tests {
 mod integration_tests {
     use super::*;
     use crate::core::persistence::Database;
+    use crate::modules::market::persist_historical_dataset;
 
     fn fixture_dataset() -> HistoricalDataset {
         let candles = (0..5)
@@ -350,16 +394,16 @@ mod integration_tests {
         let dataset_id = dataset.manifest.dataset_id.clone();
         let expected = dataset.manifest.candle_count as i64;
 
-        db.persist_dataset(&dataset)
+        persist_historical_dataset(&db, &dataset)
             .await
-            .expect("persist_dataset should succeed");
+            .expect("persist_historical_dataset should succeed");
         let count = db
             .candle_count_for_dataset(&dataset_id)
             .await
             .expect("count query");
         assert_eq!(count, expected);
 
-        db.persist_dataset(&dataset)
+        persist_historical_dataset(&db, &dataset)
             .await
             .expect("second persist should be idempotent");
         let count_again = db

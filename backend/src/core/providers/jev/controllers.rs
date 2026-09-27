@@ -2,16 +2,16 @@ use serde_json::{json, Value};
 
 use crate::{
     core::config::JevConfig,
-    core::error::{BotError, BotResult},
-    modules::jev::adapters::typesafe::{build_http_client, post_review},
-    modules::strategy::StrategySnapshot,
+    core::error::BotResult,
+    core::providers::jev::adapters::typesafe::post_review,
+    core::providers::jev::models::JevReviewInput,
+    core::providers::openai_compatible::{self, OpenAiCompatibleClient},
 };
 
 #[derive(Debug, Clone)]
 pub struct JevAdvisor {
-    client: reqwest::Client,
+    client: OpenAiCompatibleClient,
     endpoint: String,
-    api_key: String,
     config: JevConfig,
 }
 
@@ -20,32 +20,23 @@ impl JevAdvisor {
         if !config.enabled {
             return Ok(None);
         }
-        let api_key = std::env::var("TYPESAFE_API_KEY").map_err(|_| {
-            BotError::Configuration(
-                "jev.enabled=true requires TYPESAFE_API_KEY in the process environment".into(),
-            )
-        })?;
+        let api_key = openai_compatible::resolve_bearer_api_key()?;
         let endpoint = std::env::var("TYPESAFE_ENDPOINT")
             .unwrap_or_else(|_| "https://api.typesafe.ai/v1/systemone".into());
-        let parsed = reqwest::Url::parse(&endpoint)
-            .map_err(|_| BotError::Configuration("TYPESAFE_ENDPOINT must be a valid URL".into()))?;
-        let local_http = parsed.scheme() == "http"
-            && matches!(parsed.host_str(), Some("localhost" | "127.0.0.1" | "::1"));
-        if parsed.scheme() != "https" && !local_http {
-            return Err(BotError::Configuration(
-                "TypeSafe endpoint must use HTTPS (HTTP permitted only for localhost)".into(),
-            ));
-        }
-        let client = build_http_client(config.timeout_seconds)?;
+        openai_compatible::validate_https_or_localhost(&endpoint)?;
+        let client = OpenAiCompatibleClient::from_base_url(
+            endpoint.clone(),
+            api_key,
+            config.timeout_seconds,
+        )?;
         Ok(Some(Self {
             client,
             endpoint,
-            api_key,
             config,
         }))
     }
 
-    pub async fn review(&self, snapshot: &StrategySnapshot) -> BotResult<Vec<String>> {
+    pub async fn review(&self, input: &JevReviewInput) -> BotResult<Vec<String>> {
         let mut questions = serde_json::Map::new();
         if self.config.market_regime {
             questions.insert("market_regime".into(), json!({"type":"choice","instructions":"Classify the market regime from the provided recent candle and indicators. This is advisory only.","criteria":{"trending":"Directional movement is evident","ranging":"Price is oscillating without direction","volatile":"Large or erratic price movement","unclear":"Insufficient evidence"}}));
@@ -64,15 +55,15 @@ impl JevAdvisor {
         let state = json!({
             "symbol": "configured market",
             "timeframe": "configured interval",
-            "candle_timestamp_ms": snapshot.candle_timestamp_ms,
-            "close": snapshot.close,
-            "fast_sma": snapshot.fast_sma,
-            "slow_sma": snapshot.slow_sma,
-            "signal": format!("{:?}", snapshot.signal),
+            "candle_timestamp_ms": input.candle_timestamp_ms,
+            "close": input.close,
+            "fast_sma": input.fast_sma,
+            "slow_sma": input.slow_sma,
+            "signal": input.signal_label,
             "notice": "No API credentials, balances, account identifiers, or private order data are included."
         });
         let body = json!({"state":state,"model":"jev-latest","questions":Value::Object(questions)});
-        let parsed = post_review(&self.client, &self.endpoint, &self.api_key, body).await?;
+        let parsed = post_review(&self.client, &self.endpoint, body).await?;
         if let Some(model) = &parsed.model {
             tracing::debug!(target: "jev", model = %model, "TypeSafe response model");
         }

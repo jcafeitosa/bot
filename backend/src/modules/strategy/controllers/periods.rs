@@ -1,5 +1,6 @@
 use crate::core::config::OperationMode;
 
+/// Public MVC seam; composition root may call via `modules::strategy::periods_for_mode`.
 #[allow(dead_code)]
 pub fn periods_for_mode(mode: OperationMode) -> (usize, usize) {
     mode.sma_period_preset()

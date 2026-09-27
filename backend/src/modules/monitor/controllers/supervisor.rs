@@ -14,9 +14,12 @@ use crate::modules::monitor::MonitorHandle;
 use crate::{
     core::config::Config,
     core::error::{BotError, BotResult},
+    core::notifications::{LogNotifier, Notification, Notifier, Severity},
     core::persistence::Database,
-    modules::application_contracts::BotSignal,
+    core::providers::{JevAdvisor, JevReviewInput},
+    modules::application_contracts::{signal_label, BotSignal},
     modules::{
+        agents::{MonitorAgentHook, NoopMonitorAgentHook},
         exchanges::{
             binance::BinanceMarketData,
             bootstrap::{load_registry, registered_market_types, spot_account_for_symbol},
@@ -28,8 +31,10 @@ use crate::{
             router::{rest_use_for_need, route_market_need, MarketNeed},
             ExchangeAccountId, MarketDataSource,
         },
-        jev::JevAdvisor,
-        market::{ws_matches_configured_timeframe, Candle, HistoricalDataset, HybridCandleFeed},
+        market::{
+            persist_historical_dataset, ws_matches_configured_timeframe, Candle, HistoricalDataset,
+            HybridCandleFeed,
+        },
         monitor::controllers::persistence_health::{PersistenceHealth, PersistenceState},
         portfolio::Asset,
         risk::{gate_signal, profile_limits, ExecutionContext, RiskLimits},
@@ -43,8 +48,7 @@ async fn persist_polled_1m_window(
     candles: Vec<mantis_ta::types::Candle>,
 ) -> Result<(), String> {
     match HistoricalDataset::from_mantis_1m(symbol, "monitor-rest", candles) {
-        Ok(dataset) => db
-            .persist_dataset(&dataset)
+        Ok(dataset) => persist_historical_dataset(db, &dataset)
             .await
             .map_err(|_| "database write failed".into()),
         Err(_) => Err("validation".into()),
@@ -53,8 +57,7 @@ async fn persist_polled_1m_window(
 
 async fn persist_ws_1m_candle(db: &Database, symbol: &str, candle: Candle) -> Result<(), String> {
     match HistoricalDataset::from_1m(symbol, "monitor-ws", vec![candle]) {
-        Ok(dataset) => db
-            .persist_dataset(&dataset)
+        Ok(dataset) => persist_historical_dataset(db, &dataset)
             .await
             .map_err(|_| "database write failed".into()),
         Err(_) => Err("validation".into()),
@@ -63,7 +66,14 @@ async fn persist_ws_1m_candle(db: &Database, symbol: &str, candle: Candle) -> Re
 
 async fn jev_note(advisor: &Option<JevAdvisor>, snapshot: &StrategySnapshot) -> Option<String> {
     if let Some(jev) = advisor {
-        match jev.review(snapshot).await {
+        let input = JevReviewInput {
+            signal_label: signal_label(snapshot.signal),
+            close: snapshot.close,
+            fast_sma: snapshot.fast_sma,
+            slow_sma: snapshot.slow_sma,
+            candle_timestamp_ms: snapshot.candle_timestamp_ms,
+        };
+        match jev.review(&input).await {
             Ok(reviews) => Some(reviews.join(" | ")),
             Err(e) => {
                 warn!(target: "jev", error=%e, "Jev unavailable; advisory omitted; strategy execution remains independently gated");
@@ -203,6 +213,7 @@ struct MarketLoop {
     account: ExchangeAccountId,
     source: Arc<dyn MarketDataSource>,
     review: Review,
+    agent_hook: NoopMonitorAgentHook,
     persistence_enabled: bool,
     persist_rest: PersistRest,
     persist_ws: PersistWs,
@@ -296,9 +307,36 @@ fn publish_health(
     events: &mpsc::Sender<AppEvent>,
 ) {
     if dashboard.persistence_status != health.label() {
-        info!(target: "persistence", symbol=%dashboard.header.symbol, previous=%dashboard.persistence_status, current=health.label(), suspect_from=?health.suspect_from(), "Archive session state changed");
+        let previous = dashboard.persistence_status.clone();
+        info!(target: "persistence", symbol=%dashboard.header.symbol, previous=%previous, current=health.label(), suspect_from=?health.suspect_from(), "Archive session state changed");
+        notify_archive_transition(&previous, health);
         dashboard.persistence_status = health.label().into();
         publish_dashboard(dashboard, dashboard_tx, events);
+    }
+}
+
+fn notify_archive_transition(previous: &str, health: &PersistenceHealth) {
+    let notifier = LogNotifier;
+    match health.state() {
+        PersistenceState::Gap => notifier.notify(&Notification {
+            severity: Severity::Critical,
+            target: "notifications::persistence",
+            message: format!(
+                "Market archive entered GAP (previous status: {previous}; current: {})",
+                health.label()
+            ),
+        }),
+        PersistenceState::Degraded if previous.starts_with("HEALTHY") => {
+            notifier.notify(&Notification {
+                severity: Severity::Warning,
+                target: "notifications::persistence",
+                message: format!(
+                    "Market archive degraded from HEALTHY (current: {})",
+                    health.label()
+                ),
+            })
+        }
+        _ => {}
     }
 }
 
@@ -592,6 +630,7 @@ async fn run_market_loop(mut inputs: MarketLoop) {
                 if candidate.snapshot.signal != Signal::Warmup {
                     feed.mark_evaluated(candidate.timestamp);
                 }
+                inputs.agent_hook.on_evaluation_cycle(&[]);
                 let settings = EvaluationSettings {
                     config: &inputs.config,
                     limits: inputs.limits,
@@ -783,6 +822,7 @@ pub async fn run(config: Config, database: Option<Database>) -> BotResult<()> {
             let advisor = advisor.clone();
             Box::pin(async move { jev_note(&advisor, &snapshot).await })
         }),
+        agent_hook: NoopMonitorAgentHook,
         persistence_enabled,
         persist_rest,
         persist_ws,
@@ -927,6 +967,7 @@ mod tests {
             account,
             source,
             review,
+            agent_hook: NoopMonitorAgentHook,
             persistence_enabled,
             persist_rest,
             persist_ws,

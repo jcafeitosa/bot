@@ -9,7 +9,7 @@ use crate::{
     core::persistence::{Database, PersistenceError},
     modules::backtest::{rank_bots, rank_strategies, RunId, StrategyDefinition, StrategyVersion},
     modules::backtest::{run_sma_crossover, BacktestConfig, ExitPolicy},
-    modules::market::{Candle, HistoricalDataset, Timeframe},
+    modules::market::{persist_historical_dataset, Candle, HistoricalDataset, Timeframe},
 };
 
 #[derive(Debug, Parser)]
@@ -21,7 +21,7 @@ pub struct BacktestCli {
     pub persist: bool,
 }
 
-pub async fn run(cli: &BacktestCli) -> BotResult<()> {
+pub async fn execute_backtest(cli: &BacktestCli) -> BotResult<serde_json::Value> {
     let monitor = MonitorCli {
         config: cli.config.clone(),
         environment: None,
@@ -78,22 +78,24 @@ pub async fn run(cli: &BacktestCli) -> BotResult<()> {
         .iter()
         .position(|row| row.run_id == report.metrics.run_id)
         .map(|idx| idx + 1);
-    println!(
-        "{}",
-        json!({
-            "bot_id": report.metrics.bot_id.to_string(),
-            "bot_id_key": report.metrics.bot_id.as_str(),
-            "net_pnl_quote": report.metrics.net_pnl_quote,
-            "net_return_pct": report.metrics.net_return_pct,
-            "max_drawdown_pct": report.metrics.max_drawdown_pct,
-            "trades": report.metrics.trades,
-            "wins": report.wins,
-            "losses": report.losses,
-            "rank": rank_position,
-            "timeframe_minutes": timeframe.minutes(),
-            "dataset_id": dataset.manifest.dataset_id,
-        })
-    );
+    Ok(json!({
+        "bot_id": report.metrics.bot_id.to_string(),
+        "bot_id_key": report.metrics.bot_id.as_str(),
+        "net_pnl_quote": report.metrics.net_pnl_quote,
+        "net_return_pct": report.metrics.net_return_pct,
+        "max_drawdown_pct": report.metrics.max_drawdown_pct,
+        "trades": report.metrics.trades,
+        "wins": report.wins,
+        "losses": report.losses,
+        "rank": rank_position,
+        "timeframe_minutes": timeframe.minutes(),
+        "dataset_id": dataset.manifest.dataset_id,
+    }))
+}
+
+pub async fn run(cli: &BacktestCli) -> BotResult<()> {
+    let summary = execute_backtest(cli).await?;
+    println!("{summary}");
     Ok(())
 }
 
@@ -116,7 +118,7 @@ async fn persist_dataset_if_configured(dataset: &HistoricalDataset) -> BotResult
     db.migrate().await.map_err(|e: PersistenceError| {
         crate::core::error::BotError::Configuration(e.to_string())
     })?;
-    db.persist_dataset(&validated)
+    persist_historical_dataset(&db, &validated)
         .await
         .map_err(|e: PersistenceError| {
             crate::core::error::BotError::Configuration(e.to_string())
@@ -213,8 +215,8 @@ fn synthetic_dataset(
 mod tests {
     use super::*;
     use crate::{
-        core::config::OperationMode,
-        modules::strategy::{evaluate, Signal},
+        core::config::OperationMode, modules::application_contracts::Signal,
+        modules::strategy::evaluate,
     };
 
     #[test]

@@ -2,6 +2,7 @@ use std::{env, fs, path::PathBuf};
 
 use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::core::error::{BotError, BotResult};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ValueEnum)]
@@ -24,7 +25,7 @@ impl std::fmt::Display for Environment {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum OperationMode {
     Hft,
@@ -77,7 +78,7 @@ impl std::fmt::Display for OperationMode {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ValueEnum, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum RiskProfile {
     Conservative,
@@ -148,6 +149,8 @@ pub struct Config {
     pub risk: RiskConfig,
     pub production: ProductionConfig,
     pub jev: JevConfig,
+    #[serde(default)]
+    pub providers: ProviderConfig,
     pub logging: LoggingConfig,
 }
 
@@ -181,6 +184,13 @@ pub struct JevConfig {
     pub signal_review: bool,
     pub ops_triage: bool,
     pub timeout_seconds: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ProviderConfig {
+    /// Optional OpenAI-compatible API root (env `NINE_ROUTER_BASE_URL` / `OPENAI_BASE_URL` override this).
+    #[serde(default)]
+    pub openai_base_url: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoggingConfig {
@@ -311,6 +321,9 @@ impl Config {
                 "testnet order mode is intentionally blocked in v1; use observe or paper".into(),
             ));
         }
+        if let Some(base) = &self.providers.openai_base_url {
+            crate::core::providers::openai_compatible::validate_https_or_localhost(base)?;
+        }
         self.validate_operation_profile()?;
         Ok(())
     }
@@ -432,6 +445,17 @@ mod tests {
             assert!(wrong_timeframe.validate().is_err());
         }
     }
+    #[test]
+    fn rejects_insecure_provider_base_url_in_toml() {
+        let c = Config {
+            providers: ProviderConfig {
+                openai_base_url: Some("http://example.com/v1".into()),
+            },
+            ..Config::default()
+        };
+        assert!(c.validate().unwrap_err().to_string().contains("HTTPS"));
+    }
+
     #[test]
     fn hft_is_not_available_on_one_minute_rest_feed() {
         assert!(OperationMode::Hft.is_hft());

@@ -10,10 +10,15 @@ use clap::{Parser, Subcommand};
 enum BotCommand {
     /// Run SMA crossover backtest on synthetic 1m candles
     Backtest(modules::backtest::cli::BacktestCli),
+    /// Start HTTP API with OpenAPI spec and Scalar UI at /docs
+    Serve(presentation::http::ServeCli),
 }
 
 #[derive(Debug, Parser)]
-#[command(name = "bot", about = "Rust trading bot — terminal-only backend")]
+#[command(
+    name = "bot",
+    about = "Rust trading bot — terminal UI and optional HTTP API"
+)]
 struct TopCli {
     #[command(flatten)]
     monitor: crate::core::config::MonitorCli,
@@ -26,6 +31,11 @@ async fn main() -> Result<()> {
     let cli = TopCli::parse();
     match cli.command {
         Some(BotCommand::Backtest(args)) => modules::backtest::cli::run(&args).await?,
+        Some(BotCommand::Serve(args)) => {
+            let config = Config::load(&cli.monitor)?;
+            let _logging_guard = crate::core::logging::init(&config.logging)?;
+            presentation::http::run_server(args.bind).await?;
+        }
         None => {
             let config = Config::load(&cli.monitor)?;
             let _logging_guard = crate::core::logging::init(&config.logging)?;

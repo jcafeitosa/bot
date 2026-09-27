@@ -10,7 +10,16 @@ mod tests {
 
     use rust_decimal::Decimal;
 
-    use super::models::{Asset, PortfolioSnapshot, WalletBalance};
+    use super::models::{Asset, PortfolioError, PortfolioSnapshot, WalletBalance};
+
+    #[test]
+    fn rejects_invalid_asset_code() {
+        assert_eq!(Asset::new("").unwrap_err(), PortfolioError::InvalidAsset);
+        assert_eq!(
+            Asset::new("btc/usdt").unwrap_err(),
+            PortfolioError::InvalidAsset
+        );
+    }
 
     #[test]
     fn combines_available_and_locked_balance_exactly() {

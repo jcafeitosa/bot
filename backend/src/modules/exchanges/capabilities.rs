@@ -1,10 +1,11 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use super::{ExchangeId, MarketType};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub enum Capability {
     SpotRestMarketData,
     SpotStreamMarketData,
@@ -17,7 +18,7 @@ pub enum Capability {
     Testnet,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ExchangeCapability {
     pub exchange: ExchangeId,
     pub markets: Vec<MarketType>,
