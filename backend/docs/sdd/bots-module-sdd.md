@@ -34,7 +34,6 @@ O produto distingue **agentes** (governança) de **bots** (executores versionado
 
 - Runtime live de executor, promoção automática ou ordens reais.
 - Substituir ou fundir com `modules/agents`.
-- Runtime live de executor ou promoção automática para produção.
 
 ## 2. Convenção MVC
 

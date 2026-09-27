@@ -19,7 +19,7 @@ tags:
 | `modules/bots` | Fundação + ranking + `PgBotCatalogStore` + `BotCatalogBackend` + HTTP catalog/persist/snapshot | `modules/bots/tests.rs`, `pg_catalog.rs`, `server.rs` | Runtime live, auth, promoção executor |
 | `modules/orders` | Seam fail-closed + HTTP 503 após risco | `modules/orders/tests.rs`, testes HTTP orders | Adapter exchange, idempotência, auth |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hook monitor | `modules/agents/tests.rs`, rotas agents | Auth owner; cold-start `server::run` hidrata registry vazio a partir de PG |
-| `presentation/http` | OpenAPI ~30 paths, Scalar `/docs` | `openapi.rs`, `server.rs` | Authn/z transversal |
+| `presentation/http` | OpenAPI ~30 paths, Scalar `/docs`, `HttpAdminAuth` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 

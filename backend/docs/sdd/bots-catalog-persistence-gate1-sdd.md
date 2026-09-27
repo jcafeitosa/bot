@@ -35,8 +35,8 @@ Testes ignorados: `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_tri
 ## Validação
 
 ```text
-cargo fmt --check && cargo clippy --locked -- -D warnings && cargo test --locked --bin bot
-cargo test pg_catalog_store_round_trip pg_identity_snapshot_round_trip postgres_scaffold_tables_exist_after_migrate -- --ignored
+./scripts/verify-backend-gates.sh
+cargo test pg_catalog_store_round_trip pg_identity_snapshot_round_trip postgres_scaffold_tables_exist_after_migrate --locked --bin bot -- --ignored
 ```
 
 ## Rollback

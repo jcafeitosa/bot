@@ -9,7 +9,7 @@ tags:
 ---
 # Estado atual e planejamento do backend
 
-> Revisão: 2026-09-26. Estados abaixo distinguem comportamento presente, design aprovado e trabalho ainda bloqueado.
+> Revisão: 2026-09-27. Estados abaixo distinguem comportamento presente, design aprovado e trabalho ainda bloqueado. Fatia **bots / orders / agents / HTTP:** [auditoria de completude](./modules-completeness-audit.md).
 
 ## O que já está feito
 
@@ -27,7 +27,7 @@ tags:
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
 - Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + `BotCatalogBackend` mem/PG) e `orders` (seam fail-closed) com testes unitários.
-- API HTTP Axum com OpenAPI/Scalar: agents, bots, risk, strategy, backtest, portfolio, exchanges, `POST /api/v1/orders/submit` (503 após risco OK — execução desabilitada).
+- API HTTP Axum com OpenAPI/Scalar: agents, bots, risk, strategy, backtest, portfolio, exchanges, `POST /api/v1/orders/submit` (503 após risco OK — execução desabilitada); seam admin opcional (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
 
 ### Evidência existente
 
@@ -89,16 +89,15 @@ tags:
 - Atualizar SDDs quando o comportamento mudar; não registrar uma intenção como se fosse implementação.
 - Ingerir e citar fontes da pesquisa de agentes antes de remover o status provisório.
 
-## Verificação executada em 2026-09-26
+## Verificação executada em 2026-09-27
 
 ```text
-cargo fmt --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked
-./scripts/check-import-direction.sh
+./scripts/verify-backend-gates.sh
 ```
 
-Evidência observada: **201** testes unitários no binário `bot` (inclui HTTP OpenAPI, bots ranking, orders fail-closed), **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j), integração redirect/config/fixture **ok**, import direction **ok**, clippy **sem warnings**.
+O script executa `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh` e `cargo test --locked` (bin `bot` + testes de integração do workspace).
+
+Evidência observada: **201** testes unitários no binário `bot` (inclui HTTP OpenAPI, admin bearer, bots ranking, orders fail-closed), **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j), integração redirect/config/fixture **ok**, gates **ok**.
 
 ## Gates de aceitação
 

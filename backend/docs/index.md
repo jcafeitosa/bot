@@ -18,6 +18,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [Referência de módulos do backend](./architecture/backend-module-reference.md) — visão consolidada, interfaces, seams, fluxos e limites.
 - [Catálogo completo de módulos](./architecture/module-catalog.md) — todos os módulos Rust, submódulos de exchange, contratos e invariantes.
 - [Matriz de testes](./reference/test-matrix.md) — cobertura por módulo, integração, evidências e lacunas.
+- [Mapeamento de camadas](./architecture/layer-mapping.md) — domain, application, infrastructure, presentation.
 - [Integrações do backend](./architecture/integrations.md) — Binance, ccxt, PostgreSQL, Jev, terminal e controles.
 - [Estado atual e planejamento](./planning/current-state-and-roadmap.md) — feito, pendências, bloqueios, gates e roadmap.
 - README do backend — visão geral, arquitetura e comandos rápidos.
