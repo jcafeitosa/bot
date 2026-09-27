@@ -1,10 +1,10 @@
+#![allow(dead_code)]
 use sqlx::PgPool;
 
 use super::persistence::AgentIdentityStore;
 use crate::core::database::PostgresDatabase;
 use crate::modules::agents::models::{
-    AgentDefinition, AgentLifecycleState, AgentRole, IdentityAuditEvent, IdentityEventKind,
-    SupervisorRef,
+    AgentDefinition, AgentLifecycleState, IdentityAuditEvent, IdentityEventKind, SupervisorRef,
 };
 
 #[derive(Clone)]
@@ -28,6 +28,7 @@ pub fn lifecycle_to_sql(state: AgentLifecycleState) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 pub fn lifecycle_from_sql(raw: &str) -> Result<AgentLifecycleState, String> {
     match raw {
         "active" => Ok(AgentLifecycleState::Active),
@@ -46,7 +47,9 @@ pub fn event_kind_to_sql(kind: IdentityEventKind) -> &'static str {
     }
 }
 
-fn supervisor_columns(supervisor: &SupervisorRef) -> (&'static str, Option<String>, Option<String>) {
+fn supervisor_columns(
+    supervisor: &SupervisorRef,
+) -> (&'static str, Option<String>, Option<String>) {
     match supervisor {
         SupervisorRef::Owner(owner) => ("owner", Some(owner.as_str().to_string()), None),
         SupervisorRef::Agent(agent) => ("agent", None, Some(agent.as_str().to_string())),

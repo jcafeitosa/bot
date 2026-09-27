@@ -34,3 +34,15 @@ impl BotCatalogStore for BotCatalogBackend {
         }
     }
 }
+
+#[cfg(test)]
+mod backend_selection_tests {
+    use super::*;
+    use crate::core::database::AppDatabases;
+
+    #[test]
+    fn from_empty_databases_selects_memory_store() {
+        let backend = BotCatalogBackend::from_databases(&AppDatabases::empty());
+        assert!(matches!(backend, BotCatalogBackend::Memory(_)));
+    }
+}

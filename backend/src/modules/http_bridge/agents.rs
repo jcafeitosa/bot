@@ -2,10 +2,10 @@ use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
+use crate::core::database::PostgresDatabase;
 use crate::core::error::BotResult;
 use crate::core::providers::{JevAdvisor, JevReviewInput};
 use crate::modules::agents::adapters::jev::delegate_jev_review;
-use crate::core::database::PostgresDatabase;
 use crate::modules::agents::adapters::{AgentIdentityStore, PgAgentIdentityStore};
 
 use crate::modules::agents::{
@@ -298,12 +298,17 @@ pub async fn advisory_finish(
     })
 }
 
-pub async fn persist_agent_snapshot(
-    postgres: &PostgresDatabase,
+pub fn snapshot_for_persist(
     registry: &AgentRegistry,
     agency_raw: &str,
     agent_raw: &str,
-) -> Result<(), AgentsError> {
+) -> Result<
+    (
+        crate::modules::agents::AgentDefinition,
+        crate::modules::agents::IdentityAuditEvent,
+    ),
+    AgentsError,
+> {
     let agency = parse_agency(agency_raw)?;
     let id = parse_agent(agent_raw)?;
     let definition = registry.get(&agency, &id)?.clone();
@@ -314,26 +319,22 @@ pub async fn persist_agent_snapshot(
         .find(|event| event.agent_id == id && event.agency == agency)
         .cloned()
         .ok_or_else(|| AgentsError::Persistence("missing audit event for agent".into()))?;
-    let store = PgAgentIdentityStore::new(postgres);
-    store
-        .upsert_agent(&definition)
-        .await
-        .map_err(AgentsError::Persistence)?;
-    store
-        .append_event(&event)
-        .await
-        .map_err(AgentsError::Persistence)?;
-    Ok(())
+    Ok((definition, event))
 }
 
-pub async fn persist_if_postgres(
-    registry: &AgentRegistry,
-    postgres: Option<&PostgresDatabase>,
-    agency_raw: &str,
-    agent_raw: &str,
+pub async fn persist_identity_rows(
+    postgres: &PostgresDatabase,
+    definition: &crate::modules::agents::AgentDefinition,
+    event: &crate::modules::agents::IdentityAuditEvent,
 ) -> Result<(), AgentsError> {
-    if let Some(pg) = postgres {
-        persist_agent_snapshot(pg, registry, agency_raw, agent_raw).await?;
-    }
+    let store = PgAgentIdentityStore::new(postgres);
+    store
+        .upsert_agent(definition)
+        .await
+        .map_err(AgentsError::Persistence)?;
+    store
+        .append_event(event)
+        .await
+        .map_err(AgentsError::Persistence)?;
     Ok(())
 }

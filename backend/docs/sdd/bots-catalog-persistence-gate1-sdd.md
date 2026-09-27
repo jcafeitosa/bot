@@ -12,7 +12,7 @@ status: draft
 
 # SDD — Gate 1: PostgreSQL para agents e catálogo bots
 
-- **Estado:** parcial — migrações em `src/core/database/migrations/` (incl. `0002_agents_bots_scaffold.sql`); **`PgBotCatalogStore`** implementado; identity PG e auth owner **pendentes**.
+- **Estado:** parcial — migrações em `src/core/database/migrations/` (incl. `0002_agents_bots_scaffold.sql`); **`PgBotCatalogStore`** implementado; `PgAgentIdentityStore` (upsert + events) via `http_bridge::agents::persist_identity_rows`; wiring automático do `AgentRegistry` e auth owner **pendentes**.
 - **Referências:** [SDD bots](./bots-module-sdd.md), [SDD agents](./agents-module-sdd.md).
 
 ## Implementado

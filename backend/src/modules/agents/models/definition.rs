@@ -28,7 +28,7 @@ pub struct AgentDefinition {
     pub updated_at_ms: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IdentityEventKind {
     Registered,
     Paused,

@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (181 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (184 unitários + integração).
 
 ## Resumo executivo
 
@@ -18,7 +18,7 @@ tags:
 |---|---|---|---|
 | `modules/bots` | Fundação + ranking + `PgBotCatalogStore` + `BotCatalogBackend` + HTTP catalog/persist/snapshot | `modules/bots/tests.rs`, `presentation/http/server.rs` | PostgreSQL `BotCatalogStore`, runtime live |
 | `modules/orders` | Seam fail-closed + HTTP 503 após risco | `modules/orders/tests.rs`, testes HTTP orders | Adapter exchange, idempotência, auth |
-| `modules/agents` | IdentityOnly + HTTP lifecycle + hook monitor | `modules/agents/tests.rs`, rotas agents | Auth owner, PostgreSQL Gate 1 |
+| `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hook monitor | `modules/agents/tests.rs`, rotas agents | Auth owner; registry HTTP ainda em memória (PG via `persist_identity_rows`) |
 | `presentation/http` | OpenAPI ~30 paths, Scalar `/docs` | `openapi.rs`, `server.rs` | Authn/z transversal |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
@@ -40,7 +40,7 @@ cargo test --locked
 ./scripts/check-import-direction.sh
 ```
 
-Evidência: **181** testes no binário `bot`, **4** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, Neo4j integration).
+Evidência: **184** testes no binário `bot`, **4** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -57,7 +57,7 @@ Evidência: **181** testes no binário `bot`, **4** ignorados (`persist_dataset_
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Store bots (`BotCatalogBackend` mem/PG), HTTP orders/bots/agents | **Parcial** (sem PG/auth/live) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 181 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 184 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Fechamento do goal (pendente)

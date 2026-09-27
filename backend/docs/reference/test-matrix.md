@@ -63,12 +63,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-181 testes unitários passaram (bin bot) (inclui testes HTTP em `presentation/http/server.rs`)
+184 testes unitários passaram (bin bot) (inclui testes HTTP em `presentation/http/server.rs`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 4 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, market, neo4j)
 ```
 
-Bin `bot`: 181 aprovados, 4 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
+Bin `bot`: 184 aprovados, 4 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
 
 ## Lacunas explícitas
 
