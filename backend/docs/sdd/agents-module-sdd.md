@@ -139,7 +139,7 @@ modules/agents/
 |----------|-----------------|--------|
 | `AgentRegistry` + hierarquia + lifecycle | `modules/agents/tests.rs`, `http_bridge/agents.rs` | Sim |
 | `IdentityOnly` (sem tools/ordens) | SDD + invariantes de módulo | Sim |
-| Espelhamento/hidratação PG | `PgAgentIdentityStore`, `load_agent_identity_snapshot` / `apply_agent_identity_snapshot` no boot `server.rs`; `pg_identity_snapshot_round_trip`; HTTP `pg_agent_lifecycle_write_through_round_trip` + `pg_cold_start_apply_snapshot_after_write_through` | **Parcial** (PG×13 em `run-pg-integration-tests.sh`; gate default ignora) |
+| Espelhamento/hidratação PG | `PgAgentIdentityStore`, `load_agent_identity_snapshot` / `apply_agent_identity_snapshot` no boot `server.rs`; `pg_identity_snapshot_round_trip`; HTTP `http_bridge/agents.rs` (lifecycle + cold-start) + `state.rs` `pg_register_agent_and_persist_cold_start_via_snapshot` | **Parcial** (PG×13 em `run-pg-integration-tests.sh`; gate default ignora) |
 | Seam HTTP admin (`BOT_HTTP_*`) | [http-admin-auth-seam-sdd.md](./http-admin-auth-seam-sdd.md) | Sim (não é auth owner) |
 | Capability `promote_runtime_bot` + HTTP promote | `bot_promotion.rs`, migração `0005`, `server.rs` | Sim (seam) |
 | Autenticação verificável do owner humano | pesquisa § Etapa 1 item 4 | **Não** |

@@ -145,7 +145,7 @@ Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog p
 | Peça | Comportamento |
 |---|---|
 | `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
-| `state` | `ApiState` (composition root); `persist_bot_catalog` / `bot_catalog_snapshot` via `BotCatalogBackend` PG; `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); PG ignorados: catálogo, `pg_submit_order_idempotency_reads_pg_when_memory_empty`, reconciliação hydrate/lookup ([test-matrix](../reference/test-matrix.md)). |
+| `state` | `ApiState` (composition root); `persist_agent_after_mutation` / `persist_bot_catalog`; `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); PG ignorados em `state_tests` (registro agente, catálogo bots, orders idempotência + reconciliação) — [test-matrix](../reference/test-matrix.md). |
 | `server::run` | Bootstrap `AppDatabases`, hydrate agents + reconciliação orders PG, `ApiState::for_http_server` (`HttpApiSeams::from_env`), poll reconciliação em background (opcional), Axum + Scalar. |
 | `routes/*` | Superfície v1: agents, bots (catalog `monitor_evaluator` + runtime), orders, monitor, risk, backtest, `config/active` e `config/snapshot` (`monitor_registry[].evaluator`), health, `GET /meta` (`http_seams`). |
 

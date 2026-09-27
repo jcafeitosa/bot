@@ -24,7 +24,7 @@ status: draft
 | Agents boot | `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` | Cold-start quando registry compartilhado vazio |
 | Schema | `0002_agents_bots_scaffold.sql`, `0005_agent_promote_runtime_bot.sql` | `agent_*`, `bot_catalog_entries`, capability `promote_runtime_bot` |
 
-Testes ignorados (PG): ver `./scripts/run-pg-integration-tests.sh` (**12** testes: scaffold, market dataset, bots catalog adapter + `ApiState` snapshot, agents identity + lifecycle write-through + cold-start hydrate, orders adapter idempotency/reconciliation + HTTP idempotency submit + hydrate + PG lookup fallback).
+Testes ignorados (PG): ver `./scripts/run-pg-integration-tests.sh` (**13** testes: scaffold, market dataset, bots catalog adapter + `ApiState` snapshot, agents identity + lifecycle/cold-start + registro via `ApiState`, orders adapter + HTTP idempotência/reconciliação).
 
 ## Pendente
 
