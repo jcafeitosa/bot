@@ -102,6 +102,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 
 ## Lacunas conscientes
 
+- Monitor `RunMode::Paper` grava fills no mesmo `PaperLedgerExecutor` que HTTP/portfolio; testnet/live no supervisor ainda fail-closed.
 - Runtime live de bots e execução exchange: ports existem; implementação live pendente.
 - Auth owner verificável: seam HTTP em [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
 
@@ -112,7 +113,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 cargo test --locked --bin bot
 ```
 
-Evidência: **334** testes no bin `bot`, **7** ignorados (PG/Neo4j + testnet manual).
+Evidência: **337** testes no bin `bot`, **7** ignorados (PG/Neo4j + testnet manual).
 
 ## Documentos relacionados
 

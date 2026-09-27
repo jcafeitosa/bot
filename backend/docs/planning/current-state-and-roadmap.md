@@ -97,7 +97,7 @@ tags:
 
 O script executa `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh` e `cargo test --locked` (bin `bot` + testes de integração do workspace).
 
-Evidência observada: **334** testes unitários no binário `bot` (HTTP OpenAPI 34 paths, orders paper/testnet/recording, `paper_fill_unit_price`→portfolio, bots runtime/`evaluate_for_kind`, agents promote capability), **7** ignorados (PG×5, Neo4j, `integration_submits_minimal_market_buy_on_testnet` manual), `./scripts/verify-backend-gates.sh` **ok**.
+Evidência observada: **337** testes unitários no binário `bot` (HTTP OpenAPI 34 paths, orders paper/testnet/recording, `paper_fill_unit_price`→portfolio, bots runtime/`evaluate_for_kind`, agents promote capability), **7** ignorados (PG×5, Neo4j, `integration_submits_minimal_market_buy_on_testnet` manual), `./scripts/verify-backend-gates.sh` **ok**.
 
 ## Gates de aceitação
 
