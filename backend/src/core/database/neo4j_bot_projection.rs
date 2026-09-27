@@ -106,6 +106,13 @@ impl GraphProjectionPort for Neo4jBotProjector {
             .await
             .map_err(|error| GraphProjectionError::Driver(error.to_string()))
     }
+
+    async fn project_order_intent(
+        &self,
+        _projection: &super::graph_projection::OrderIntentProjection,
+    ) -> Result<(), GraphProjectionError> {
+        Ok(())
+    }
 }
 
 fn validate_catalog_projection(

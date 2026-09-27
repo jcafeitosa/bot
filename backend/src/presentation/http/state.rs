@@ -483,6 +483,19 @@ impl ApiState {
             }
         }
 
+        if let Some(key) = idem_key.as_deref() {
+            crate::modules::orders::adapters::best_effort_project_order_intent(
+                self.inner.databases.neo4j(),
+                &crate::modules::orders::adapters::RedactedOrderSubmitSnapshot {
+                    client_order_id: key.to_string(),
+                    symbol: symbol.clone(),
+                    side: order_side,
+                    execution_mode: self.order_execution_mode().as_api_label().to_string(),
+                },
+            )
+            .await;
+        }
+
         Ok(response)
     }
 

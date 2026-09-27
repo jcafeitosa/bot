@@ -8,6 +8,9 @@ pub const AGENTS_GRAPH_DOMAIN: &str = "agents";
 /// Subgraph namespace for bot catalog and runtime promotion (F2).
 pub const BOTS_GRAPH_DOMAIN: &str = "bots";
 
+/// Subgraph namespace for redacted order lineage (F3 / G2 orders).
+pub const TRADING_GRAPH_DOMAIN: &str = "trading";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectedSupervisorKind {
     Owner,
@@ -46,6 +49,16 @@ pub struct BotPromotionProjection {
     pub promoted_at_ms: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OrderIntentProjection {
+    pub client_order_id: String,
+    pub symbol: String,
+    pub side: String,
+    pub status: String,
+    pub execution_mode: String,
+    pub submitted_at_ms: i64,
+}
+
 #[derive(Debug, Error)]
 pub enum GraphProjectionError {
     #[error("graph projection driver error: {0}")]
@@ -69,5 +82,10 @@ pub trait GraphProjectionPort: Send + Sync {
     async fn project_bot_promotion(
         &self,
         projection: &BotPromotionProjection,
+    ) -> Result<(), GraphProjectionError>;
+
+    async fn project_order_intent(
+        &self,
+        projection: &OrderIntentProjection,
     ) -> Result<(), GraphProjectionError>;
 }

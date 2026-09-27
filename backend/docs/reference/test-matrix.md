@@ -34,7 +34,7 @@ tags:
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado; `register_agent_maps_promote_runtime_bot_capability`; `agent_lifecycle_snapshot_for_persist_reflects_latest_audit_kind` (em `mod.rs`); PG (`pg_integration`): `pg_agent_lifecycle_write_through_round_trip`, `pg_cold_start_apply_snapshot_after_write_through` (script `run-pg-integration-tests.sh`). |
 | `http_bridge/config` | `map_config` expõe `monitor_registry` com `evaluator`; HTTP `GET /config/active` + `GET /config/snapshot` via `ApiState` (`config_snapshot_from_path_loads_bundled_default_toml`, smoke em `documented_get_routes_respond`). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
-| `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` (paper, live_exchange wired/recording, reserved, admin bearer) em `http_integration_tests.rs`; `orders_submit_fail_closed_returns_503` em `server.rs`. |
+| `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` (paper, live_exchange wired/recording, reserved, admin bearer) + `orders_submit_pg_idempotency_store_unavailable_returns_order_store_unavailable` (wire **503** `order_store_unavailable`, PG) em `http_integration_tests.rs`; `orders_submit_fail_closed_returns_503` em `server.rs`. |
 | `modules/orders` reconciliation | `reconciliation_pending_to_reconciled`, `reconciliation_mark_divergent_from_pending`, `reconciliation_seed_entry_restores_pending_count`, `reconciliation_poll_confirms_pending_when_recording_binding_exists`, `reconciliation_seed_hydrated_row_preserves_symbol_for_poll`; `recording_submit_returns_deterministic_exchange_order_id`. |
 | `presentation/http/state` | `build_api_state_for_http_serve_without_database_wires_executor` (`ApiState::build_api_state_for_http_serve`); `submit_order_recording_live_exchange_auto_reconciles_client_order_id`; ledger partilhado: `lock_shared_live_order_reconciliation_ledger_for_test()`; com `EnvTestGuard`, **env antes** do ledger. |
 | `http_bridge/portfolio` | `paper_wallet_snapshot_reflects_in_process_ledger`; HTTP E2E paper submit + snapshot em `http_integration_tests.rs` (`portfolio_paper_snapshot_http_reflects_paper_submit`); `ApiState::paper_wallet_snapshot` (`paper_wallet_snapshot_via_api_state_reflects_paper_submit` em `state.rs`). |
@@ -81,13 +81,13 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**18/18** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **421** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **18/18** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **424** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **18/18** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
-### Integração opcional no bin `bot` (script PG **18** + Neo4j/testnet **2** = **20** casos; 0 `#[ignore]`)
+### Integração opcional no bin `bot` (script PG **18** + Neo4j/testnet **3** = **21** casos; 0 `#[ignore]`)
 
-**18** casos da tabela espelham `PG_TESTS` em `scripts/run-pg-integration-tests.sh` (validado por `assert-pg-integration-manifest.sh` no gate). Os **2** restantes (`ping_and_node_count_against_local_graph`, `integration_submits_minimal_market_buy_on_testnet`) ficam fora do script CI; no gate passam com skip via `pg_integration` sem stack Neo4j ou credenciais testnet.
+**18** casos da tabela espelham `PG_TESTS` em `scripts/run-pg-integration-tests.sh` (validado por `assert-pg-integration-manifest.sh` no gate). Os **3** restantes (`ping_and_node_count_against_local_graph`, `neo4j_order_intent_after_redacted_projection`, `integration_submits_minimal_market_buy_on_testnet`) ficam fora do script CI; no gate passam com skip via `pg_integration` sem stack Neo4j ou credenciais testnet.
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|

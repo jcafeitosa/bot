@@ -93,6 +93,13 @@ mod unit_tests {
         ) -> Result<(), GraphProjectionError> {
             Ok(())
         }
+
+        async fn project_order_intent(
+            &self,
+            _projection: &crate::core::database::OrderIntentProjection,
+        ) -> Result<(), GraphProjectionError> {
+            Ok(())
+        }
     }
 
     fn sample_definition() -> AgentDefinition {

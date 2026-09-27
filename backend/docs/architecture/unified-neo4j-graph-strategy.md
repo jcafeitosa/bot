@@ -140,20 +140,20 @@ flowchart LR
 | `AppDatabases::bootstrap_runtime` | Conecta Neo4j se `BOT_AGENTS_ENABLED=true` + credenciais | `bundle.rs`; config `load_agents_stack_from_env` |
 | `core::health::readiness_databases` | Probe `neo4j` quando wired | `health/mod.rs` |
 | `presentation/http` `/readyz` | Campo `neo4j: "ok"` se handle presente | `routes/health.rs` |
-| `modules/agents` | **Nenhum** uso de Neo4j; registry + `PgAgentIdentityStore` | PG `agent_identities` / events |
-| `modules/bots` | **Nenhum**; catálogo PG/memória | `PgBotCatalogStore` |
-| `modules/orders` | **Nenhum**; idempotência/reconciliação PG | migrações `0004`/`0006` |
+| `modules/agents` | Projeção **F1** best-effort (`best_effort_project_agent_definition` → `SUPERVISES`); SoT = registry + `PgAgentIdentityStore` | PG + teste `neo4j_agent_supervision_chain_after_projection` |
+| `modules/bots` | Projeção **F2** best-effort catálogo + promoção; SoT = catálogo PG/memória | `PgBotCatalogStore` + teste `neo4j_bot_promoted_by_after_catalog_and_promotion_projection` |
+| `modules/orders` | Projeção **F3** best-effort `OrderIntent` redigido após submit HTTP OK; SoT = PG | migrações `0004`/`0006` + teste `neo4j_order_intent_after_redacted_projection` |
 | `modules/monitor` | **Nenhum**; persistência candles PG opcional | `bootstrap_monitor_postgres` |
 | `core::providers` | **Nenhum**; credenciais PG `provider_credentials` | migração `0007` |
 | `modules/market` / `exchanges` | **Nenhum** | REST/WS apenas |
 | Dev/ops | `graphify update` + `graphify export neo4j --push` | `sync-code-graph-neo4j.sh`; compose serviço `graph` |
 | Agentes de documentação | `graphify-out/graph.json` local (não é o runtime HTTP) | skill graphify em `docs/.codex/skills/graphify` |
 
-**Gap principal:** o runtime Rust **abre** Neo4j para readiness, mas **nenhum módulo de domínio** projeta ou consulta o grafo. O grafo “cheio” em dev vem quase só do **push graphify**, não do domínio bot.
+**Gap principal (2026-09-27):** F1/F2/F3 **write-only** agents/bots/orders (`OrderIntent` redigido) estão no código; **não há** leitura do grafo no runtime de domínio; aresta `SUBMITTED` Bot→OrderIntent e outbox F2.1 permanecem futuros. O subgrafo **graphify** (código) continua separado do subgrafo **governance/bots** de produto.
 
 ### Nota sobre `agents_stack`
 
-`AgentsStackConfig` / `load_agents_stack_from_env` **não é código morto**: acopla `BOT_AGENTS_ENABLED` à conexão Neo4j ([core-database-sdd](../sdd/core-database-sdd.md)). O nome sugere “stack de agentes”, mas hoje significa **“grafo habilitado para o processo”**, sem espelhar identidades. Risco de confusão operacional: ops pode assumir que agentes “vivem” no Neo4j quando vivem em memória + PG.
+`AgentsStackConfig` / `load_agents_stack_from_env` **não é código morto**: acopla `BOT_AGENTS_ENABLED` à conexão Neo4j ([core-database-sdd](../sdd/core-database-sdd.md)). O nome sugere “stack de agentes”, mas hoje significa **“grafo habilitado para o processo”**; identidades **vivem** em memória + PG, com espelho best-effort no grafo quando wired. Risco operacional: tratar Neo4j como SoT ou assumir leitura de hierarquia só pelo grafo.
 
 ## 6. Visão — um grafo, namespaces canônicos
 
@@ -256,7 +256,8 @@ flowchart LR
 |------|------------|-----------|
 | **F0** (atual) | Bolt + readyz; graphify → Neo4j em dev | `ping_and_node_count_against_local_graph`; script sync |
 | **F1** | Projeção `Agent`/`Owner`/`SUPERVISES` após mutação PG; labels `graph_domain`; link `Module` ↔ `CodeEntity` documentado | Teste integração: MERGE após `pg_agent_lifecycle_write_through`; query Cypher em CI opcional |
-| **F2** | `Bot`/`Strategy`/`PROMOTED_BY` após catálogo PG + promote runtime (*implemented* parcial — sem `OrderIntent`) | `neo4j_bot_promoted_by_after_catalog_and_promotion_projection`; ver [bots-neo4j-projection-sdd](../sdd/bots-neo4j-projection-sdd.md) |
+| **F2** | `Bot`/`Strategy`/`PROMOTED_BY` após catálogo PG + promote runtime (*implemented*) | `neo4j_bot_promoted_by_after_catalog_and_promotion_projection`; [bots-neo4j-projection-sdd](../sdd/bots-neo4j-projection-sdd.md) |
+| **F3 (orders slice)** | `OrderIntent` redigido após submit HTTP + PG opcional (*implemented* fatia mínima) | `neo4j_order_intent_after_redacted_projection`; [orders-neo4j-projection-sdd](../sdd/orders-neo4j-projection-sdd.md) |
 | **F3** | Memória semântica, proveniência ([agents research](../research/agents-capability-research.md)) | SDD próprio + threat model |
 
 **Rollback F1+:** desabilitar projeção (flag); truncar subgrafo `graph_domain='governance'` via job; PG intacto.

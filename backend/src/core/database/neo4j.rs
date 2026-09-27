@@ -121,6 +121,33 @@ impl Neo4jGraph {
         Ok(edges)
     }
 
+    /// Test-only helper for F3 `OrderIntent` assertions (modules integration tests).
+    #[cfg(test)]
+    pub async fn count_order_intent_nodes(
+        &self,
+        client_order_id: &str,
+        symbol: &str,
+    ) -> Result<i64, Neo4jError> {
+        let mut rows = self
+            .inner_graph()
+            .execute(
+                query(
+                    "MATCH (o:OrderIntent {client_order_id: $client_order_id, symbol: $symbol})                      RETURN count(o) AS nodes",
+                )
+                .param("client_order_id", client_order_id)
+                .param("symbol", symbol),
+            )
+            .await?;
+        let row = rows
+            .next()
+            .await?
+            .ok_or_else(|| Neo4jError::Probe("order intent count returned no row".into()))?;
+        let nodes: i64 = row
+            .get("nodes")
+            .map_err(|error| Neo4jError::Probe(error.to_string()))?;
+        Ok(nodes)
+    }
+
     #[allow(dead_code)]
     pub async fn node_count(&self) -> Result<u64, Neo4jError> {
         let mut rows = self

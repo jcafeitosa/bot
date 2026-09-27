@@ -5,6 +5,7 @@ mod exchange_order_gate;
 mod exchange_spot_executor;
 mod execution_port;
 mod fail_closed;
+mod graph_projection;
 mod idempotency;
 mod in_memory_reconciliation;
 mod live_reconciliation_pg_mirror;
@@ -20,6 +21,7 @@ pub use accepting_executor::AcceptingExecutor;
 pub use exchange_spot_executor::ExchangeSpotExecutor;
 pub use execution_port::OrderExecutionPort;
 pub use fail_closed::FailClosedExecutor;
+pub use graph_projection::{best_effort_project_order_intent, RedactedOrderSubmitSnapshot};
 pub use idempotency::{InMemoryOrderIdempotencyStore, OrderIdempotencyStore};
 #[cfg(test)]
 pub use in_memory_reconciliation::{

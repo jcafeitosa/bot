@@ -11,7 +11,7 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (http_bridge v1 completo; `presentation/http/http_integration_tests.rs` para bearer/orders/portfolio HTTP; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Baseline verde: `./scripts/verify-backend-gates.sh` (**386** / **17** ignored; PG **15/15** opcional). Auditoria do goal: [modules-completeness-audit](./modules-completeness-audit.md). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; Gate 2 runtime **parcial** (`BotRuntimePort`, HTTP promote/demote, supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`, `evaluate_for_kind` SMA/EMA); auth owner e ciclo de promoção live completo pendentes. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
+> Revisão: 2026-09-27 (http_bridge v1 completo; `presentation/http/http_integration_tests.rs` para bearer/orders/portfolio HTTP; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Baseline verde: `./scripts/verify-backend-gates.sh` (**424** / **0** ignored; PG **18/18** opcional). Auditoria do goal: [modules-completeness-audit](./modules-completeness-audit.md). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; Gate 2 runtime **parcial** (`BotRuntimePort`, HTTP promote/demote, supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`, `evaluate_for_kind` SMA/EMA); auth owner e ciclo de promoção live completo pendentes. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
 
 ## Resumo
 
@@ -22,7 +22,7 @@ O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco,
 3. Autenticação do owner, autorização por agência e bootstrap seguro.
 4. Runtime de execução de agentes, worker, scheduler e recuperação.
 5. Gateway de ferramentas, permissões, aprovações e sandbox.
-6. Memória de conhecimento, memória entre sessões e grafo.
+6. Memória de conhecimento e memória entre sessões; **grafo de produto** só como espelho write-only Neo4j F1/F2 (agents/bots) — sem leitura no runtime nem memória semântica.
 7. Canais de conversa, voz, aplicações e interface externa.
 8. Execução financeira **prod** e ambiente de produção completo (seam `modules/orders` + HTTP: paper/recording/testnet + reconciliação **parcial**; prod REST fail-closed; threat model/Critic pendentes).
 9. Observabilidade operacional completa.
@@ -42,12 +42,13 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
 | Worker e scheduler | Não existe worker durável, agenda, heartbeat, lease ou retry de execução. | A pesquisa classifica rotinas e operação contínua como fase posterior. | SDD de execução durável, fila/outbox, recuperação e SLO. |
 | Gateway de ferramentas | Não existe MCP/tool gateway, política por ação ou aprovação. | Pesquisa: ferramentas, sandbox e aprovações estão excluídos da primeira etapa. | Modelo de permissões, política fail-closed e auditoria. |
-| Memória e conhecimento | Não existe memória conversacional, memória semântica ou grafo de conhecimento. | Pesquisa separa histórico administrativo de memória de agente e adia essa fase. | Proveniência, revisão, compartilhamento, retenção e aposentadoria. |
+| Memória e conhecimento | Não existe memória conversacional nem memória semântica; histórico administrativo em PG/eventos de agents. | Pesquisa separa histórico administrativo de memória de agente e adia essa fase. | Proveniência, revisão, compartilhamento, retenção e aposentadoria. |
+| Grafo Neo4j (governance) | Projeção **write-only** F1 agents + F2 bots + F3 `OrderIntent` redigido (HTTP submit); PG SoT; testes `neo4j_*` (skip sem stack). | [unified-neo4j-graph-strategy](../architecture/unified-neo4j-graph-strategy.md) §5; `graph_projection` agents/bots/orders. | Leitura no runtime, aresta `SUBMITTED`, outbox F2.1, memória semântica; graphify unificado — roadmap. |
 | Canais externos | Não existem canais de chat, voz, mobile, navegador ou computador persistente. | Pesquisa marca canais e dispositivos fora da etapa atual. | Contrato de interação, identidade por canal e controles de privacidade. |
 | Execução financeira live | `modules/orders` + `authorize_rest_use` para `OrderSubmit` (recording/testnet+ credenciais); market buy/sell testnet ccxt; sem prod. | `exchanges/rest`, `binance_spot_testnet_submit.rs`. | Saldo privado, reconciliação, prod bloqueado; Critic G2. |
 | Observabilidade | Há logging estruturado, mas não há catálogo completo de métricas, SLI/SLO, alertas ou runbook de incidentes. | Roadmap lista WS/REST, persistência, idade de candle, Jev e credenciais como pendências. | Definir métricas, cardinalidade, alertas, dashboards e runbooks. |
 | Persistência de runtime | A camada `persistence` grava datasets, mas o estado de recuperação do monitor ainda não está completo. | SDD T-15 marca C17/G4 pendentes: `DEGRADED`, `HEALTHY`, `GAP`, suspeita de commit e recuperação. | Implementar C17 após C14/C15/C16 e revisar G4. |
-| Integração PostgreSQL | Conexão, migrações, adapters agents/bots/orders/market; `pg_integration` + `./scripts/run-pg-integration-tests.sh` (15 testes); job CI `postgres-integration` com Timescale. | Default `cargo test` skip PG sem `DATABASE_URL`; exercício real exige `DATABASE_URL` → `trading_bot` (ver [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)). | Neo4j skip em CI sem stack; rollback operacional V18/C17 ainda em roadmap. |
+| Integração PostgreSQL | Conexão, migrações, adapters agents/bots/orders/market; `pg_integration` + `./scripts/run-pg-integration-tests.sh` (18 testes); job CI `postgres-integration` com Timescale. | Default `cargo test` skip PG sem `DATABASE_URL`; exercício real exige `DATABASE_URL` → `trading_bot` (ver [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)). | Neo4j skip em CI sem stack; rollback operacional V18/C17 ainda em roadmap. |
 
 ## 1. Identidade persistente de agentes
 
@@ -187,7 +188,7 @@ C17 depende de C14, C15 e C16 e permanece pendente.
 
 ### V18 — PostgreSQL
 
-A persistência base existe, mas a prova operacional completa não foi executada. V18 requer um banco `trading_bot` descartável e isolado para observar migração, commit, rollback após erro e idempotência. O teste ignorado não deve ser promovido a aprovação.
+A persistência base existe; round-trips PG estão no script **18/18** (`run-pg-integration-tests.sh`). V18 formal ainda exige banco `trading_bot` descartável para evidência auditada de rollback após erro e limpeza operacional além dos testes automatizados.
 
 ## 8. Observabilidade operacional
 

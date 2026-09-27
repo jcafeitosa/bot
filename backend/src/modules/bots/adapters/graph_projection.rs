@@ -149,6 +149,13 @@ mod unit_tests {
             Ok(())
         }
 
+        async fn project_order_intent(
+            &self,
+            _projection: &crate::core::database::OrderIntentProjection,
+        ) -> Result<(), GraphProjectionError> {
+            Ok(())
+        }
+
         async fn project_bot_promotion(
             &self,
             projection: &BotPromotionProjection,
