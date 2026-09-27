@@ -18,7 +18,7 @@ tags:
 | `ccxt-core` / `ccxt-exchanges` | Patch local em `vendor/ccxt-core-0.1.5` | Cliente HTTP e adapter da exchange. | Vendorizado; política de redirect sob gate de segurança. |
 | PostgreSQL | `core::database` + `core::persistence::Database` | Migrações (PG 18+, Timescale/pgvector), datasets/candles, espelho agents/bots Gate 1. | Opt-in; `DATABASE_URL` → `trading_bot`. |
 | TypeSafe/Jev | `JevAdvisor` | Avaliação consultiva de regime, qualidade do sinal e anomalia. | Opcional; não autoriza ordens. |
-| HTTP API (Axum) | `modules::http_bridge` + `presentation::http` | OpenAPI/Scalar; agents/bots PG opcional; bearer admin e binds owner/agency; orders/monitor commands mutantes protegidos; orders via `HttpOrderExecutor` (`BOT_ORDERS_EXECUTION`, default fail-closed); bots runtime promote/demote (`BOT_RUNTIME_ENABLED`, estado via `shared_bot_runtime()` no processo); `GET /monitor/snapshot` agrega `promoted_bot_id` do mesmo singleton. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). | Ativo em `serve`. |
+| HTTP API (Axum) | `modules::http_bridge` + `presentation::http` | OpenAPI/Scalar; agents/bots PG opcional; bearer admin e binds owner/agency; orders/monitor commands mutantes protegidos; orders via `HttpOrderExecutor` (`BOT_ORDERS_EXECUTION`, default fail-closed); bots runtime promote/demote (`BOT_RUNTIME_ENABLED`, `shared_bot_runtime()`); catálogo e monitor compartilham `monitor_strategy_from_config`; supervisor usa `strategy_evaluation_binding` + `BotSignal.bot_id`. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). | Ativo em `serve`. |
 | Terminal | Ratatui + Crossterm | Dashboard, comandos de pausa/retomada/saída e logs. | Caminho operacional principal. |
 
 ## Binance REST
