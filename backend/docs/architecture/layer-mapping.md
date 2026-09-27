@@ -75,7 +75,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 | `order_executor` | Presentation seam (`HttpOrderExecutor`) | `BOT_ORDERS_EXECUTION`: `disabled`, `dev_accept`, `paper` → `PaperLedgerExecutor`; `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → `ExchangeSpotExecutor` (`live_exchange_wired`); sem backend → `ReservedLiveExchangeExecutor` (**503** `live_exchange_not_wired`); `for_http_server` lê env |
 | `bot_runtime` | Infra/presentation seam (`BotRuntimePort`) | `shared_bot_runtime()` + `BOT_RUNTIME_ENABLED`; HTTP `/bots/runtime/*` (`assert_bot_promotion_allowed`: catálogo + mercado do config); monitor snapshot + `enrich_monitor_snapshot_from_shared_runtime` |
 | `http_admin_auth` | Presentation seam | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` |
-| `databases` | Infra | Postgres + Neo4j opcional para `/readyz` |
+| `databases` | Infra | Postgres (SoT transacional) + Neo4j opcional (`BOT_AGENTS_ENABLED`) hoje só para `/readyz`; visão de **grafo unificado** (código graphify + projeção de domínio) em [unified-neo4j-graph-strategy.md](./unified-neo4j-graph-strategy.md) |
 | `monitor` | Domain handle via infra | `monitor_snapshot` / `accept_monitor_command` quando `--with-monitor` |
 | `jev` + agents | Application bridge | `run_agent_advisory` (prepare + finish) |
 
@@ -95,7 +95,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `bot_catalog_for_config`, `persist_bot_catalog`, `bot_catalog_snapshot`, `bot_ranking_from_metrics` | Bots |
 | `bot_runtime_status`, `promote_bot_http`, `demote_bot_http` | Bots runtime seam (Gate 2 parcial) |
 | `GET /portfolio/paper-snapshot` | `ApiState::paper_wallet_snapshot` → `http_bridge/portfolio` + ledger paper |
-| `submit_order_http` (async) | Orders: risco + `HttpOrderExecutor`; reconciliação memória/PG; idempotência memória/PG |
+| `submit_order_http` (async) | Orders: risco + `HttpOrderExecutor`; idempotência memória/PG (`try_claim`/`release_claim`); reconciliação memória/PG; falha store PG → **503** `order_store_unavailable` |
 | `monitor_snapshot`, `accept_monitor_command` | Monitor |
 | `active_config_snapshot`, `config_snapshot_from_path`, `providers_status_snapshot` | Config / providers |
 | `order_execution_mode` + `GET /orders/execution-status` | Orders seam (read-only status) |
@@ -119,16 +119,16 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, `application/sig
 
 ```text
 ./scripts/verify-backend-gates.sh
-./scripts/verify-backend-full.sh   # gates + PG 15/15 quando DATABASE_URL → trading_bot
+./scripts/verify-backend-full.sh   # gates + PG 18/18 quando DATABASE_URL → trading_bot
 cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-backend-gates.sh
 ```
 
 
 ### Testes PG em `presentation/http/state.rs` (camada application ↔ infra)
 
-Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×15): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` via `build_api_state_for_http_serve` + `build_router` + `GET /agents`, `GET /bots/catalog`, `GET /config/active`, `GET /orders/reconciliation/{client_order_id}` (mesmo caminho que `server::run`).
+Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×18): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` via `build_api_state_for_http_serve` + `build_router` + `GET /agents`, `GET /bots/catalog`, `GET /config/active`, `GET /orders/reconciliation/{client_order_id}` (mesmo caminho que `server::run`).
 
-Evidência: **386** testes no bin `bot`, **17** ignorados (PG×15 no script + provider credentials PG; Neo4j; testnet manual; ver [test-matrix](../reference/test-matrix.md)).
+Evidência: **414** testes no bin `bot`, **0** ignorados (PG×18 no script + provider credentials PG; Neo4j; testnet manual; ver [test-matrix](../reference/test-matrix.md)).
 
 ## Documentos relacionados
 
