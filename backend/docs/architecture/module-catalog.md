@@ -112,7 +112,7 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 |---|---|
 | `models` | `SubmitOrderRequest`, `OrderSide`, `OrdersError` (`ExecutionDisabled`, `LiveExchangeNotWired`, …). |
 | `controllers` | `submit_order` — valida request e `risk::validate_intent`; dedupe `client_order_id` via `OrderIdempotencyStore`. |
-| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor` (`dev_accept`), `ReservedLiveExchangeExecutor` (placeholder exchange); `InMemoryOrderIdempotencyStore`, `PgOrderIdempotencyStore`. |
+| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor` (`dev_accept`), `RecordingExecutor` (test double Gate 2), `ReservedLiveExchangeExecutor` (placeholder exchange); idempotência memória/PG. |
 
 **HTTP:** `GET /api/v1/orders/execution-status` (modo `HttpOrderExecutor` / `live_exchange_wired`); `POST /api/v1/orders/submit` (**503** `execution_disabled` ou `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`) via `presentation/http/routes/orders.rs` → `ApiState::submit_order_http`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido; `BOT_ORDERS_EXECUTION` resolvido em `HttpApiSeams::from_env`.
 

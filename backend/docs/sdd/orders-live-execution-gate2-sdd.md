@@ -42,6 +42,7 @@ status: draft
 | `HttpOrderExecutor::live_exchange_wired` / `ApiState::live_exchange_wired` | Fonte única para `GET /meta` e `GET /orders/execution-status`; `true` somente após adapter exchange real. |
 | `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
 | `ReservedLiveExchangeExecutor` | `BOT_ORDERS_EXECUTION=live_exchange|paper` → `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired` até adapter real. |
+| `RecordingExecutor` | Double in-process (contagem de chamadas); evidência Gate 2 sem rede — `submit_invokes_recording_executor_once_after_risk`. |
 
 ## Validação (baseline G1 antes de Gate 2)
 
@@ -49,7 +50,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **290** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`live_exchange`/`paper` → `LiveExchangeNotWired`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência G1 (2026-09-27): **292** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`live_exchange`/`paper` → `LiveExchangeNotWired`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
