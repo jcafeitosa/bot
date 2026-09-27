@@ -79,11 +79,11 @@ cargo test --locked --test redirect_policy_test
 
 O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default), depois as cinco suítes acima — **não** `cargo test --locked` completo (reexecutaria o bin `bot` em paralelo e pode flake). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
 
-Evidência típica (atualizar após mudanças de teste): **387** aprovados no bin `bot`, **11** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **9/9** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`.
+Evidência típica (atualizar após mudanças de teste): **387** aprovados no bin `bot`, **12** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **10/10** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`.
 
-Bin `bot`: **387** aprovados, **11** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **387** aprovados, **12** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
-### Testes `#[ignore]` no bin `bot` (11)
+### Testes `#[ignore]` no bin `bot` (12)
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|
@@ -96,6 +96,7 @@ Bin `bot`: **387** aprovados, **11** ignorados (incl. `integration_submits_minim
 | `pg_order_idempotency_round_trip` | `modules/orders/adapters/pg_idempotency.rs` | idem |
 | `pg_order_reconciliation_round_trip` | `modules/orders/adapters/pg_reconciliation.rs` | idem |
 | `pg_hydrate_order_reconciliation_from_pg_after_durable_write` | `presentation/http/state.rs` | boot `serve`: `hydrate_order_reconciliation_from_pg` após linhas só em PG |
+| `pg_order_reconciliation_lookup_reads_pg_when_memory_empty` | `presentation/http/state.rs` | `GET /orders/reconciliation/{id}` fallback PG sem hydrate |
 | `ping_and_node_count_against_local_graph` | `core/database/neo4j.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | credenciais testnet + rede; `cargo test -- --ignored integration_submits` |
 

@@ -97,7 +97,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `monitor_snapshot`, `accept_monitor_command` | Monitor |
 | `active_config_snapshot` (incl. `monitor_registry`), `providers_status_snapshot` | Config / providers |
 | `order_execution_mode` + `GET /orders/execution-status` | Orders seam (read-only status) |
-| `order_reconciliation_lookup` + `GET /orders/reconciliation/{client_order_id}` | Reconciliação pós-submit live |
+| `order_reconciliation_lookup` + `GET /orders/reconciliation/{client_order_id}` | Reconciliação pós-submit live; fallback PG `pg_order_reconciliation_lookup_reads_pg_when_memory_empty` |
 | `reconcile_pending_orders_once` / `POST /orders/reconciliation/poll` + job `BOT_ORDERS_RECONCILIATION_POLL_SECS` | Poller (`LiveExchangeSpotOrderReconciliationQuery`) |
 | `hydrate_order_reconciliation_from_pg` | Infra → domain (boot HTTP `serve`, espelha `order_reconciliation` PG na memória); evidência PG `pg_hydrate_order_reconciliation_from_pg_after_durable_write` |
 | Boot agents (PG) | `server::run` → `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` se registry vazio; evidência PG `pg_cold_start_apply_snapshot_after_write_through` |
@@ -119,7 +119,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-backend-gates.sh
 ```
 
-Evidência: **387** testes no bin `bot`, **11** ignorados (PG×9 + Neo4j + testnet manual; ver [test-matrix](../reference/test-matrix.md)).
+Evidência: **387** testes no bin `bot`, **12** ignorados (PG×10 + Neo4j + testnet manual; ver [test-matrix](../reference/test-matrix.md)).
 
 ## Documentos relacionados
 
