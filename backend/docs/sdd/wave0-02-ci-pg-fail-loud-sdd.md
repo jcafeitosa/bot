@@ -12,12 +12,12 @@ status: draft
 
 # SDD W0-02 — CI verde + PG fail-loud + DB de teste isolado
 
-- **Estado:** draft, ciclo 3 do Builder depois do Critic G1 ciclo 2 (REPROVADO). Último ciclo antes de escalar ao owner. Nenhum gate aprovado. Precisa de Critic independente (G1) e acordo do Julio sobre os seams antes do primeiro teste.
+- **Estado:** draft, revisão do SDD após rejeição do Critic G1 ciclo 2. O owner aprovou os seams públicos listados abaixo; a revisão técnica independente G1 permanece pendente. Nenhum gate foi aprovado, e nenhuma implementação está autorizada por este documento.
 - **Autossuficiente:** T-CI-01 e T-CI-02 são rastreados fora do repositório e não há documento deles aqui. Os critérios necessários estão copiados neste SDD (seção "Critérios de aceite"); este documento é a referência para W0-02 contar como concluída.
 - **Plano:** W0-02 em [master-plan](../planning/master-plan.md) §4.1.
 - **Relacionados:** [core-database-sdd](./core-database-sdd.md), [monitor-persistence-policy-sdd](./monitor-persistence-policy-sdd.md) (item 3, integração PG isolada), P2 em [org-module-sdd](./org-module-sdd.md) (roles/migrations; fora desta fatia).
 - **Sem números fixos:** a quantidade de testes PG muda a cada commit. A fonte da verdade é o manifesto `PG_TESTS` de `backend/scripts/run-pg-integration-tests.sh`, verificado por `backend/scripts/assert-pg-integration-manifest.sh`. Este SDD não cita contagens.
-- **Seams:** todos **a acordar com o owner** (tabela "Seams"). Nenhum foi acordado ainda.
+- **Seams:** os seams públicos da tabela "Seams" foram aprovados pelo owner; a revisão técnica independente G1 permanece pendente.
 
 ## Contexto (evidência no código, HEAD `d42b71a5`)
 
