@@ -54,7 +54,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **34** paths; `meta_includes_http_seams_snapshot`, `meta_reports_http_bindings_when_configured`; orders execution-status/submit; bots runtime/catalog; agents agency bind. | `server.rs`, `state.rs`, `routes/meta.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **34** paths; `meta_*` seams (default + owner/agency bindings); `binding_active_flags_reflect_env_bindings_without_leaking_ids`; orders execution-status/submit; bots runtime/catalog; agents agency bind. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
