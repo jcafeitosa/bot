@@ -43,7 +43,7 @@ O teste PostgreSQL ignorado e V18 requerem database `trading_bot` **descartável
 
 ## Próximas ações do Orquestrador
 
-1. Registrar no SDD T-05 o parecer complementar de C9 e iniciar C10 com Builder e Critic independentes.
+1. Iniciar C10 com Builder e Critic independentes para verificar contrato/fallback do produto.
 2. Ativar Builder e Critic separados para cada CL restante antes do primeiro teste.
 3. Encaminhar cada entrega ao Critic, resolver achados, atualizar README/SDDs e registrar evidências por gate.
 4. Executar V18 e reavaliar G4 quando houver banco de teste isolado acessível.
