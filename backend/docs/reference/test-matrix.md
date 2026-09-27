@@ -75,12 +75,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-385 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+387 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 8 testes ignorados (PG×6, Neo4j, testnet ccxt manual; ver `#[ignore]` no código)
 ```
 
-Bin `bot`: **385** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **387** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ### Testes `#[ignore]` no bin `bot` (8)
 
@@ -117,7 +117,7 @@ Não cobre auth owner produto; ver [http-admin-auth-seam-sdd.md](../sdd/http-adm
 ## Lacunas explícitas
 
 - Não há teste end-to-end contra Binance real; isso é intencional para evitar dependência de rede e credenciais.
-- CI não envia ordem testnet real (sem credenciais em pipeline): `recording` + `paper` são determinísticos; `binance_spot_testnet_submit` coberto por testes de contrato (buy/sell exigem credenciais e rede manual; CI usa `recording`/`paper`).
+- CI não envia ordem testnet real (sem credenciais em pipeline): `recording` + `paper` são determinísticos; `binance_spot_testnet_submit` coberto por testes de contrato (buy/sell exigem credenciais e rede manual; CI usa `recording`/`paper`); `map_bot_error_redacts_configured_testnet_credentials_from_message` garante que valores de `BINANCE_TESTNET_*` não aparecem em `OrdersError::InvalidRequest` mapeado.
 - Não há teste de saldo privado ou produção porque esses caminhos são bloqueados.
 - A integração Jev externa é validada por contrato/configuração; disponibilidade do serviço e qualidade da recomendação não são gates operacionais.
 - O listener HTTP local requer permissão de loopback no ambiente de execução.
