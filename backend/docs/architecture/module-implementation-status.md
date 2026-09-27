@@ -20,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --locked --bin bot -- -D warnings` | PASS | mesmo escopo que `verify-backend-gates.sh` |
-| `cargo test --locked` | PASS | 375 testes (bin `bot`); 16 ignorados (PG×14, Neo4j, testnet ccxt manual) |
+| `cargo test --locked` | PASS | 377 testes (bin `bot`); 16 ignorados (PG×14, Neo4j, testnet ccxt manual) |
 | `./scripts/verify-backend-gates.sh` | PASS | fmt + clippy `--bin bot` + import-direction + `cargo test --bin bot -- --test-threads=1` + 5 suítes `tests/*` (sem `cargo test --locked` completo); linha `OK:` com resumo `test result:` |
 
 ## Critério de linha
