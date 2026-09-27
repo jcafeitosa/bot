@@ -34,7 +34,7 @@ tags:
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http` fail-closed / accepting; `client_order_id` dedupe; HTTP `orders_submit_live_exchange_reserved_returns_503_with_code`. |
-| `http_bridge/bots` | `assert_catalog_contains_bot`, `assert_bot_promotion_allowed` (catálogo + `bot_id_matches_market`); `catalog_for_config_includes_monitor_strategy_periods`; testes em `catalog_gate_tests`. |
+| `http_bridge/bots` | `assert_catalog_contains_bot`, `assert_bot_promotion_allowed` (v1/v2 `monitor_registry` + mercado); `catalog_for_config_includes_monitor_strategy_periods`; `catalog_gate_tests`. |
 | `orders` | `submit_order` + `ReservedLiveExchangeExecutor` (`LiveExchangeNotWired`); `InMemoryOrderIdempotencyStore` + `pg_order_idempotency_round_trip` (ignorado). |
 | `bots` | Identidade, ranking, `build_catalog_from_monitor_registry` (multi-estratégia registrada), `BotRuntimePort` + `shared_bot_runtime()`, `MonitorStrategyRegistry`, `strategy_evaluation_binding`, métricas coerentes com `BotId`. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
@@ -54,7 +54,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **34** paths; `meta_*` seams; orders execution-status/submit; bots catalog/promote incl. `sma-cross@2` (`monitor_registry`); agents agency bind. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **34** paths (incl. `/api/v1/meta`); `meta_and_*_agree_on_*`; `documented_get_routes_respond` cobre runtime/status; orders/bots/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
@@ -69,12 +69,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-287 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+288 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 6 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, pg identity, pg order idempotency, market, neo4j)
 ```
 
-Bin `bot`: 287 aprovados, 6 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
+Bin `bot`: 288 aprovados, 6 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
 
 ## Lacunas explícitas
 
