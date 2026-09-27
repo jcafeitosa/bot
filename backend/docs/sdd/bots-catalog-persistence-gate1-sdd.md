@@ -19,7 +19,7 @@ status: draft
 
 | Área | Artefato | Comportamento |
 |------|----------|---------------|
-| Bots | `PgBotCatalogStore`, `BotCatalogBackend` | Persist/snapshot HTTP usa PG quando pool disponível |
+| Bots | `PgBotCatalogStore`, `BotCatalogBackend` | Persist/snapshot HTTP usa PG quando pool disponível; `server::run` faz write-through best-effort do catálogo no boot quando `DATABASE_URL` conecta |
 | Agents | `PgAgentIdentityStore`, `persist_identity_rows` | Write-through após register/pause/resume/retire |
 | Agents boot | `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` | Cold-start quando registry compartilhado vazio |
 | Schema | `0002_agents_bots_scaffold.sql`, `0005_agent_promote_runtime_bot.sql` | `agent_*`, `bot_catalog_entries`, capability `promote_runtime_bot` |

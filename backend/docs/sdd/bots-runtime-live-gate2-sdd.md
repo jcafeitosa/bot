@@ -48,6 +48,10 @@ status: draft
 
 Evidência parcial (2026-09-27): **255** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*`, `monitor_strategy_from_config`, `strategy_evaluation_binding` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` com `BOT_HTTP_AGENCY_ID`.
 
+## Testes HTTP (isolamento)
+
+Testes de `POST /bots/runtime/promote` em `presentation/http/server.rs` usam `fresh_agent_registry()` (registry por teste) e `bot_id` alinhado ao `Config::default()` (`15m`, símbolo compacto `BTCUSDT`); `bots_runtime_promote_rejects_timeframe_not_matching_monitor_config` cobre rejeição de timeframe divergente.
+
 ## Validação Gate 2 (quando implementado)
 
 - Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot; supervisor usa `strategy_evaluation_binding` + `BotSignal.bot_id` quando promoção casa com mercado; `promote_bot_http` rejeita `bot_id` fora do catálogo (`assert_catalog_contains_bot`). **Pendente:** parâmetros SMA/estratégia por definição de catálogo (hoje permanecem no `Config` global).
