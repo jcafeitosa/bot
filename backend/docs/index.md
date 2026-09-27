@@ -16,7 +16,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente e validações.
 - [API HTTP (OpenAPI + Scalar)](./reference/cli-and-config.md#subcomando-serve-http) — subcomando `serve`, `/openapi.json`, `/docs`, `GET /meta` (`http_seams`), agents e `--with-monitor`.
 - [Referência de módulos do backend](./architecture/backend-module-reference.md) — visão consolidada, interfaces, seams, fluxos e limites.
-- [Catálogo completo de módulos](./architecture/module-catalog.md) — todos os módulos Rust, submódulos de exchange, contratos e invariantes.
+- [Catálogo completo de módulos](./architecture/module-catalog.md) — todos os módulos Rust, facades HTTP (`§3d` `http_bridge`), submódulos de exchange, contratos e invariantes.
 - [Matriz de testes](./reference/test-matrix.md) — cobertura por módulo, integração, evidências e lacunas.
 - [Mapeamento de camadas](./architecture/layer-mapping.md) — domain, application, infrastructure, presentation.
 - [Integrações do backend](./architecture/integrations.md) — Binance, ccxt, PostgreSQL, Jev, terminal e controles.

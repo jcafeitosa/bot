@@ -58,7 +58,7 @@ O caminho de monitor não envia ordens. A autorização atual permite apenas bac
 | `modules` | `agents` | `AgentRegistry`, lifecycle, `run_advisory_step` | Identidade `IdentityOnly`; registry compartilhado; HTTP + espelho/hydrate PG; seam admin opcional. | [SDD agents](../sdd/agents-module-sdd.md) |
 | `modules` | `bots` | `BotIdentity`, `full_ranking`, catálogo | Executores strategy×timeframe; `BotCatalogBackend` (memória/PG); HTTP catalog/persist/snapshot/ranking. | [SDD bots](../sdd/bots-module-sdd.md) |
 | `modules` | `orders` | `submit_order`, `FailClosedExecutor` | Valida risco e bloqueia execução (`ExecutionDisabled`); HTTP `POST /api/v1/orders/submit` retorna 503 após risco OK. | [SDD orders](../sdd/orders-module-sdd.md) |
-| `modules` | `http_bridge` | facades por domínio | Camada entre `presentation::http` e módulos de domínio. | `src/modules/http_bridge/` |
+| `modules` | `http_bridge` | facades por domínio | Camada entre `presentation::http` e módulos de domínio (rotas não importam domínio direto). | [module-catalog §3d](./module-catalog.md#3d-facade-http_bridge-srcmoduleshttp_bridge), `src/modules/http_bridge/` |
 | `presentation` | `terminal` | TUI Ratatui | Renderização e teclado; contrato com monitor via `presentation_contract`. | `src/presentation/terminal/mod.rs`, `modules/monitor/views/` |
 | `presentation` | `http` | Axum, OpenAPI, Scalar | Superfície REST (`serve`); **36** paths; `GET /meta` (`http_seams`); `HttpAdminAuth` em mutações; orders submit/reconciliação sob seams G2. | `src/presentation/http/`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) |
 

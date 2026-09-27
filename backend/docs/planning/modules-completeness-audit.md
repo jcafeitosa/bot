@@ -61,7 +61,7 @@ Evidência (2026-09-27, gate ~10,6s): **387** testes no binário `bot`, **10** i
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor testnet→orders (`client_order_id` + ledger partilhado), backtest `evaluate_for_kind` | **Parcial** (PG mirror monitor; auth owner) |
 | Completude orders | Paper/recording/testnet, idempotência PG, reconciliação+poll (recording/testnet observe), redação `BINANCE_TESTNET_*` em erros mapeados, `SpotOrderSubmitAck` | **Parcial** (prod REST; threat model/Critic) |
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
-| Integração HTTP + camadas | OpenAPI **36** paths; `GET /meta`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` (`paper_fill_unit_price`); testnet ccxt opt-in; reconciliação GET/POST poll; PG hydrate | **Parcial** (auth owner; prod REST política) |
+| Integração HTTP + camadas | OpenAPI **36** paths; `GET /meta`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` (`paper_fill_unit_price`); testnet ccxt opt-in; reconciliação GET/POST poll; PG hydrate; mapa `http_bridge` em [module-catalog §3d](../architecture/module-catalog.md#3d-facade-http_bridge-srcmoduleshttp_bridge) | **Parcial** (auth owner; prod REST política) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | **387** + clippy/fmt/import; PG 8/8 opcional (`verify-backend-full.sh`; evidência local com `DATABASE_URL`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
