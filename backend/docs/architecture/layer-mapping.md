@@ -106,7 +106,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `register_live_reconciliation_pg_mirror` | Infra: monitor testnet espelha reconciliação no PG quando `DATABASE_URL` ativo |
 | `observe_testnet_spot_order_by_client_id` | Infra exchanges → observação ccxt para poller testnet |
 
-Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`portfolio/paper-snapshot`**) chamam `http_bridge` diretamente com body/query. O snapshot paper agrega fills de `PaperLedgerExecutor` (modo `paper`) via `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (saldos quote + `positions` quando `paper_fill_unit_price` no submit HTTP ou `BOT_PAPER_FILL_UNIT_PRICE`).
+Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, `application/signals`, `config/snapshot` por path) chamam `http_bridge` diretamente com body/query. **`GET /portfolio/paper-snapshot`** usa `ApiState::paper_wallet_snapshot` → `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (fills de `PaperLedgerExecutor` após submit paper HTTP ou monitor `RunMode::Paper`; `paper_fill_unit_price` no body ou `BOT_PAPER_FILL_UNIT_PRICE`).
 
 ## Lacunas conscientes
 
