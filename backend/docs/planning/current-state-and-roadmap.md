@@ -97,7 +97,7 @@ tags:
 
 O script executa `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1` e cinco suítes em `tests/` (`backtest_fixture`, `config_cli`, `monitor_startup_cli`, `redirect_origin_test`, `redirect_policy_test`) — sem repetir `cargo test --locked` completo (evita flake do bin `bot` em paralelo).
 
-Evidência observada: **387** testes unitários no binário `bot` (OpenAPI **36** paths; orders reconciliação GET + `POST …/poll` + poller testnet observe; PG `0004`/`0006`; paper/testnet/recording; bots runtime/`evaluate_for_kind`; agents promote capability), **14** ignorados (PG×12, Neo4j, testnet ccxt manual), `./scripts/verify-backend-gates.sh` **ok**; PG opcional **12/12** via `run-pg-integration-tests.sh`.
+Evidência observada: **387** testes unitários no binário `bot` (OpenAPI **36** paths; orders reconciliação GET + `POST …/poll` + poller testnet observe; PG `0004`/`0006`; paper/testnet/recording; bots runtime/`evaluate_for_kind`; agents promote capability), **15** ignorados (PG×13, Neo4j, testnet ccxt manual), `./scripts/verify-backend-gates.sh` **ok**; PG opcional **13/13** via `run-pg-integration-tests.sh`.
 
 ## Gates de aceitação
 

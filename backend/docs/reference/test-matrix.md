@@ -79,11 +79,11 @@ cargo test --locked --test redirect_policy_test
 
 O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default), depois as cinco suítes acima — **não** `cargo test --locked` completo (reexecutaria o bin `bot` em paralelo e pode flake). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
 
-Evidência típica (atualizar após mudanças de teste): **387** aprovados no bin `bot`, **14** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **12/12** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`.
+Evidência típica (atualizar após mudanças de teste): **387** aprovados no bin `bot`, **15** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **13/13** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`.
 
-Bin `bot`: **387** aprovados, **14** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **387** aprovados, **15** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
-### Testes `#[ignore]` no bin `bot` (14)
+### Testes `#[ignore]` no bin `bot` (15)
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|
@@ -92,6 +92,7 @@ Bin `bot`: **387** aprovados, **14** ignorados (incl. `integration_submits_minim
 | `pg_identity_snapshot_round_trip` | `modules/agents/adapters/pg_registry.rs` | idem |
 | `pg_agent_lifecycle_write_through_round_trip` | `modules/http_bridge/agents.rs` | idem |
 | `pg_cold_start_apply_snapshot_after_write_through` | `modules/http_bridge/agents.rs` | boot `serve`: hydrate registry vazio após PG |
+| `pg_register_agent_and_persist_cold_start_via_snapshot` | `presentation/http/state.rs` | `POST /agents` → `persist_agent_after_mutation` + cold-start snapshot |
 | `pg_catalog_store_round_trip` | `modules/bots/adapters/pg_catalog.rs` | adapter store |
 | `pg_bot_catalog_snapshot_round_trip_via_api_state` | `presentation/http/state.rs` | `persist_bot_catalog` + `GET /bots/catalog/snapshot` via `catalog_from_store` |
 | `pg_order_idempotency_round_trip` | `modules/orders/adapters/pg_idempotency.rs` | adapter store |
