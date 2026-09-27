@@ -1,13 +1,5 @@
 use std::env;
 
-#[allow(dead_code)]
-pub fn optional_trimmed(name: &'static str) -> Option<String> {
-    env::var(name)
-        .ok()
-        .map(|raw| raw.trim().to_string())
-        .filter(|value| !value.is_empty())
-}
-
 pub fn parse_bool_flag(name: &'static str, default: bool) -> Result<bool, String> {
     match env::var(name) {
         Ok(raw) => {
@@ -19,14 +11,5 @@ pub fn parse_bool_flag(name: &'static str, default: bool) -> Result<bool, String
             }
         }
         Err(_) => Ok(default),
-    }
-}
-
-#[allow(dead_code)]
-pub fn optional_var_raw(name: &'static str) -> Result<Option<String>, env::VarError> {
-    match env::var(name) {
-        Ok(value) => Ok(Some(value)),
-        Err(env::VarError::NotPresent) => Ok(None),
-        Err(other) => Err(other),
     }
 }

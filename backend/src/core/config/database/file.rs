@@ -4,12 +4,6 @@ use super::super::env_parse;
 use super::super::system::SystemConfig;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
-pub struct PostgresConfig {
-    pub url: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Neo4jConnectionConfig {
     pub uri: String,
     pub user: String,
@@ -17,6 +11,10 @@ pub struct Neo4jConnectionConfig {
     pub database: String,
 }
 
+/// Runtime toggle + Neo4j credentials loaded by [`load_agents_stack_from_env`].
+///
+/// `enabled` follows env `BOT_AGENTS_ENABLED` (TOML fallback `[agents].enabled`). The name
+/// reflects legacy wiring (“agents stack”); it means **graph stack enabled**, not HTTP agents.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentsStackConfig {
     pub enabled: bool,
@@ -56,6 +54,7 @@ pub fn postgres_url_from_env() -> Result<Option<String>, DatabaseConfigError> {
     }
 }
 
+/// Loads optional Neo4j graph runtime config (`BOT_AGENTS_ENABLED` + `BOT_NEO4J_*`).
 pub fn load_agents_stack_from_env() -> Result<AgentsStackConfig, DatabaseConfigError> {
     let defaults = SystemConfig::active();
     let enabled = parse_agents_enabled_flag(defaults.agents.enabled)?;

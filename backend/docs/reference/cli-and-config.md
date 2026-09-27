@@ -40,7 +40,7 @@ Sem `--config`, o processo procura `src/core/config/bot.toml` relativo ao diret�
 | `src/core/config/exchanges/*.toml` | Contas/endpoints exchange (`binance.toml`); `load_registry` ignora `credentials.toml` (só documenta env `BINANCE_TESTNET_*`). |
 | PostgreSQL `provider_credentials` | API keys LLM (primary); env `TYPESAFE_*` / `OPENAI_*` = bootstrap deprecated. |
 
-Fallbacks de `system.toml` (usados quando a env correspondente não está definida; a env vence quando definida — leitura em `src/core/config/*/file.rs`): `[orders]` `execution` (`BOT_ORDERS_EXECUTION`), `exchange_submit` (`BOT_ORDERS_EXCHANGE_SUBMIT`), `paper_fill_unit_price` (`BOT_PAPER_FILL_UNIT_PRICE`; `0` = desligado), `reconciliation_poll_secs` (`BOT_ORDERS_RECONCILIATION_POLL_SECS`; `0` = desligado); `[bots]` `runtime_enabled` (`BOT_RUNTIME_ENABLED`); `[agents]` `enabled` (`BOT_AGENTS_ENABLED`), `monitor_agency` (`BOT_AGENCY`); `[monitor]` `persist_market_data` (`PERSIST_MARKET_DATA`); `[neo4j]` `uri` / `user` / `database` (`BOT_NEO4J_URI` / `BOT_NEO4J_USER` / `BOT_NEO4J_DATABASE`), `graph_projection_outbox_drain_secs` (`BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS`; `0` = desligado); `[providers]` `typesafe_endpoint` (`TYPESAFE_ENDPOINT`), `openai_base_url` (`NINE_ROUTER_BASE_URL` / `OPENAI_BASE_URL`), `nim_base_url` (`NVIDIA_NIM_BASE_URL`).
+Fallbacks de `system.toml` (usados quando a env correspondente não está definida; a env vence quando definida — leitura em `src/core/config/*/file.rs`): `[orders]` `execution` (`BOT_ORDERS_EXECUTION`), `exchange_submit` (`BOT_ORDERS_EXCHANGE_SUBMIT`), `paper_fill_unit_price` (`BOT_PAPER_FILL_UNIT_PRICE`; `0` = desligado), `reconciliation_poll_secs` (`BOT_ORDERS_RECONCILIATION_POLL_SECS`; `0` = desligado); `[bots]` `runtime_enabled` (`BOT_RUNTIME_ENABLED`); `[agents]` `enabled` (**TOML fallback** para `BOT_AGENTS_ENABLED` — stack Neo4j legado, não módulo HTTP agents), `monitor_agency` (`BOT_AGENCY`); `[monitor]` `persist_market_data` (`PERSIST_MARKET_DATA`); `[neo4j]` `uri` / `user` / `database` (`BOT_NEO4J_URI` / `BOT_NEO4J_USER` / `BOT_NEO4J_DATABASE`), `graph_projection_outbox_drain_secs` (`BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS`; `0` = desligado); `[providers]` `typesafe_endpoint` (`TYPESAFE_ENDPOINT`), `openai_base_url` (`NINE_ROUTER_BASE_URL` / `OPENAI_BASE_URL`), `nim_base_url` (`NVIDIA_NIM_BASE_URL`).
 
 Ordem de bootstrap: `ensure_dotenv_loaded()` → `system.toml` → `bot.toml`. Detalhes: [SDD configuração centralizada](../sdd/centralized-config-sdd.md), [provider credentials](../sdd/provider-credentials-db-sdd.md).
 
@@ -144,7 +144,8 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_PAPER_FILL_UNIT_PRICE` | Opcional com `paper`: preço quote/base usado no ledger para calcular `positions` no snapshot HTTP (ex.: `50000` para BTC/USDT). |
 | `client_order_id` (body HTTP) | Campo opcional em `POST /api/v1/orders/submit`; replays retornam `accepted: true` sem reexecutar (memória; PG quando `DATABASE_URL` + migração `0004`). Com `live_exchange_wired`, reconciliação `pending`→`reconciled` (memória + PG `0006`); consulta `GET /api/v1/orders/reconciliation/{client_order_id}`; testnet usa `newClientOrderId` no submit; poller testnet pode `fetch_order` sem binding local. |
 | `paper_fill_unit_price` (body HTTP) | Opcional em modo `paper`: preço quote/base por ordem para `positions` no snapshot (alternativa a `BOT_PAPER_FILL_UNIT_PRICE`). |
-| `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; projeção write-only F1–F3.1 + outbox F2.1; ver `docs/operations/postgres-and-graph-dev.md`. |
+| `BOT_AGENTS_ENABLED` | **Nome legado:** liga stack Neo4j no processo (`load_agents_stack_from_env` / `AgentsStackConfig`). TOML: `[agents].enabled`. **Não** desliga o módulo HTTP `agents` (registry/PG). Backlog: alias `BOT_GRAPH_ENABLED` — [unified-neo4j-graph-strategy](../architecture/unified-neo4j-graph-strategy.md). |
+| `BOT_NEO4J_URI` / `BOT_NEO4J_USER` / `BOT_NEO4J_PASSWORD` / `BOT_NEO4J_DATABASE` | Credenciais Bolt quando `BOT_AGENTS_ENABLED=true`; URI/user/database têm fallback em `[neo4j]`; senha só env. Projeção write-only F1–F3.1 + outbox F2.1; CLI `graph query` / `graph-projection drain`; ver [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md). |
 | `neo4j.graph_projection_outbox_drain_secs` (`system.toml`) | Intervalo do worker de drain do outbox PG→Neo4j quando PG+Neo4j wired no `serve`/monitor; default **30**; **0** desliga o ticker. |
 | `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS` | Override env do intervalo (mesma semântica que `system.toml`; vence TOML quando definido). |
 | `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_BATCH` | Tamanho do lote por tick de drain (default **32**, clamp 1–500). |
@@ -154,6 +155,19 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 Variáveis comentadas e exemplos mínimos: `backend/.env.example` (inclui seams `BOT_ORDERS_*`, `BOT_RUNTIME_ENABLED`, `BOT_HTTP_*`).
 
 Nunca comite `.env` ou credenciais.
+
+## Neo4j e flag legado `BOT_AGENTS_ENABLED`
+
+| Env (canônico hoje) | TOML fallback | Loader | Significado |
+|---|---|---|---|
+| `BOT_AGENTS_ENABLED` | `[agents].enabled` | `load_agents_stack_from_env()` | Habilita conexão Neo4j + projeção/outbox; **não** é toggle do módulo HTTP removido/inexistente. |
+| `BOT_NEO4J_URI` | `[neo4j].uri` | mesmo loader | Bolt URI (ex.: `bolt://127.0.0.1:7688`). |
+| `BOT_NEO4J_USER` | `[neo4j].user` | mesmo loader | Usuário Neo4j. |
+| `BOT_NEO4J_PASSWORD` | *(somente `.env`)* | mesmo loader | Obrigatório quando enabled. |
+| `BOT_NEO4J_DATABASE` | `[neo4j].database` | mesmo loader | Database name (default `neo4j`). |
+
+**Alias planejado (sem breaking rename nesta fatia):** `BOT_GRAPH_ENABLED` e `load_graph_runtime_from_env` — ver backlog em [unified-neo4j-graph-strategy.md](../architecture/unified-neo4j-graph-strategy.md). `BOT_AGENCY` continua sendo agência do monitor/registry, independente do grafo.
+
 
 ## Persistência
 
