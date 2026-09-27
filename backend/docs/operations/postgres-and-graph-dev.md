@@ -29,7 +29,7 @@ O compose local (`docker-compose.bot.yml`) usa por padrão o banco `bot_agents` 
 CREATE DATABASE trading_bot OWNER bot_agents;
 ```
 
-Testes `#[ignore]` de PG: `cd backend && ./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` apontando para `trading_bot`.
+Testes de integração PG: `cd backend && ./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` apontando para `trading_bot` (sem env, os mesmos testes passam com skip via `core/persistence/pg_integration.rs`).
 
 ## Provider credentials (LLM API keys)
 

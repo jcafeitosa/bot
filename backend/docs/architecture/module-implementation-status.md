@@ -37,7 +37,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | error | `core/error.rs` | Infra (`BotError`) | Usado em todos os módulos + HTTP |
 | logging | `core/logging.rs` | Infra (`init`) | `main.rs` (`core::logging::init`) |
 | database | `core/database/` | Infra (PG 18+, Neo4j, `AppDatabases`) | boot unificado `bootstrap_runtime` / monitor / backtest ([SDD](../sdd/database-module-integration-sdd.md)) |
-| persistence | `core/persistence/` | Infra (`Database`, dataset) | `market/models` integration (ignored PG), monitor startup |
+| persistence | `core/persistence/` | Infra (`Database`, dataset, `pg_integration`) | `market/models` PG round-trip (skip sem env), monitor startup |
 | health | `core/health/mod.rs` | Infra (liveness/readiness) | `core::health::tests` |
 | notifications | `core/notifications/` | Infra + `stub` adapter | `core::notifications::tests` |
 | providers | `core/providers/` | `jev`: M+C+A; NIM/nine_router/openai: adapters HTTP | Testes em cada provider; Jev via `agents` |

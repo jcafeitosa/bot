@@ -92,6 +92,21 @@ Rollout aditivo: criar schema e constraints em base isolada, validar/backfill da
 9. Qual schema/database PostgreSQL e papel de runtime serão autorizados para `org`?
 10. Qual retenção e visibilidade do histórico pessoal de atribuições são necessárias?
 
+## Requisito transversal: manutenção por agentes de IA
+
+O backend deve poder ser compreendido, verificado e mantido por agentes de IA com contexto limitado e sem depender de convenções implícitas. Para `org`, isso exige:
+
+- contratos públicos e ownership de dados explícitos; `org` é dono de unidades, cargos, posições e assignments; `agents` é dono de identidade, lifecycle e capabilities efetivas;
+- schemas e invariantes versionados e legíveis por máquina, com migrations pequenas, repetíveis, reversíveis quando possível e testadas em PostgreSQL isolado;
+- módulos com interfaces pequenas, camadas MVC consistentes, validação no domínio e erros tipados;
+- testes determinísticos que percorrem os entrypoints reais, incluindo autorização negativa, tenant isolation, concorrência de assignments, falha transacional e restore;
+- documentação ligada ao índice OpenKnowledge e Graphify atualizado depois de mudanças de código; auditoria de drift entre contrato, implementação e testes;
+- tarefas de manutenção delimitadas por ownership, dependências e critérios observáveis, com mudanças revisadas por Critic independente;
+- superfícies administrativas que suportem leitura/diagnóstico antes de escrita, retornem estado explícito e exponham preflight/plan de mudanças de alto impacto quando aplicável;
+- logs e auditoria sem credenciais ou dados pessoais desnecessários; agentes mantenedores usam as mesmas autorizações humanas/serviço e não herdam autoridade do ambiente de desenvolvimento.
+
+A meta é reduzir decisões inferidas: nomes de campos, semântica de estado, tenancy, transações e compatibilidade precisam estar em contratos e testes. Uma mudança que depende de alterar `.env`, gravar em banco compartilhado ou conceder authority requer gate explícito e trilha auditável.
+
 ## Estado
 
 `provisional`: a estrutura proposta é coerente com os tipos atuais, mas as decisões acima e a revisão independente ainda são necessárias. Este documento não aprova concessão automática de autoridade nem inicia implementação.
