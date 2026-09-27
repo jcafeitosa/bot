@@ -30,7 +30,7 @@ tags:
 | `market_feed` | Uma avaliação por timestamp, upsert WS, catch-up REST, contiguidade, watermark monotônico e preenchimento tardio. |
 | `strategy` | Períodos por operação e sinais de cruzamento. |
 | `risk` | Limite conservador/agressivo, tamanho, stop/take profit e incompatibilidade de modo. |
-| `agents` | Registry, lifecycle, `assert_runtime_promotion_authorized` (`promotion_denied_when_capability_false`), PG snapshot. |
+| `agents` | Registry, lifecycle, `assert_runtime_promotion_authorized` (capability + not-active), PG snapshot. |
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` em `server.rs`. |
