@@ -164,6 +164,7 @@ mod migration_scaffold_tests {
             "graph_projection_outbox",
             "product_owner_bootstrap",
             "product_owner_bootstrap_events",
+            "monitor_supervisor_snapshot",
         ] {
             assert!(
                 db.table_exists(table).await.expect("table_exists query"),

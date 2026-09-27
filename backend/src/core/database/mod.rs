@@ -10,6 +10,7 @@ mod graph_projection_outbox;
 mod graph_projection_outbox_worker;
 mod graph_query;
 pub(crate) mod monitor_bootstrap;
+mod monitor_supervisor_snapshot;
 mod neo4j;
 mod neo4j_agent_hierarchy;
 mod neo4j_bot_projection;
@@ -49,6 +50,10 @@ pub use graph_query::{
 pub use monitor_bootstrap::{
     bootstrap_monitor_postgres, connect_postgres_for_monitor, postgres_for_cli_persist,
     MonitorBootstrapError,
+};
+pub use monitor_supervisor_snapshot::{
+    load_monitor_supervisor_snapshot, save_monitor_supervisor_snapshot_best_effort,
+    MonitorSupervisorSnapshotRow,
 };
 pub use neo4j::Neo4jGraph;
 pub use neo4j_agent_hierarchy::Neo4jAgentHierarchyProjector;

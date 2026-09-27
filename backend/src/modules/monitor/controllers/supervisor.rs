@@ -15,7 +15,7 @@ use crate::modules::monitor::views::terminal_dashboard::{AppEvent, Dashboard, Mo
 use crate::modules::monitor::MonitorHandle;
 use crate::{
     core::config::{Config, RunMode},
-    core::database::{GraphProjectionSync, Neo4jGraph},
+    core::database::{AppDatabases, GraphProjectionSync, Neo4jGraph},
     core::error::{BotError, BotResult},
     core::notifications::{LogNotifier, Notification, Notifier, Severity},
     core::persistence::Database,
@@ -355,6 +355,31 @@ struct MarketLoop {
     now_ms: Clock,
     neo4j: Option<Neo4jGraph>,
     postgres: Option<Database>,
+    supervisor_snapshot_pg: Option<Database>,
+}
+
+fn persist_supervisor_snapshot_best_effort(
+    pg: &Option<Database>,
+    last_tick_ms: i64,
+    promoted_bot_id: Option<&str>,
+) {
+    let Some(db) = pg.clone() else {
+        return;
+    };
+    let promoted_bot_id = promoted_bot_id.map(str::to_string);
+    tokio::spawn(async move {
+        let updated_at_ms = chrono::Utc::now().timestamp_millis();
+        if let Err(error) = crate::core::database::save_monitor_supervisor_snapshot_best_effort(
+            db.pool(),
+            last_tick_ms,
+            promoted_bot_id.as_deref(),
+            updated_at_ms,
+        )
+        .await
+        {
+            warn!(target: "monitor", %error, "supervisor snapshot save failed (best-effort)");
+        }
+    });
 }
 
 struct EvaluationCandidate {
@@ -780,6 +805,11 @@ async fn run_market_loop(mut inputs: MarketLoop) {
                 if !apply_strategy_snapshot(candidate.snapshot, candidate.note, candidate.source, candidate.promoted_bot_id.clone(), &settings, &mut execution_ctx, &mut dashboard).await {
                     break;
                 }
+                persist_supervisor_snapshot_best_effort(
+                    &inputs.supervisor_snapshot_pg,
+                    candidate.timestamp,
+                    candidate.promoted_bot_id.as_deref(),
+                );
             },
             completed = async { (&mut persistence_task.as_mut().expect("guarded persistence task").task).await }, if persistence_task.is_some() => {
                 let write = persistence_task.take().expect("completed persistence task");
@@ -862,6 +892,11 @@ async fn run_with_agent_hook_inner(
     // Hybrid feed: WS closed 1m klines trigger evaluation; REST poll refreshes the window on interval.
     let ws_shutdown = CancellationToken::new();
     let persistence_enabled = database.is_some();
+    let supervisor_snapshot_pg = if database.is_some() {
+        database.clone()
+    } else {
+        AppDatabases::optional_postgres_for_monitor_supervisor_snapshot().await
+    };
     let overflow_signal = persistence_enabled.then(|| Arc::new(WsOverflowSignal::new()));
     let ws_for_timeframe = ws_matches_configured_timeframe(&config.market.timeframe);
     let (mut closed_kline_rx, ws_stream_task) = if ws_for_timeframe {
@@ -924,6 +959,27 @@ async fn run_with_agent_hook_inner(
     };
     let limits = profile_limits(config.risk_profile, base_limits);
     let mut dashboard = new_dashboard(&config, limits);
+    if let Some(ref pg) = supervisor_snapshot_pg {
+        match crate::core::database::load_monitor_supervisor_snapshot(pg.pool()).await {
+            Ok(Some(row)) => {
+                info!(
+                    target: "monitor",
+                    last_tick_ms = row.last_tick_ms,
+                    promoted_bot_id = ?row.promoted_bot_id,
+                    "Hydrated supervisor snapshot from PG (advisory; não altera SoT orders/agents)"
+                );
+                dashboard.logs.push(format!(
+                    "PG supervisor snapshot (advisory): last_tick_ms={} promoted_bot_id={}",
+                    row.last_tick_ms,
+                    row.promoted_bot_id.as_deref().unwrap_or("—")
+                ));
+            }
+            Ok(None) => {}
+            Err(error) => {
+                warn!(target: "monitor", %error, "supervisor snapshot hydrate failed (ignored)");
+            }
+        }
+    }
     dashboard.persistence_status = PersistenceHealth::new(database.is_some()).label().into();
     let (event_tx, mut event_rx) = mpsc::channel(64);
     let (monitor_handle, command_rx, _) = MonitorHandle::channel(8, 64);
@@ -1047,6 +1103,7 @@ async fn run_with_agent_hook_inner(
         now_ms: Arc::new(|| chrono::Utc::now().timestamp_millis()),
         neo4j,
         postgres: database.clone(),
+        supervisor_snapshot_pg,
     }));
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
@@ -1212,6 +1269,7 @@ mod tests {
             now_ms: Arc::new(|| 420_000),
             neo4j: None,
             postgres: None,
+            supervisor_snapshot_pg: None,
         }));
         (monitor_handle, event_rx, state_rx, handle)
     }

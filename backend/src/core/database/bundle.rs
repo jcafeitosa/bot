@@ -116,4 +116,28 @@ impl AppDatabases {
     pub async fn postgres_for_cli_persist() -> Result<Database, PersistenceError> {
         super::monitor_bootstrap::postgres_for_cli_persist().await
     }
+
+    /// Optional PG for C17 supervisor snapshot when `DATABASE_URL` is set (best-effort; does not fail monitor boot).
+    pub async fn optional_postgres_for_monitor_supervisor_snapshot() -> Option<Database> {
+        match postgres_url_from_env() {
+            Ok(Some(url)) => match Database::connect_from_url(&url).await {
+                Ok(db) => match db.migrate().await {
+                    Ok(()) => Some(db),
+                    Err(error) => {
+                        warn!(target: "database", %error, "supervisor snapshot: migrations failed");
+                        None
+                    }
+                },
+                Err(error) => {
+                    warn!(target: "database", %error, "supervisor snapshot: connection failed");
+                    None
+                }
+            },
+            Ok(None) => None,
+            Err(error) => {
+                warn!(target: "database", %error, "supervisor snapshot: invalid DATABASE_URL");
+                None
+            }
+        }
+    }
 }
