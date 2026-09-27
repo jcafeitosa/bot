@@ -1,9 +1,9 @@
 //! Durable PG outbox for Neo4j graph projection (F2.1).
 //!
-//! **Enqueue timing:** hooks run after PG commit today (`persist_agent_after_mutation`,
-//! catalog persist, order submit). Rows are inserted in a separate statement — not yet in the
-//! same transaction as domain writes. Orders HTTP (PG claim path) uses
-//! `persist_idempotency_and_enqueue_graph_projection` + `enqueue_graph_projection_outbox_tx`.
+//! **Enqueue timing:** agents HTTP + orders HTTP (PG paths) enqueue in the same TX as
+//! domain persist (`persist_identity_and_enqueue_graph_projection`,
+//! `persist_idempotency_and_enqueue_graph_projection` + `enqueue_graph_projection_outbox_tx`).
+//! Bots catalog and monitor supervisor remain post-commit (`graph_projection_best_effort`).
 
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Postgres, Transaction};

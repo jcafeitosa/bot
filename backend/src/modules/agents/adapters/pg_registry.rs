@@ -1,7 +1,10 @@
 use sqlx::PgPool;
 
+use super::graph_projection::agent_graph_projection_outbox_message;
 use super::persistence::AgentIdentityStore;
-use crate::core::database::PostgresDatabase;
+use crate::core::database::{
+    enqueue_graph_projection_outbox_tx, GraphProjectionOutboxError, PostgresDatabase,
+};
 use crate::modules::agents::models::{
     AgencyId, AgentCapabilities, AgentDefinition, AgentId, AgentLifecycleState, AgentRole,
     IdentityAuditEvent, IdentityEventKind, OwnerId, SupervisorRef,
@@ -17,6 +20,69 @@ impl PgAgentIdentityStore {
         Self {
             pool: db.pool().clone(),
         }
+    }
+
+    /// Atomically upserts identity, appends audit event, and enqueues graph outbox (F2.1.3+ agents).
+    pub async fn persist_identity_and_enqueue_graph_projection(
+        &self,
+        definition: &AgentDefinition,
+        event: &IdentityAuditEvent,
+    ) -> Result<(), String> {
+        let message = agent_graph_projection_outbox_message(definition);
+        let (supervisor_kind, supervisor_owner_id, supervisor_agent_id) =
+            supervisor_columns(&definition.supervisor);
+        let mut tx = self.pool.begin().await.map_err(|error| error.to_string())?;
+        sqlx::query(
+            "INSERT INTO agent_identities \
+             (agent_id, agency_id, owner_id, display_name, role, supervisor_kind, supervisor_owner_id, supervisor_agent_id, lifecycle_state, consult_jev, promote_runtime_bot, created_at_ms, updated_at_ms) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) \
+             ON CONFLICT (agent_id) DO UPDATE SET \
+             agency_id = EXCLUDED.agency_id, owner_id = EXCLUDED.owner_id, display_name = EXCLUDED.display_name, \
+             role = EXCLUDED.role, supervisor_kind = EXCLUDED.supervisor_kind, supervisor_owner_id = EXCLUDED.supervisor_owner_id, \
+             supervisor_agent_id = EXCLUDED.supervisor_agent_id, lifecycle_state = EXCLUDED.lifecycle_state, \
+             consult_jev = EXCLUDED.consult_jev, promote_runtime_bot = EXCLUDED.promote_runtime_bot, updated_at_ms = EXCLUDED.updated_at_ms",
+        )
+        .bind(definition.id.as_str())
+        .bind(definition.agency.as_str())
+        .bind(definition.owner.as_str())
+        .bind(&definition.display_name)
+        .bind(definition.role.to_string())
+        .bind(supervisor_kind)
+        .bind(supervisor_owner_id)
+        .bind(supervisor_agent_id)
+        .bind(lifecycle_to_sql(definition.state))
+        .bind(definition.capabilities.consult_jev)
+        .bind(definition.capabilities.promote_runtime_bot)
+        .bind(definition.created_at_ms)
+        .bind(definition.updated_at_ms)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| error.to_string())?;
+        sqlx::query(
+            "INSERT INTO agent_identity_events (agent_id, agency_id, kind, at_ms) VALUES ($1,$2,$3,$4)",
+        )
+        .bind(event.agent_id.as_str())
+        .bind(event.agency.as_str())
+        .bind(event_kind_to_sql(event.kind))
+        .bind(event.at_ms)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| error.to_string())?;
+        enqueue_graph_projection_outbox_tx(&mut tx, &message)
+            .await
+            .map_err(|error| match error {
+                GraphProjectionOutboxError::Store(message) => {
+                    format!("graph projection outbox enqueue: {message}")
+                }
+                GraphProjectionOutboxError::InvalidPayload(message) => {
+                    format!("graph projection outbox payload: {message}")
+                }
+                GraphProjectionOutboxError::Neo4jUnavailable(_) => {
+                    "graph projection outbox enqueue: neo4j unavailable".into()
+                }
+            })?;
+        tx.commit().await.map_err(|error| error.to_string())?;
+        Ok(())
     }
 }
 
@@ -273,6 +339,57 @@ mod tests {
         assert_eq!(agent_id.as_deref(), Some("ceo"));
     }
     #[tokio::test]
+    async fn pg_agent_identity_and_graph_projection_same_transaction() {
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
+        use crate::modules::agents::adapters::graph_projection::agent_graph_projection_outbox_message;
+        let store = PgAgentIdentityStore::new(db.as_postgres());
+        let owner = OwnerId::new("owner-outbox-tx").unwrap();
+        let agency = AgencyId::new("agency-outbox-tx").unwrap();
+        let agent_id = format!(
+            "agent-outbox-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        );
+        let definition = AgentDefinition {
+            id: AgentId::new(&agent_id).unwrap(),
+            agency: agency.clone(),
+            owner: owner.clone(),
+            display_name: "Agent".into(),
+            role: AgentRole::Worker,
+            supervisor: SupervisorRef::Owner(owner),
+            state: AgentLifecycleState::Active,
+            capabilities: AgentCapabilities::default(),
+            created_at_ms: 1,
+            updated_at_ms: 1,
+        };
+        let event = IdentityAuditEvent {
+            agent_id: definition.id.clone(),
+            agency: agency.clone(),
+            kind: IdentityEventKind::Registered,
+            at_ms: 1,
+        };
+        let message = agent_graph_projection_outbox_message(&definition);
+        store
+            .persist_identity_and_enqueue_graph_projection(&definition, &event)
+            .await
+            .expect("persist tx");
+        let pending: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_projection_outbox WHERE idempotency_key = $1 AND status = 'pending'",
+        )
+        .bind(&message.idempotency_key)
+        .fetch_one(db.pool())
+        .await
+        .expect("outbox count");
+        assert_eq!(pending, 1);
+    }
+
+    #[tokio::test]
     async fn pg_identity_snapshot_round_trip() {
         let Some(db) =
             crate::core::persistence::pg_integration::database_for_integration_test().await
@@ -303,50 +420,58 @@ mod tests {
             kind: IdentityEventKind::Registered,
             at_ms: 1,
         };
-        store.upsert_agent(&definition).await.expect("upsert");
-        store.append_event(&event).await.expect("event");
+        store
+            .persist_identity_and_enqueue_graph_projection(&definition, &event)
+            .await
+            .expect("register persist");
 
         let mut paused = definition.clone();
         paused.state = AgentLifecycleState::Paused;
         paused.updated_at_ms = 2;
-        store.upsert_agent(&paused).await.expect("pause upsert");
         store
-            .append_event(&IdentityAuditEvent {
-                agent_id: definition.id.clone(),
-                agency: agency.clone(),
-                kind: IdentityEventKind::Paused,
-                at_ms: 2,
-            })
+            .persist_identity_and_enqueue_graph_projection(
+                &paused,
+                &IdentityAuditEvent {
+                    agent_id: definition.id.clone(),
+                    agency: agency.clone(),
+                    kind: IdentityEventKind::Paused,
+                    at_ms: 2,
+                },
+            )
             .await
-            .expect("pause event");
+            .expect("pause persist");
 
         let mut resumed = paused.clone();
         resumed.state = AgentLifecycleState::Active;
         resumed.updated_at_ms = 3;
-        store.upsert_agent(&resumed).await.expect("resume upsert");
         store
-            .append_event(&IdentityAuditEvent {
-                agent_id: definition.id.clone(),
-                agency: agency.clone(),
-                kind: IdentityEventKind::Resumed,
-                at_ms: 3,
-            })
+            .persist_identity_and_enqueue_graph_projection(
+                &resumed,
+                &IdentityAuditEvent {
+                    agent_id: definition.id.clone(),
+                    agency: agency.clone(),
+                    kind: IdentityEventKind::Resumed,
+                    at_ms: 3,
+                },
+            )
             .await
-            .expect("resume event");
+            .expect("resume persist");
 
         let mut retired = resumed.clone();
         retired.state = AgentLifecycleState::Retired;
         retired.updated_at_ms = 4;
-        store.upsert_agent(&retired).await.expect("retire upsert");
         store
-            .append_event(&IdentityAuditEvent {
-                agent_id: definition.id.clone(),
-                agency: agency.clone(),
-                kind: IdentityEventKind::Retired,
-                at_ms: 4,
-            })
+            .persist_identity_and_enqueue_graph_projection(
+                &retired,
+                &IdentityAuditEvent {
+                    agent_id: definition.id.clone(),
+                    agency: agency.clone(),
+                    kind: IdentityEventKind::Retired,
+                    at_ms: 4,
+                },
+            )
             .await
-            .expect("retire event");
+            .expect("retire persist");
 
         let (agents, audit) = store.load_snapshot().await.expect("load");
         let loaded = agents

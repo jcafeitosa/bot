@@ -334,11 +334,7 @@ pub async fn persist_identity_rows(
 ) -> Result<(), AgentsError> {
     let store = PgAgentIdentityStore::new(postgres);
     store
-        .upsert_agent(definition)
-        .await
-        .map_err(AgentsError::Persistence)?;
-    store
-        .append_event(event)
+        .persist_identity_and_enqueue_graph_projection(definition, event)
         .await
         .map_err(AgentsError::Persistence)?;
     Ok(())

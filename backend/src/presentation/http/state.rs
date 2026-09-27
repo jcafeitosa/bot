@@ -984,12 +984,18 @@ impl ApiState {
             )
             .await
             .map_err(ApiError::from_agents_error)?;
+            crate::core::database::graph_projection_drain_best_effort(
+                self.graph_projection_sync(),
+                1,
+            )
+            .await;
+        } else {
+            crate::modules::agents::adapters::graph_projection::best_effort_project_agent_definition(
+                self.graph_projection_sync(),
+                &snapshot.0,
+            )
+            .await;
         }
-        crate::modules::agents::adapters::graph_projection::best_effort_project_agent_definition(
-            self.graph_projection_sync(),
-            &snapshot.0,
-        )
-        .await;
         Ok(())
     }
 }

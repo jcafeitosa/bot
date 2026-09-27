@@ -5,6 +5,12 @@ use crate::core::database::{
 use crate::modules::agents::adapters::pg_registry::lifecycle_to_sql;
 use crate::modules::agents::models::{AgentDefinition, SupervisorRef};
 
+pub fn agent_graph_projection_outbox_message(
+    definition: &AgentDefinition,
+) -> GraphProjectionOutboxMessage {
+    GraphProjectionOutboxMessage::agent_hierarchy(agent_definition_to_projection(definition))
+}
+
 pub fn agent_definition_to_projection(definition: &AgentDefinition) -> AgentHierarchyProjection {
     let (supervisor_kind, supervisor_owner_id, supervisor_agent_id) = match &definition.supervisor {
         SupervisorRef::Owner(owner) => (
