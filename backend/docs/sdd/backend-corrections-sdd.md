@@ -41,7 +41,7 @@ Estes descrevem o estado observado no commit `6a103fa`; são evidência da imple
 
 ## Segurança e limites conhecidos
 
-O allowlist verifica a origem inicial configurada; **não há hoje uma política que impeça o cliente HTTP `ccxt` de seguir redirects para outra origem**. Assim, redirect cross-origin continua risco residual de rede. Não declarar redirect externo bloqueado. Um SDD separado T-05 propõe resolver isso por alteração/patch do cliente HTTP; seu G1 está tecnicamente aprovado por Crítico independente, enquanto o acordo do usuário sobre os seams e G3 permanecem pendentes.
+O allowlist verifica a origem inicial configurada e o patch local de `ccxt-core` 0.1.5 recusa redirects para outra origem de URL antes de conectar ao destino. C9 demonstrou com servidores HTTP locais que a origem externa não recebeu conexão e que um redirect na mesma origem teve sucesso; testes puros cobriram downgrade, userinfo, portas e limite de saltos. A política não demonstra contenção contra DNS ou proxy comprometidos. O teste C10 confirma, por fonte de mercado simulada, que um erro REST deixa o monitor ativo e que um candle WS posterior ainda é avaliado. Não houve conexão real com Binance nem prova end-to-end de TLS. Ver [T-05](rest-redirect-sdd.md) para o escopo da revisão e os gates.
 
 A requisição atual de OHLCV é pública. O caminho de ordem permanece bloqueado e nenhuma alteração nesta implementação concede permissão para ordens, saldo privado ou uso de credentials para OHLCV. A presença de chaves Binance de testnet em `backend/.env` não significa que o monitor as utilize nesse caminho público.
 
@@ -66,7 +66,7 @@ Os arquivos legados `backend/exchanges/config/binance.toml`, `backend/migrations
 ## Entregas possíveis após revisão
 
 1. Confirmar os contratos observáveis acima e quaisquer diferenças desejadas.
-2. Aprovar o design/risco residual de REST redirect ou manter o caminho Binance não habilitado até uma solução revisada.
+2. Concluir a revisão C10/G4 da política de redirect e preservar a prova HTTP ao atualizar o vendor.
 3. Executar integração PostgreSQL em database descartável explícito; não usar `trading_bot` para testes destructive.
 4. Testar uma execução monitor/backtest end-to-end que não dependa de credentials nem realize efeitos de trading.
 5. Só então declarar os gates correspondentes concluídos, com evidência por entrega.
