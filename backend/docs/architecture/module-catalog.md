@@ -106,15 +106,15 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 
 ## 3c. Módulo `orders` (`src/modules/orders/`)
 
-Seam fail-closed ([SDD orders](../sdd/orders-module-sdd.md)).
+Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [Gate 2](../sdd/orders-live-execution-gate2-sdd.md)).
 
 | Submódulo | Contrato e comportamento |
 |---|---|
-| `models` | `SubmitOrderRequest`, `OrderSide`, `OrdersError`. |
-| `controllers` | `submit_order` — valida request e `risk::validate_intent`. |
-| `adapters` | `OrderExecutionPort`, `FailClosedExecutor` (`ExecutionDisabled`). |
+| `models` | `SubmitOrderRequest`, `OrderSide`, `OrdersError` (`ExecutionDisabled`, `LiveExchangeNotWired`, …). |
+| `controllers` | `submit_order` — valida request e `risk::validate_intent`; dedupe `client_order_id` via `OrderIdempotencyStore`. |
+| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor` (`dev_accept`), `ReservedLiveExchangeExecutor` (placeholder exchange); `InMemoryOrderIdempotencyStore`, `PgOrderIdempotencyStore`. |
 
-**HTTP:** `POST /api/v1/orders/submit` (fail-closed `503` após gate de risco) via `presentation/http/routes/orders.rs`; exige bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido.
+**HTTP:** `GET /api/v1/orders/execution-status` (modo `HttpOrderExecutor` / `live_exchange_wired`); `POST /api/v1/orders/submit` (**503** `execution_disabled` ou `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`) via `presentation/http/routes/orders.rs` → `ApiState::submit_order_http`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido; `BOT_ORDERS_EXECUTION` resolvido em `HttpApiSeams::from_env`.
 
 ## 3d. Camada `presentation::http`
 

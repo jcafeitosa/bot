@@ -41,7 +41,7 @@ cargo run -- serve --config src/core/config/bot.toml --bind 127.0.0.1:8080
 | `--bind` | Endereço de escuta (padrão `127.0.0.1:8080`). |
 | `--config` | Override opcional do caminho `bot.toml` só para o processo da API. |
 | `--with-monitor` | Sobe o monitor headless no mesmo processo; `/api/v1/monitor/*` deixa de retornar 503. |
-| `GET /api/v1/meta` | Metadados + `http_seams` read-only (`order_execution_mode`, `http_admin_auth_enabled`, `bot_runtime_enabled`, `live_exchange_wired`). |
+| `GET /api/v1/meta` | Metadados + `http_seams` read-only (`order_execution_mode`, `http_admin_auth_enabled`, `http_owner_binding_active`, `http_agency_binding_active`, `bot_runtime_enabled`, `live_exchange_wired`). |
 
 Sem `--with-monitor`, rotas `/api/v1/monitor/*` respondem **503**. Com `--with-monitor`, o loop de mercado roda headless (sem Ratatui) e snapshot/comandos HTTP funcionam. Registro de agents, risco, estratégia, backtest e config snapshot funcionam sem monitor anexo. Advisory Jev exige `jev.enabled` e credenciais no ambiente.
 

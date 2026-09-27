@@ -33,7 +33,7 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 
 ## Observabilidade (read-only)
 
-`GET /api/v1/meta` inclui `http_seams.http_admin_auth_enabled` (espelha se `BOT_HTTP_ADMIN_TOKEN` está ativo no processo). Não substitui auditoria de rotas mutantes.
+`GET /api/v1/meta` inclui `http_seams` read-only: `http_admin_auth_enabled` (token admin ativo), `http_owner_binding_active` / `http_agency_binding_active` (booleanos — não expõem IDs; espelham `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`). Não substitui auditoria de rotas mutantes.
 
 ## Validação
 
