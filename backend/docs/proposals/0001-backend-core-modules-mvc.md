@@ -18,177 +18,108 @@ tags:
 
 **Beneficiário:** quem desenvolve e mantém o backend Rust.
 
-**Mudança observável:** o código de domínio fica sob `src/modules/`; capacidades realmente compartilhadas ficam sob `src/core/`; os módulos que têm fluxo de entrada/apresentação expõem uma organização MVC compreensível, sem forçar `Controller` ou `View` a módulos de cálculo puro e adapters.
+**Mudança observável:** ownership explícito de cada módulo atual, direção de imports verificável, interfaces de aplicação tipadas entre TUI e monitor, sem alteração de comportamento.
 
-**Decisão forçada:** adotar ou não essa separação arquitetural, incluindo a regra de dependência de que o `core` não dependa de módulos de domínio e serviços compartilhados não sejam duplicados por módulo.
-
-O backend atual é um binário Rust cujo `main.rs` declara módulos de domínio e infraestrutura no mesmo nível. O catálogo documenta `app` como orquestrador do monitor, `config`, `error`, `logging`, `persistence`, `ui`, `exchanges`, `market`, `strategy`, `risk`, `portfolio`, `backtest` e `jev`. A inspeção dos imports também encontrou dependências transversais que atravessam domínios: configuração importa períodos da estratégia; tipos de domínio importam configuração e estratégia; logging consome configuração; e o monitor (`app`) coordena UI, exchanges, market, strategy, risk, Jev e persistência. Isso torna pouco evidente o que é núcleo compartilhado, domínio e composição da aplicação.
-
-A pessoa que mantém o backend deve conseguir localizar uma capacidade pelo domínio ou pelo papel transversal, e as dependências comuns devem possuir um único dono. Uma reorganização sem alteração funcional pode tornar a localização e a direção das dependências verificáveis na árvore e nos imports; não se presume melhoria de desempenho nem mudança da autoridade de execução.
+A inspeção observada do mapa de código identifica `OperationMode` compartilhado entre config/CLI/monitor e strategy/domain; `Signal` produzido/consumido por strategy, risk, domain/backtest e app; `market_feed` concentra REST/WS e invariantes de deduplicação, ordenação e watermark; `persistence_health` é um check operacional PostgreSQL consumido pelo monitor; a UI Ratatui comunica por `AppEvent`/`UiCommand`/`Dashboard`. Esses usos sustentam ownership mais preciso que uma pasta genérica `core`.
 
 ### Não objetivos
 
-- Alterar regras de trading, risco, estratégias, integração com exchanges, persistência ou comportamento da TUI.
-- Habilitar ordens, credenciais privadas ou operação em produção.
-- Dividir o crate em vários crates Rust nesta proposta.
-- Reescrever o monitor para um framework web ou impor MVC clássico a lógica sem camada de apresentação.
-- Fazer migração de banco ou alterar schemas SQL.
-- Implementar novos recursos ou reorganizar módulos de `agents`.
+- Mudar regras de trading, risco, estratégia, persistência ou comportamento da TUI.
+- Alterar schema SQL, habilitar operações ou dividir o crate.
+- Impor MVC a módulos sem interação/presentação.
 
 ## Design
 
-### Forma da árvore proposta
+### Destino e seams de tipos
 
 ```text
 backend/src/
-├── main.rs                    # ponto de entrada e composição
-├── core/                      # capacidades compartilhadas, sem regras de domínio
-│   ├── mod.rs
-│   ├── config/                # configuração de processo e validação transversal
-│   ├── error.rs               # tipos de erro comuns apenas quando há uso transversal
-│   ├── logging.rs             # inicialização/configuração de tracing
-│   ├── persistence/           # conexão, migrações e transações comuns
-│   └── ...                    # adicionar apenas serviço usado por mais de um módulo
+├── main.rs                         # composition root
+├── core/
+│   ├── config/                     # parsing/configuração de processo; sem política de domínio
+│   ├── error.rs
+│   ├── logging.rs
+│   └── persistence/                # pool, migrations e transações genéricas
 ├── modules/
-│   ├── market/
-│   │   ├── mod.rs
-│   │   ├── models.rs
-│   │   ├── services.rs
-│   │   └── adapters/          # fontes REST/WS quando forem parte do domínio de mercado
-│   ├── strategy/
-│   │   ├── mod.rs
-│   │   ├── models.rs
-│   │   └── services.rs
+│   ├── application_contracts.rs    # contratos neutros somente para conceitos compartilhados
+│   ├── config/                     # OperationMode e resolução da configuração de processo
+│   ├── strategy/                   # cálculo de períodos e produção de sinais
 │   ├── risk/
+│   ├── market/                     # market_feed e invariantes dos streams
+│   ├── exchanges/
 │   ├── portfolio/
 │   ├── backtest/
-│   ├── exchanges/
-│   │   ├── mod.rs
-│   │   ├── models.rs
-│   │   ├── services.rs
-│   │   └── adapters/          # Binance, REST, WS e registry conforme ownership final
-│   ├── monitor/
-│   │   ├── mod.rs
-│   │   ├── controllers/       # coordenação de casos de uso do monitor
-│   │   └── services.rs
+│   ├── monitor/                    # casos de uso/estado/eventos operacionais
 │   └── jev/
-├── presentation/
-│   └── terminal/              # TUI: views e tradução de input em comandos
-└── ...
+└── presentation/terminal/          # adapter Ratatui: Dashboard, input e rendering
 ```
 
-Essa árvore é uma hipótese revisável, não um mapa final de cada arquivo. `main.rs` é o composition root: lê argumentos e configurações, constrói adapters e dependências, e inicia o módulo/caso de uso apropriado. Regras de domínio permanecem nos módulos que as possuem.
+A árvore é uma organização por responsabilidade Rust (`models`, `services`, `commands`, `events`, `views` quando úteis), não uma exigência de pastas MVC vazias. `main.rs` constrói dependências; apresentação não compõe domínio diretamente.
 
-### Regra do `core`
+**Seams concretos e acíclicos:**
 
-Um serviço pertence a `core` somente quando mais de um módulo de domínio o usa com a mesma semântica e quando ele não contém política específica de um domínio. Exemplos candidatos: leitura de configuração transversal, inicialização de tracing, tipos de erro realmente comuns, conexão PostgreSQL e suporte transacional comum.
+- `config` é dono de `OperationMode`, pois representa opção selecionável da aplicação e CLI. `strategy` expõe `periods_for_mode(mode: OperationMode) -> Vec<Period>` como serviço de estratégia e importa o tipo por contrato estável. `config` não importa `strategy`: validação/configuração não calcula política de estratégia; `main` ou monitor compõe ambos. O seam é `modules::config::OperationMode`.
+- `Signal` é contrato de aplicação/domain realmente compartilhado por strategy, risk, backtest e app. Movê-lo para `modules::application_contracts::Signal` (tipo neutro de dados, sem dependência de strategy/config) evita que `domain` importe `strategy` e evita ciclo. Strategy o produz; risk e backtest o consomem. Não colocar regras de geração no contrato. Alternativa: strategy ser dono exigiria que risk/backtest/app dependessem da estratégia produtora, acoplando consumidores e aumentando risco de ciclos; contrato neutro custa uma abstração central e só se justifica por esses consumidores observados.
+- `OperationMode` não é duplicado como tipo separado no contrato: `domain`/strategy importa `modules::config::OperationMode`. Configuração é raiz conceitual do modo, embora isso faça módulos de domínio dependerem de um tipo de opção da aplicação; evitar o ciclo mantendo config sem import de domínio e limitar o tipo a enum simples, sem parser/IO/config loader. Se um contrato de modo de domínio divergir no futuro, separar mediante mudança explícita e conversão no composition/application layer.
 
-`core` não deve importar `modules::*`. Se uma abstração compartilhada precisar de um conceito de domínio, a interface comum deve ser independente desse conceito ou o serviço deve permanecer no módulo proprietário. Serviços específicos de domínio, como autorização de uso REST de exchanges ou gravação de candles, permanecem com o domínio/adaptador proprietário mesmo que usem o pool PostgreSQL do `core`.
+### Configuração e persistência
 
-Compartilhamento será decidido por uso real, não por antecipação: código usado por um único módulo continua nesse módulo. O `core` não se torna um depósito genérico de helpers.
+`core::config` limita-se a leitura, parsing, defaults e validação estrutural de parâmetros de processo. Configuração específica de exchange/estratégia permanece no módulo dono; políticas de domínio não migram para `core`. `core::persistence` oferece pool PostgreSQL, migrations e primitivas/transações neutras; queries, repositórios, schema e políticas de escrita/leitura ficam com módulos consumidores. Nenhum módulo de domínio é importado por `core`.
 
-### MVC aplicado conforme o fluxo
+`market_feed` pertence a `modules::market`: sua responsabilidade observada é combinar REST/WS e manter invariantes de deduplicação, ordenação e watermark; monitor é consumidor, não proprietário dessas invariantes. `persistence_health` pertence a `modules::monitor`: é política/check operacional PostgreSQL apresentado pelo monitor e usa pool/interface de `core::persistence`, sem política SQL ou dependência inversa do core.
 
-MVC é uma organização interna dos módulos com uma entrada e uma saída identificáveis:
+### Monitor e TUI
 
-- **Model:** tipos e regras de domínio do módulo, sem dependência da TUI/CLI.
-- **Controller:** coordena um caso de uso, converte entrada em chamadas de domínio e encaminha o resultado; evita concentrar lógica de negócio.
-- **View:** apresenta estado e coleta entrada. A TUI existente pode residir em `presentation/terminal` e chamar comandos/casos de uso expostos pelo módulo de monitor.
+`modules::monitor` expõe interface de aplicação pública pequena e tipada (nomes orientados a responsabilidades; sem `Controller` genérico):
 
-Módulos de cálculo como estratégia, risco e backtest podem conter `models` e `services` sem pastas vazias de controllers/views. Adapters de infraestrutura não são Views: exchanges e PostgreSQL são adapters nas interfaces apropriadas. A proposta usa MVC como convenção onde há interação e separa adapters onde há integração técnica.
+- `MonitorCommand` contém ações como `Pause`, `Resume`, `Refresh` e `Shutdown` (e seleção explícita de backtest quando aplicável).
+- `MonitorEvent` informa `Paused`, `Resumed`, snapshots/atualizações de estado, resultado/erro operacional e conclusão.
+- `MonitorHandle::send(command)` e `MonitorHandle::subscribe() -> Receiver<MonitorEvent>` são o seam de coordenação; o monitor mantém `MonitorState` e traduz comandos em chamadas aos módulos.
+- `presentation::terminal::Dashboard` renderiza `MonitorState`/eventos e traduz teclas em `MonitorCommand`. Não importa `strategy`, `risk`, `market`, `persistence` nem tipos de domínio diretamente. `AppEvent`/`UiCommand` existentes podem ser adaptados para estes contratos durante a migração; a UI é view/adapter, não dona do estado de execução.
 
-### Direção de dependências
+Nomes e assinaturas finais de canal (mpsc/broadcast) são definidos na implementação, preservando cancelamento, concorrência e semântica atuais.
+
+### Direção e admissão observável do core
 
 ```text
-main (composition)
-  ├── core
-  ├── presentation/terminal ──> interfaces/casos de uso do monitor
-  └── modules/* ──> core (quando necessário)
-
-modules/* não importam presentation/*
-core não importa modules/*
+main (composition) -> core, modules/*, presentation/terminal
+presentation/terminal -> modules::monitor application API only
+modules::monitor -> core + modules/* (orchestration)
+modules/* -> core (when needed) + neutral contracts
+core -> external libraries only; never modules/* or presentation/*
+modules/* never -> presentation/*
 ```
 
-Integrações específicas dependem do módulo dono do caso de uso. O módulo de monitor pode coordenar módulos de mercado, estratégia, risco, portfólio, Jev e persistência sem transferir a política desses domínios para `core`.
+A admissão de `core` é verificada por matriz módulo-consumidor: cada item registra consumidor(es), semântica comum e ausência de política de domínio. Uma capacidade usada por um único módulo não entra no core. `OperationMode` e `Signal` são exceções de seam com ownership explícito acima, não autorização geral para `core` conhecer domínio.
 
-### Mapeamento inicial dos módulos atuais
+Cada slice inclui `cargo check` e `cargo test` dos alvos afetados; slices de fluxo incluem testes de integração observáveis. Executar também suites existentes e regressões de pause/resume/backtest: resultado de pausa e retomada, cancelamento/ordenação de eventos, resultado semântico de backtest permanecem iguais. Sem ciclos de dependências: verificação do grafo de módulos/imports em script customizado ou dependency-check e `cargo deny` conforme suporte e política do repositório; `cargo deny` cobre dependências de crates; script ou dependency-check cobre direção interna Rust, não presumir que um só substitui o outro.
 
-| Código atual | Destino candidato | Observação |
-|---|---|---|
-| `logging` | `core/logging` | Compartilhado pela aplicação; deixar o tipo de configuração em core ou injetar configuração sem ciclo. |
-| `config` | `core/config` somente para opções transversais; configurações de domínio podem ficar no módulo dono | Hoje `config` depende de `strategy::periods_for_mode`; essa dependência precisa ser removida/reformulada, não apenas movida de pasta. |
-| `error` | `core/error` para erros transversais; erros especializados locais aos módulos | Evitar enum global que conhece todos os domínios e cresce a cada módulo. |
-| `persistence` | `core/persistence` para pool/migrações/suporte transacional | Repositórios e consultas com semântica de domínio ficam nos respectivos módulos. |
-| `exchanges` | `modules/exchanges` | Adapters e regras de capacidade REST/WS pertencem à integração de exchange; revisar tipos genéricos compartilhados. |
-| `market`, `market_feed` | `modules/market` como hipótese | Decidir se o feed híbrido pertence ao domínio de mercado ou ao caso de uso monitor. |
-| `strategy`, `risk`, `portfolio`, `backtest` | módulos homônimos | MVC não exige controller/view quando são serviços de domínio sem interação própria. |
-| `app`, `monitor_startup`, `persistence_health` | `modules/monitor` ou composição de `main` | Separar controller/caso de uso de inicialização e política operacional. |
-| `ui` | `presentation/terminal` | View e tradução de eventos/comandos; sem regra de domínio. |
-| `jev` | `modules/jev` | Adapter/serviço consultivo; não passa a ser núcleo compartilhado por ser externo. |
-| `domain.rs` | redistribuir pelos módulos proprietários ou criar um módulo de domínio explícito | Evitar `domain` universal que importa `config` e `strategy`. |
+### Migração e gates por fatia
 
-### Migração em alto nível
+1. Inventariar imports e consumidores e registrar a matriz de core/ownership; testar script de direção em fixture com dependência proibida (deve falhar) e permitida (passar). Gate: matriz cobre todos os módulos raiz atuais.
+2. Extrair `OperationMode` para config e `Signal` para contrato neutro; adaptar `periods_for_mode`; testes unitários dos tipos/serviços e `cargo check -p bot` (ou `cargo check` do workspace real). Gate: nenhum import circular e consumidores compilam.
+3. Mover `market_feed` para market e check de saúde para monitor. Testes determinísticos para deduplicação/ordenação/watermark e resultado saudável/indisponível de persistence health; teste de integração do consumidor monitor. Gate: invariantes anteriores preservadas.
+4. Extrair interface monitor e adapter TUI em slice vertical; testes de comandos Pause/Resume/Shutdown e eventos/estado, além de smoke/integration de terminal sem alterar semântica observada. Gate: terminal só importa API monitor; suites pause/resume e backtest passam.
+5. Mover restantes módulos e remover estrutura antiga; `cargo check`, todas as suites `cargo test`, script de direção/ciclos e `cargo deny` passam. Gate final: nenhuma mudança de comportamento; atualizar referências/documentação.
 
-1. Fixar os seams de import e propriedade por tipo, aprovando a árvore e os nomes antes dos testes de migração.
-2. Criar `core` e `modules` com interfaces de reexportação deliberadas; mover um pequeno módulo de baixo acoplamento por etapa.
-3. Corrigir ciclos/relações impróprias antes de mover os módulos dependentes, especialmente `config → strategy` e tipos compartilhados de `domain`.
-4. Migrar adapters/persistência e o monitor em fatias verticais pequenas, mantendo comportamento e testes existentes.
-5. Migrar TUI para `presentation/terminal`, verificar fluxos de monitor e backtest, e remover caminhos antigos apenas após uso zero demonstrado.
-6. Atualizar catálogo, README e guias depois de cada etapa aceita.
+Reexports de caminho antigo são ponte temporária apenas durante a slice em andamento; removê-los antes do merge daquela slice. Exceção máxima: um conjunto enumerado no plano da slice seguinte, com proprietário, lista exata e remoção no final dessa única slice; sem API de compatibilidade indefinida. Cada gate verifica ausência de reexports expirados.
 
-A proposta não especifica ainda APIs Rust públicas, nomes definitivos de todos os arquivos, nem a divisão exata de config/persistence; essas escolhas pertencem à revisão e à especificação derivada.
+### Critério de escolha: reorganizar ou manter
+
+Comparar baseline e candidato com a mesma matriz dos módulos raiz atuais. Reorganizar somente se, no protótipo/migração planejada: (1) 100% dos módulos raiz tiverem um único owner; (2) todos ciclos/imports proibidos forem removidos e bloqueáveis automaticamente; (3) nenhum diretório MVC vazio for introduzido; (4) todos os testes existentes e regressões de pause/resume/backtest passarem sem mudança semântica; e (5) não houver dependência de reexports além do prazo acima. Caso qualquer métrica falhe, manter a árvore atual e documentar ownership/import rules é preferível até correção; custos de movimentação sem esses resultados não justificam reorganização.
 
 ## Alternatives
 
-### Alternative: manter a estrutura atual e documentar ownership
+- **Manter a árvore e documentar ownership:** menor risco. Preferir se não alcançar todas as métricas de aceitação; não exige mover só para obter regra de imports verificável.
+- **MVC estrito em cada módulo:** rejeitado por criar camadas vazias/pass-through; adotar nomes Rust por responsabilidade.
+- **Vários crates:** isolamento mais forte, mas maior custo de configuração e fronteiras; reavaliar se regras internas não puderem ser verificadas no crate.
 
-Manter arquivos e módulos como estão, atualizar o catálogo e estabelecer regras de import/ownership sem mover diretórios.
+## Drawbacks e riscos
 
-**Por que não escolher como destino:** tem o menor risco e custo imediato, mas não atende à mudança observável de localizar módulos de domínio em `src/modules/` nem torna visível a separação do núcleo. Continua sendo uma alternativa válida se o custo da migração superar o benefício.
-
-### Alternative: somente mover módulos para `src/modules/`, sem `core`
-
-Agrupar todo o código atual sob `modules/`, mantendo configuração, logging e banco dentro de módulos ou de uma pasta genérica de infraestrutura.
-
-**Por que não escolher:** agrupa domínios, mas deixa serviços compartilhados sem proprietário explícito ou incentiva dependências duplicadas. Não satisfaz a regra confirmada pelo usuário para serviços usados por vários módulos.
-
-### Alternative: MVC estrito em cada módulo
-
-Criar `models/`, `controllers/` e `views/` para cada módulo, independentemente de haver interface/presentação.
-
-**Por que não escolher:** módulos de cálculo e adapters ganhariam camadas vazias ou pass-through, aumentando navegação e manutenção sem comportamento correspondente. A proposta limita MVC aos módulos com entrada/apresentação relevante.
-
-### Alternative: dividir em múltiplos crates
-
-Criar crates Rust para core, módulos de domínio e aplicação, com dependências verificadas pelo Cargo.
-
-**Por que não escolher nesta proposta:** oferece isolamento de compilação mais forte, mas aumenta configuração, fronteiras de tipos e custo de migração. Deve ser reavaliado se a equipe precisar de versionamento/reuso independente ou se as regras de dependência não puderem ser mantidas dentro de um crate.
-
-### Alternative: não fazer a reorganização agora
-
-Manter a árvore até uma necessidade funcional exigir mudança.
-
-**Por que não escolher:** evita risco de movimentação no curto prazo. Mantém o problema de localização e ownership identificado e posterga a separação pedida; pode ser preferível se não houver disponibilidade para revisar e migrar incrementalmente.
-
-## Drawbacks
-
-- Quem mantém o backend pagará um custo temporário de navegação, revisão e resolução de imports durante a migração.
-- Alguns nomes propostos — `market`, `monitor`, `presentation` — podem não corresponder aos limites reais; movimentos prematuros consolidariam ownership incorreto.
-- Um `core` amplo pode virar dependência global e concentrar políticas distintas. A regra “compartilhado por uso real e sem política de domínio” requer revisão contínua.
-- MVC parcial exige uma explicação clara para novos contribuidores; alguns módulos terão `controllers`/`views`, outros não.
-- Mudanças de caminho podem quebrar testes de integração, comandos, documentação e tooling que referenciam arquivos diretamente.
-- Reexports temporários reduzem o custo de migração, mas podem virar uma segunda API se não houver remoção e prazo verificáveis.
-- A reorganização não resolve automaticamente a concentração de responsabilidades de `app`; a extração de casos de uso precisa ser desenhada sem alterar concorrência, cancelamento e semântica de pausa/retomada.
-
-## Unresolved questions
-
-- **`market_feed` pertence ao módulo `market` ou ao caso de uso `monitor`?** O que resolveria: mapear quem possui watermark, merge REST/WS e quais consumidores existem; decisão por arquitetura/backend.
-- **Quais tipos de `config` são opções da aplicação e quais são regras de domínio?** O que resolveria: inventário campo-a-campo dos consumidores e política de validação; decisão por arquitetura e owners de módulos.
-- **`core/persistence` deve expor somente pool/migrações ou também transações e traits de repositório?** O que resolveria: listar adapters e consumidores atuais/futuros e comparar acoplamento; decisão por banco de dados e arquitetura.
-- **Como `BotError` será dividido entre erros de módulo e erros de processo?** O que resolveria: grafo de conversões/propagação e erros exibidos na CLI/TUI; decisão por backend/readability.
-- **A UI terminal deve chamar um controller de `monitor` ou uma interface de aplicação separada?** O que resolveria: definir a direção de comandos, eventos e estado compartilhado com testes de comportamento; decisão por arquitetura e QA.
-- **A migração precisa de reexports temporários para preservar imports?** O que resolveria: plano de fatias e resultado de `cargo test` por etapa; decisão por implementação após aceitação da proposta.
-- **MVC deve ser nome literal das pastas ou uma convenção de responsabilidades com nomes idiomáticos Rust?** O que resolveria: revisão de legibilidade do protótipo estrutural e acordo com usuários do código; decisão por readability/arquitetura.
+- Mover caminhos causa churn e pode afetar testes/tooling; gates por slice e reexports com prazo reduzem, mas não eliminam esse risco.
+- Contrato neutro `Signal` centraliza um tipo usado por vários consumidores; mantê-lo sem lógica para evitar core de domínio.
+- Módulos de domínio importarem `OperationMode` de config é dependência conceitual deliberada e limitada; sem loader/parser no tipo compartilhado.
+- Interface monitor precisa preservar concorrência, cancelamento e semântica de pause/resume; falha de regressão bloqueia merge.
 
 ## Referências locais
 
