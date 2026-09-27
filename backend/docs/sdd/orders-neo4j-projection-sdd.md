@@ -24,7 +24,7 @@ Orders já validam `OrderIntent` via `modules/risk`, persistem idempotência/rec
 |------|----------------|
 | `GraphProjectionPort::project_order_intent` | MERGE `:OrderIntent` redigido; chave `client_order_id`. |
 | `Neo4jOrderIntentProjector` | Cypher via `Neo4jGraph`; sem `neo4rs` fora de `core::database`. |
-| `project_order_intent_after_submit` | Monitor supervisor pós-`submit_order` OK no ramo testnet — inalcançável no binário (`--mode testnet` rejeitado na validação) (PG outbox TX dedicada + drain inline quando wired)
+| `project_order_intent_after_submit` | Monitor supervisor pós-`submit_order` OK (PG outbox TX dedicada + drain inline quando wired)
 | `best_effort_project_order_intent` | Após `ApiState::submit_order_http` OK (sem claim PG) ou fallback Neo4j após `submit_order` OK com `client_order_id`; opcional `submitting_bot_id` → `project_submitted_edge`. |
 | `GraphProjectionPort::project_submitted_edge` | MERGE idempotente `(:Bot)-[:SUBMITTED]->(:OrderIntent)` quando `submitting_bot_id` presente (F3.1). |
 | `OrderIntentProjection` | `client_order_id`, `symbol`, `side`, `status`, `execution_mode`, `submitted_at_ms`; **sem** `quote_amount`, credenciais, preços de conta ou payload exchange. |

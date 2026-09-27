@@ -81,6 +81,6 @@ Testes de `POST /bots/runtime/promote` em `presentation/http/server.rs` usam `fr
 | Capability `promote_runtime_bot` com agency bind | `bot_promotion.rs`, migração `0005` | Sim (seam) |
 | Auth owner produto (não só `BOT_HTTP_*`) | `verify_runtime_promotion_postgres_owner_bootstrap` + `verify_promoted_by_product_owner` + `agents_register_rejects_owner_mismatch_when_product_owner_verified`; HTTP `bots_runtime_promote_rejects_promoted_by_mismatch_when_product_owner_verified` | **Parcial** (bootstrap PG; não IdP) |
 | Runtime injetado em testes HTTP = `serve` production | `shared_bot_runtime()` no boot; testes de paridade em `state.rs` + `router_after_build_api_state_*`; matriz [Bot runtime vs serve](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial) | **Parcial** (`InMemoryBotRuntime` isolado na maioria dos `bots_runtime_*` por design; paridade coberta por testes dedicados + PG boot) |
-| Ordens reais / exchange | HTTP: paper/dev_accept/recording/testnet; monitor: só paper (ramo testnet inalcançável) ([orders G2](./orders-live-execution-gate2-sdd.md)); prod REST bloqueado | **Parcial** |
+| Ordens reais / exchange | Monitor+HTTP: paper/recording/testnet ([orders G2](./orders-live-execution-gate2-sdd.md)); prod REST bloqueado | **Parcial** |
 | Revisão Critic | — | **Não** |
 | `./scripts/verify-backend-gates.sh` verde | **503** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |

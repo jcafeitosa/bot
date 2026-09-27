@@ -45,4 +45,4 @@ core/config/
 
 ## Validação
 
-`scripts/verify-backend-gates.sh` → **519** passed / **0** ignored (bin `bot`; registro em `modules-completeness-evidence.json`); PG opcional `./scripts/verify-backend-full.sh` → manifesto **29** (`run-pg-integration-tests.sh`, execução não registrada; incl. `loads_credentials_from_postgres`). Checagens: fmt, clippy, import-direction, env reads em `core/config/**` + `core/providers/credentials/**`.
+`scripts/verify-backend-gates.sh` → **470** passed / **0** ignored (bin `bot`); PG opcional `./scripts/verify-backend-full.sh` → **22/22** (`run-pg-integration-tests.sh`, incl. `loads_credentials_from_postgres`). Checagens: fmt, clippy, import-direction, env reads em `core/config/**` + `core/providers/credentials/**`.

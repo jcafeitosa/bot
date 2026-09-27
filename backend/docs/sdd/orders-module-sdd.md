@@ -45,13 +45,13 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `RecordingExecutor` | Double determinístico para testes de `submit_order` após risco (sem rede). |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
 | `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe síncrono em processo (`http_bridge/orders::submit_order_http`). |
-| `OrderReconciliationLedger` / `shared_live_order_reconciliation_ledger` | Ledger compartilhado HTTP + ramo testnet do monitor (inalcançável: `--mode testnet` rejeitado na validação); `pending`→`reconciled`/`divergent`; `LiveExchangeSpotOrderReconciliationQuery` no poll. |
+| `OrderReconciliationLedger` / `shared_live_order_reconciliation_ledger` | Ledger compartilhado HTTP + monitor testnet; `pending`→`reconciled`/`divergent`; `LiveExchangeSpotOrderReconciliationQuery` no poll. |
 | `PgOrderReconciliationStore` | Espelha `order_reconciliation` (`0006`); hidrata `symbol`/`side`; `GET` + `POST /orders/reconciliation/poll`. |
 | `PgOrderIdempotencyStore` | Dedupe durável (`0004`) quando `DATABASE_URL` conecta. |
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, bin `bot` `--test-threads=1` + 5 suítes `tests/`); manifesto PG **29** opcional (execução não registrada): `./scripts/verify-backend-full.sh`. Comportamento HTTP: `GET /orders/execution-status` em `server.rs`; `orders_submit_*` (admin bearer, paper, dev_accept, live_exchange) em `http_integration_tests.rs`; DTO/submit em `http_bridge/orders.rs` ([catálogo §3c](../architecture/module-catalog.md#3c-módulo-orders-srcmodulesorders)); `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **519** testes bin `bot` (registro local) (incl. reconciliação poll, `live_query_*`, supervisor `record_monitor_spot_submit_reconciliation`). PG: `pg_order_*` + idempotência/lookup/hydrate em `state.rs` — [test-matrix](../reference/test-matrix.md#integração-opcional-no-bin-bot-script-pg-22--neo4jtestnet-3--24-casos-0-ignore).
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, bin `bot` `--test-threads=1` + 5 suítes `tests/`); PG **22/22** opcional: `./scripts/verify-backend-full.sh`. Comportamento HTTP: `GET /orders/execution-status` em `server.rs`; `orders_submit_*` (admin bearer, paper, dev_accept, live_exchange) em `http_integration_tests.rs`; DTO/submit em `http_bridge/orders.rs` ([catálogo §3c](../architecture/module-catalog.md#3c-módulo-orders-srcmodulesorders)); `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **470** testes bin `bot` (incl. reconciliação poll, `live_query_*`, supervisor `record_monitor_spot_submit_reconciliation`). PG: `pg_order_*` + idempotência/lookup/hydrate em `state.rs` — [test-matrix](../reference/test-matrix.md#integração-opcional-no-bin-bot-script-pg-22--neo4jtestnet-3--24-casos-0-ignore).
 
 ## Rollback
 

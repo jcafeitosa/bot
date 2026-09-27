@@ -33,19 +33,6 @@ Testes de integração PG: `cd backend && ./scripts/run-pg-integration-tests.sh`
 
 Auditoria V18 (T-15 rollback/idempotência candles): `cd backend && ./scripts/pg-v18-monitor-persistence-audit.sh` com o mesmo `DATABASE_URL`.
 
-### `postgres_scaffold_tables_exist_after_migrate` falha (tabela ausente)
-
-Sintoma típico: `missing table order_idempotency_keys after migrate` (ou outra tabela do scaffold). O teste chama `Database::migrate()` em cada execução (`core/persistence/pg_integration.rs`); migrações em `src/core/database/migrations/` (`0004_order_idempotency_keys.sql`, `0009_graph_projection_outbox.sql`, etc.).
-
-Causa usual: banco `trading_bot` reutilizado com `_sqlx_migrations` desalinhado. Se um `trading_bot` novo passa o manifesto, trate como reset de ambiente, não bug de migração no repo.
-
-```bash
-psql "postgresql://postgres:postgres@127.0.0.1:55433/postgres" -c "DROP DATABASE IF EXISTS trading_bot;"
-psql "postgresql://postgres:postgres@127.0.0.1:55433/postgres" -c "CREATE DATABASE trading_bot OWNER bot_agents;"
-export DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:55433/trading_bot
-cd backend && ./scripts/run-pg-integration-tests.sh
-```
-
 ## Provider credentials (LLM API keys)
 
 Após `0007_provider_credentials.sql` (e nota `0008`), chaves ficam na tabela `provider_credentials` — **não** commitar segredos no repositório.
