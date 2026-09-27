@@ -5,6 +5,7 @@
 
 use std::fmt;
 
+use serde::Serialize;
 use utoipa::ToSchema;
 
 pub const LABEL_MAX_BYTES: usize = 128;
@@ -52,11 +53,24 @@ pub enum MonitorSignal {
     Hold,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum PersistenceStatus {
     Healthy,
     Degraded,
+    Gap,
     Unavailable,
+}
+
+impl PersistenceStatus {
+    pub fn as_api_str(self) -> &'static str {
+        match self {
+            Self::Healthy => "healthy",
+            Self::Degraded => "degraded",
+            Self::Gap => "gap",
+            Self::Unavailable => "unavailable",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

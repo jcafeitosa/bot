@@ -11,6 +11,8 @@ pub struct MonitorSnapshotResponse {
     pub symbol: String,
     pub operation_label: String,
     pub risk_profile_label: String,
+    /// Archive session health from the monitor persistence seam (`healthy` / `degraded` / `gap` / `unavailable`).
+    pub persistence_status: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signal: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -65,6 +67,7 @@ pub fn snapshot_from_domain(snapshot: MonitorSnapshot) -> MonitorSnapshotRespons
         symbol: snapshot.symbol,
         operation_label: snapshot.operation_label,
         risk_profile_label: snapshot.risk_profile_label,
+        persistence_status: snapshot.persistence_status.as_api_str().into(),
         signal: snapshot
             .market
             .and_then(|market| market.signal.map(|value| format!("{:?}", value))),
@@ -118,6 +121,16 @@ mod monitor_bridge_tests {
     use super::*;
     use crate::modules::bots::{BotPromotionRecord, BotPromotionState, BotRuntimeStatus};
     use crate::modules::monitor::MonitorSnapshot;
+
+    #[test]
+    fn snapshot_from_domain_exposes_persistence_status_for_rest() {
+        use crate::modules::monitor::PersistenceStatus;
+        let mut snapshot = MonitorSnapshot::initial();
+        snapshot.revision = 4;
+        snapshot.persistence_status = PersistenceStatus::Gap;
+        let response = snapshot_from_domain(snapshot);
+        assert_eq!(response.persistence_status, "gap");
+    }
 
     #[test]
     fn attach_bot_runtime_status_enriches_snapshot_fields() {

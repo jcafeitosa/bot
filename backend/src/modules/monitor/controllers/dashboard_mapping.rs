@@ -49,7 +49,9 @@ pub fn terminal_market_row(snapshot: &StrategySnapshot) -> TerminalMarketRow {
 fn persistence_status_from_label(label: &str) -> PersistenceStatus {
     if label.starts_with("HEALTHY") {
         PersistenceStatus::Healthy
-    } else if label.starts_with("DEGRADED") || label.starts_with("GAP") {
+    } else if label.starts_with("GAP") {
+        PersistenceStatus::Gap
+    } else if label.starts_with("DEGRADED") {
         PersistenceStatus::Degraded
     } else {
         PersistenceStatus::Unavailable
@@ -149,6 +151,47 @@ mod mapping_tests {
         assert!(snapshot.promoted_bot_id.is_none());
     }
     #[test]
+    fn monitor_snapshot_maps_gap_persistence_label() {
+        let config = Config::default();
+        let limits = RiskLimits {
+            max_order_quote: 10.0,
+            max_daily_loss_quote: 20.0,
+            max_open_positions: 1,
+        };
+        let mut dashboard = new_dashboard(&config, limits);
+        dashboard.persistence_status = "GAP · reconciliação externa necessária".into();
+        let snapshot = monitor_snapshot_from_dashboard(&dashboard, 1).expect("snapshot");
+        assert_eq!(snapshot.persistence_status, PersistenceStatus::Gap);
+    }
+
+    #[test]
+    fn monitor_snapshot_maps_initial_degraded_persistence_label() {
+        let config = Config::default();
+        let limits = RiskLimits {
+            max_order_quote: 10.0,
+            max_daily_loss_quote: 20.0,
+            max_open_positions: 1,
+        };
+        let mut dashboard = new_dashboard(&config, limits);
+        dashboard.persistence_status = "DEGRADED · aguardando janela REST inicial".into();
+        let snapshot = monitor_snapshot_from_dashboard(&dashboard, 2).expect("snapshot");
+        assert_eq!(snapshot.persistence_status, PersistenceStatus::Degraded);
+    }
+
+    #[test]
+    fn monitor_snapshot_maps_unknown_persistence_label_to_unavailable() {
+        let config = Config::default();
+        let limits = RiskLimits {
+            max_order_quote: 10.0,
+            max_daily_loss_quote: 20.0,
+            max_open_positions: 1,
+        };
+        let mut dashboard = new_dashboard(&config, limits);
+        dashboard.persistence_status = "OFF".into();
+        let snapshot = monitor_snapshot_from_dashboard(&dashboard, 3).expect("snapshot");
+        assert_eq!(snapshot.persistence_status, PersistenceStatus::Unavailable);
+    }
+
     fn monitor_snapshot_from_dashboard_then_runtime_apply_enriches_promotion() {
         use crate::modules::bots::{
             apply_bot_runtime_to_monitor_snapshot, BotRuntimePort, InMemoryBotRuntime,
