@@ -51,6 +51,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD T-13 — Remoção de arquivos legados de configuração e migração](./sdd/legacy-file-cleanup-sdd.md)
 - [SDD T-15 — Política de persistência opcional do monitor](./sdd/monitor-persistence-policy-sdd.md)
 - [SDD T-16 — Mapa de módulos do backend no README](./sdd/backend-module-map-sdd.md)
+- [SDD — Módulo agents (fundação IdentityOnly)](./sdd/agents-module-sdd.md) — registro em memória, hierarquia, lifecycle e seam Jev; Gate 1 pendente.
 
 ## Governança
 

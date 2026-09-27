@@ -11,7 +11,7 @@ tags:
 
 # Catálogo completo de módulos do backend
 
-> Revisão: 2026-09-26 (pós F1–F6). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/persistence/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
+> Revisão: 2026-09-27 (inclui `modules/agents`). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/persistence/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
 
 ## 1. Mapa de execução
 
@@ -60,10 +60,26 @@ flowchart LR
 | `modules` | `backtest` | `run_sma_crossover`, CLI | Simulação e fixture sintética. | `tests/backtest_fixture.rs`. |
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `modules` | `jev` | `JevAdvisor::review` | Advisory TypeSafe. | Endpoint/config. |
+| `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly` em memória; lifecycle e advisory Jev sem worker nem API HTTP. | `modules/agents/tests.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
 
-## 3. Módulos de exchanges (`src/modules/exchanges/`)
+## 3. Módulo `agents` (`src/modules/agents/`)
+
+Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-module-sdd.md)). Não substitui monitor, risco ou estratégia; não envia ordens nem executa ferramentas.
+
+| Submódulo | Contrato e comportamento |
+|---|---|
+| `models` | `AgentId`, `AgencyId`, `OwnerId`, papéis, `SupervisorRef`, `AgentDefinition`, estados de lifecycle, erros e eventos de auditoria em memória. |
+| `controllers/registry` | `AgentRegistry`: registro, listagem por agência, validação de hierarquia sem ciclos. |
+| `controllers/lifecycle` | `pause_agent`, `resume_agent`, `retire_agent` — aposentado é terminal. |
+| `controllers/advisory` | `run_advisory_step` — exige agente ativo com `consult_jev`; delega a `core::providers::jev`. |
+| `controllers/supervisor_hook` | `MonitorAgentHook` / `NoopMonitorAgentHook` — seam futuro com o supervisor do monitor. |
+| `adapters/jev` | Adaptador fino para `JevAdvisor`; sem política de domínio nova. |
+
+**Limites:** sem PostgreSQL de identidades, sem autenticação do owner no transporte, sem runtime durável, scheduler, gateway MCP ou canais externos.
+
+## 4. Módulos de exchanges (`src/modules/exchanges/`)
 
 | Módulo | Contrato e comportamento |
 |---|---|
@@ -82,7 +98,7 @@ flowchart LR
 | `stream` | Modela `StreamKind`, `StreamEvent` e `StreamSubscription`, incluindo intervalo e símbolo. |
 | `ws` | Valida `WsConfig` e produz `WsSessionPlan`; atualmente o stream autorizado de mercado é Binance Spot testnet `1m`. |
 
-## 4. Contratos por fluxo
+## 5. Contratos por fluxo
 
 ### Configuração
 
@@ -111,7 +127,7 @@ flowchart LR
 4. `run_sma_crossover` usa entrada/saída na barra seguinte, fees e slippage efetivos.
 5. O relatório JSON contém métricas, trades e equity; persistência é independente do monitor.
 
-## 5. Seams e invariantes
+## 6. Seams e invariantes
 
 - `MarketDataSource` é o seam para testes sem rede.
 - `HybridCandleFeed` é o único dono da ordenação, deduplicação, limite e watermark.
@@ -124,7 +140,7 @@ flowchart LR
 - Persistência opcional não pode transformar erro de banco em autorização de execução.
 - Pausa/retomada deve descartar resultados obsoletos e evitar publicação fora de geração.
 
-## 6. Débitos e limites conhecidos
+## 7. Débitos e limites conhecidos
 
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
 - O round-trip PostgreSQL permanece não executado nesta sessão.
