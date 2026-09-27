@@ -81,13 +81,13 @@ cargo test --locked --test redirect_policy_test
 
 O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS` = **28**), depois `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default), depois as cinco suítes acima — **não** `cargo test --locked` completo (reexecutaria o bin `bot` em paralelo e pode flake). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
 
-**CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (manifesto de **28** testes de domínio com `DATABASE_URL`). Execução em CI ainda não comprovada: nenhum dos 511 runs do workflow `Backend CI` concluiu com `success`; o último concluído (#510, 27/09 15:56 COT, `6f48c38`) falhou no job `rust` (clippy `result_large_err` em `modules/exchanges/adapters/live.rs:165`) e `postgres-integration` ficou skipped. O serviço do job usa `timescaledb-ha:pg16`, mas o código exige PG 18+ (`core/database/postgres.rs`) e `database_for_integration_test` (`core/persistence/pg_integration.rs`) trata erro de conexão como skip — um job PG verde em pg16 não provaria os testes.
+**CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (manifesto de **29** testes de domínio com `DATABASE_URL`). Execução em CI ainda não comprovada: nenhum dos 511 runs do workflow `Backend CI` concluiu com `success`; o último concluído (#510, 27/09 15:56 COT, `6f48c38`) falhou no job `rust` (clippy `result_large_err` em `modules/exchanges/adapters/live.rs:165`) e `postgres-integration` ficou skipped. O serviço do job usa `timescaledb-ha:pg16`, mas o código exige PG 18+ (`core/database/postgres.rs`) e `database_for_integration_test` (`core/persistence/pg_integration.rs`) trata erro de conexão como skip — um job PG verde em pg16 não provaria os testes.
 
-Evidência típica (atualizar após mudanças de teste): **519** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; manifesto PG **29** (contagem estática; execução não registrada em evidência) via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **520** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; manifesto PG **29** (contagem estática; execução não registrada em evidência) via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
-### Integração opcional no bin `bot` (script PG **28** + Neo4j/testnet **10** fora do script; 0 `#[ignore]`)
+### Integração opcional no bin `bot` (script PG **29** + Neo4j/testnet **10** fora do script; 0 `#[ignore]`)
 
 **27** casos da tabela espelham `PG_TESTS` em `scripts/run-pg-integration-tests.sh` (validado por `assert-pg-integration-manifest.sh` no gate). Os **10** Neo4j/testnet (`ping_and_node_count_against_local_graph`; `neo4j_*` em `core/database/graph_query.rs` (4) e nos adapters `graph_projection.rs` de agents (1), bots (1) e orders (2); `integration_submits_minimal_market_buy_on_testnet`) ficam fora do script CI; a tabela também lista testes unitários F2.1/F3 relacionados (sem dependência externa); no gate passam com skip via `pg_integration` sem stack Neo4j ou credenciais testnet.
 
@@ -143,7 +143,7 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `pg_monitor_supervisor_graph_projection_outbox_same_transaction` | `modules/orders/adapters/pg_idempotency.rs` | F2.1.3+ monitor supervisor outbox TX |
 | `pg_order_idempotency_and_graph_projection_same_transaction` | `modules/orders/adapters/pg_idempotency.rs` | `DATABASE_URL`; claim idempotência + enqueue outbox na mesma transação PG |
 | `pg_submit_order_idempotency_releases_claim_when_submit_fails` | `presentation/http/state.rs` | `DATABASE_URL`; falha de risco libera claim PG |
-| `persist_dataset_rejects_conflicting_manifest_for_same_id` | `modules/market/models.rs` | `DATABASE_URL`; `DatasetManifestConflict` |
+| `persist_dataset_rejects_conflicting_manifest_for_same_id` | `core/persistence/v18_pg_tests.rs` | `DATABASE_URL`; `DatasetManifestConflict` |
 
 ### Bot runtime no `serve` vs testes HTTP (G2 parcial)
 

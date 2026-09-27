@@ -125,6 +125,7 @@ fn readiness_error_detail(error: &DatabaseError) -> String {
         DatabaseError::InvalidUrl => "invalid database url".into(),
         DatabaseError::Migrate(_) => "migration failed".into(),
         DatabaseError::UnsupportedVersion => "postgresql 18+ required".into(),
+        DatabaseError::DatasetManifestConflict { .. } => "dataset manifest conflict".into(),
     }
 }
 
