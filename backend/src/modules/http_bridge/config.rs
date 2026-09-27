@@ -39,6 +39,7 @@ pub fn load_config_snapshot(
         operation: None,
         risk_profile: None,
         mode: None,
+        system_config: crate::core::config::SystemConfig::default_path(),
     };
     let config = Config::load(&cli)?;
     Ok(map_config(&config))

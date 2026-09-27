@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::core::config::ProviderConfig;
-use crate::core::error::{BotError, BotResult};
+use crate::core::error::BotResult;
 use crate::core::providers::openai_compatible::{
     validate_https_or_localhost, OpenAiCompatibleClient,
 };
@@ -61,7 +61,7 @@ pub fn list_models_hint() -> Vec<NimModelRef> {
 }
 
 pub fn nim_base_url_from_env() -> Option<String> {
-    std::env::var("NVIDIA_NIM_BASE_URL").ok()
+    crate::core::config::providers::nim_base_url_from_env()
 }
 
 /// Normaliza base URL: remove barras finais e um sufixo `/v1` duplicado em relação ao cliente OpenAI-compatible.
@@ -82,14 +82,7 @@ pub fn resolve_nim_base_url(toml: &ProviderConfig) -> String {
 }
 
 pub fn resolve_nvidia_api_key() -> BotResult<String> {
-    std::env::var("NVIDIA_API_KEY")
-        .or_else(|_| std::env::var("NGC_API_KEY"))
-        .map_err(|_| {
-            BotError::Configuration(
-                "NVIDIA NIM requires NVIDIA_API_KEY or NGC_API_KEY in the process environment"
-                    .into(),
-            )
-        })
+    crate::core::config::providers::resolve_nvidia_api_key()
 }
 
 #[derive(Debug, Clone)]

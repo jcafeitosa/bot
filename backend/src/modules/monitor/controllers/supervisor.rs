@@ -2432,6 +2432,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[allow(clippy::await_holding_lock)]
     async fn testnet_run_mode_submits_via_spot_executor_when_recording_seam() {
         use crate::core::config::RunMode;
         use crate::core::test_env_lock::EnvTestGuard;
@@ -2447,8 +2448,10 @@ mod tests {
         std::env::set_var("BOT_ORDERS_EXCHANGE_SUBMIT", "recording");
         RecordingSpotOrderSubmitPort::clear();
         PaperLedgerExecutor::clear_ledger();
-        let mut config = Config::default();
-        config.run_mode = RunMode::Testnet;
+        let config = Config {
+            run_mode: RunMode::Testnet,
+            ..Default::default()
+        };
         let limits = RiskLimits {
             max_order_quote: 10.0,
             max_daily_loss_quote: 20.0,
@@ -2511,8 +2514,10 @@ mod tests {
         use crate::modules::orders::{OrderSide, PaperLedgerExecutor};
 
         PaperLedgerExecutor::clear_ledger();
-        let mut config = Config::default();
-        config.run_mode = RunMode::Paper;
+        let config = Config {
+            run_mode: RunMode::Paper,
+            ..Default::default()
+        };
         let limits = RiskLimits {
             max_order_quote: 10.0,
             max_daily_loss_quote: 20.0,

@@ -21,8 +21,7 @@ impl JevAdvisor {
             return Ok(None);
         }
         let api_key = openai_compatible::resolve_bearer_api_key()?;
-        let endpoint = std::env::var("TYPESAFE_ENDPOINT")
-            .unwrap_or_else(|_| "https://api.typesafe.ai/v1/systemone".into());
+        let endpoint = crate::core::config::providers::typesafe_endpoint();
         openai_compatible::validate_https_or_localhost(&endpoint)?;
         let client = OpenAiCompatibleClient::from_base_url(
             endpoint.clone(),

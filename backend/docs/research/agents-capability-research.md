@@ -99,7 +99,7 @@ O código atual cobre parte da Etapa 1 **sem** satisfazer o item 4 (auth owner v
 | Seam HTTP fail-closed | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` — [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | Não prova identidade do owner humano |
 | Capability `promote_runtime_bot` | `bot_promotion.rs`, migração `0005` | Autorização administrativa, não auth de produto |
 
-Baseline de testes: `./scripts/verify-backend-gates.sh` → **383** passed, **16** ignored (2026-09-27). PG script **14/14**. Auditoria: [modules-completeness-audit.md](../planning/modules-completeness-audit.md).
+Baseline de testes: `./scripts/verify-backend-gates.sh` → **385** passed, **16** ignored (2026-09-27). PG script **14/14**. Auditoria: [modules-completeness-audit.md](../planning/modules-completeness-audit.md).
 
 ## Fontes primárias
 

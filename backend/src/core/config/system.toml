@@ -1,0 +1,37 @@
+# System defaults (non-sensitive, committed).
+# Source of truth for secrets and connection strings: backend/.env (gitignored).
+# Env always wins over these defaults when set.
+
+[postgres]
+# Runtime: DATABASE_URL in .env only (never commit credentials here).
+
+[agents]
+enabled = false
+monitor_agency = ""
+
+[neo4j]
+uri = "bolt://127.0.0.1:7688"
+user = "neo4j"
+database = "neo4j"
+# Password: BOT_NEO4J_PASSWORD in .env only.
+
+[monitor]
+persist_market_data = false
+
+[orders]
+execution = ""
+exchange_submit = ""
+paper_fill_unit_price = 0.0
+reconciliation_poll_secs = 0
+
+[bots]
+runtime_enabled = false
+
+[http.admin]
+# Admin bearer and bindings: BOT_HTTP_ADMIN_TOKEN, BOT_HTTP_OWNER_ID, BOT_HTTP_AGENCY_ID in .env.
+
+[providers]
+typesafe_endpoint = "https://api.typesafe.ai/v1/systemone"
+openai_base_url = ""
+nim_base_url = ""
+# API keys: TYPESAFE_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, NGC_API_KEY in .env.

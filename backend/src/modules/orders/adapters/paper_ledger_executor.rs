@@ -15,17 +15,7 @@ pub struct PaperFill {
 }
 
 fn paper_fill_unit_price_from_env() -> Option<f64> {
-    match std::env::var("BOT_PAPER_FILL_UNIT_PRICE") {
-        Ok(raw) => {
-            let price = raw.trim().parse::<f64>().ok()?;
-            if price.is_finite() && price > 0.0 {
-                Some(price)
-            } else {
-                None
-            }
-        }
-        Err(_) => None,
-    }
+    crate::core::config::paper_fill_unit_price()
 }
 
 static LEDGER: Mutex<Vec<PaperFill>> = Mutex::new(Vec::new());

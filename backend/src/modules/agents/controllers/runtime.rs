@@ -16,29 +16,27 @@ pub fn shared_agent_registry() -> Arc<Mutex<AgentRegistry>> {
 
 /// Composition-root helper for the trading monitor: binds an in-memory registry when `BOT_AGENCY` is set.
 pub fn monitor_agent_hook_from_env() -> Arc<dyn MonitorAgentHook> {
-    match std::env::var("BOT_AGENCY") {
-        Ok(raw) if !raw.trim().is_empty() => match AgencyId::new(raw.trim()) {
-            Ok(agency) => {
-                tracing::info!(
-                    target: "agents",
-                    agency = %agency,
-                    "Monitor agent hook bound to agency (in-memory registry)"
-                );
-                Arc::new(RegistryMonitorAgentHook::new(
-                    shared_agent_registry(),
-                    agency,
-                ))
-            }
-            Err(error) => {
+    match crate::core::config::monitor_agency_raw().and_then(|raw| AgencyId::new(&raw).ok()) {
+        Some(agency) => {
+            tracing::info!(
+                target: "agents",
+                agency = %agency,
+                "Monitor agent hook bound to agency (in-memory registry)"
+            );
+            Arc::new(RegistryMonitorAgentHook::new(
+                shared_agent_registry(),
+                agency,
+            ))
+        }
+        None => {
+            if crate::core::config::monitor_agency_raw_set() {
                 tracing::warn!(
                     target: "agents",
-                    error = %error,
                     "Invalid BOT_AGENCY; monitor uses noop agent hook"
                 );
-                Arc::new(NoopMonitorAgentHook)
             }
-        },
-        _ => Arc::new(NoopMonitorAgentHook),
+            Arc::new(NoopMonitorAgentHook)
+        }
     }
 }
 

@@ -866,6 +866,8 @@ impl Default for ApiState {
 
 #[cfg(test)]
 mod state_tests {
+    #![allow(clippy::await_holding_lock)]
+
     use crate::modules::orders::lock_shared_live_order_reconciliation_ledger_for_test;
 
     use super::*;

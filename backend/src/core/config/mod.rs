@@ -1,10 +1,46 @@
-use std::{env, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 use clap::{Parser, ValueEnum};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::core::error::{BotError, BotResult};
+
+pub mod agents;
+pub mod backtest;
+pub mod bots;
+pub mod database;
+pub mod env_loader;
+pub mod env_parse;
+pub mod exchanges;
+pub mod http;
+pub mod load;
+pub mod monitor;
+pub mod orders;
+pub mod providers;
+pub mod system;
+
+#[allow(unused_imports)]
+pub use self::database::{
+    load_agents_stack_from_env, postgres_url_from_env, AgentsStackConfig, DatabaseConfigError,
+    Neo4jConnectionConfig, PostgresConfig,
+};
+pub use env_loader::ensure_dotenv_loaded;
+pub use system::SystemConfig;
+
+pub use agents::{monitor_agency_raw, monitor_agency_raw_set};
+pub use backtest::require_database_url_for_persist;
+pub use bots::bot_runtime_enabled_from_env;
+pub use exchanges::redact_known_testnet_credentials;
+pub use http::HttpAdminAuthConfig;
+pub use monitor::{database_url_for_monitor, persist_market_data_flag_raw, MonitorEnvError};
+pub use orders::{
+    exchange_submit_recording_enabled, http_order_execution_mode_from_env,
+    live_exchange_submit_backend, live_exchange_submit_backend_enabled,
+    order_reconciliation_poll_interval_secs, paper_fill_unit_price, HttpOrderExecutionMode,
+    LiveExchangeSubmitBackend,
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Environment {
@@ -136,6 +172,9 @@ pub struct MonitorCli {
     pub mode: Option<RunMode>,
     #[arg(long, default_value = "src/core/config/bot.toml")]
     pub config: PathBuf,
+    /// Non-sensitive system defaults; secrets remain in `.env`.
+    #[arg(long, default_value = "src/core/config/system.toml")]
+    pub system_config: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -246,18 +285,17 @@ impl Config {
     }
 
     pub fn credentials(&self) -> BotResult<Credentials> {
+        let creds = exchanges::credentials_for_environment(self.environment);
         let prefix = match self.environment {
             Environment::Dev => "BINANCE_TESTNET",
             Environment::Prod => "BINANCE_PROD",
         };
-        let api_key = env::var(format!("{prefix}_API_KEY")).ok();
-        let secret = env::var(format!("{prefix}_SECRET")).ok();
-        if api_key.is_some() != secret.is_some() {
+        if creds.api_key.is_some() != creds.secret.is_some() {
             return Err(BotError::Configuration(format!(
                 "both {prefix}_API_KEY and {prefix}_SECRET must be set together"
             )));
         }
-        Ok(Credentials { api_key, secret })
+        Ok(creds)
     }
 
     pub fn validate(&self) -> BotResult<()> {

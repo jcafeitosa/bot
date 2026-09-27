@@ -26,7 +26,7 @@ tags:
 - Persistência PostgreSQL opt-in, migração automática e gravação idempotente de datasets.
 - Logging estruturado para stderr e arquivos rotacionados.
 - Jev/TypeSafe consultivo opcional sem autoridade operacional.
-- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + runtime `BotRuntimePort` + `evaluate_for_kind`) e `orders` (fail-closed + G2 parcial: idempotência/reconciliação PG, poll HTTP) com testes unitários (**383** no bin `bot`, gate `./scripts/verify-backend-gates.sh`).
+- Módulos `agents` (IdentityOnly + espelhamento/hidratação PG), `bots` (catálogo/ranking + runtime `BotRuntimePort` + `evaluate_for_kind`) e `orders` (fail-closed + G2 parcial: idempotência/reconciliação PG, poll HTTP) com testes unitários (**385** no bin `bot`, gate `./scripts/verify-backend-gates.sh`).
 - API HTTP Axum com OpenAPI/Scalar (**36** paths): agents, bots (catálogo `monitor_evaluator`, runtime promote/demote), risk, strategy, backtest, portfolio, exchanges; orders `execution-status`, `submit`, reconciliação GET/POST poll; `GET /meta` (`http_seams`); seam admin (`BOT_HTTP_ADMIN_TOKEN`, binds owner/agency) — [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md); facades documentadas em [module-catalog §3d](../architecture/module-catalog.md#3d-facade-http_bridge-srcmoduleshttp_bridge). Completude: [auditoria](./modules-completeness-audit.md).
 
 ### Evidência existente
@@ -99,7 +99,7 @@ tags:
 
 O script de gates executa `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1` e cinco suítes em `tests/` (`backtest_fixture`, `config_cli`, `monitor_startup_cli`, `redirect_origin_test`, `redirect_policy_test`) — sem repetir `cargo test --locked` completo (evita flake do bin `bot` em paralelo). `verify-backend-full.sh` repete os gates e `./scripts/run-pg-integration-tests.sh` (**14/14**).
 
-Evidência observada: **383** testes unitários no binário `bot` (OpenAPI **36** paths; boot `build_api_state_for_http_serve`; orders reconciliação GET + `POST …/poll` + poller testnet observe; PG `0004`/`0006`; paper/testnet/recording; bots runtime/`evaluate_for_kind` + paridade `shared_bot_runtime` — [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); agents promote capability), **16** ignorados (PG×14, Neo4j, testnet ccxt manual), `./scripts/verify-backend-gates.sh` **ok**; PG **14/14** via `verify-backend-full.sh` ou `run-pg-integration-tests.sh`. Goal amplo e handoff Critic: [modules-completeness-audit](./modules-completeness-audit.md).
+Evidência observada: **385** testes unitários no binário `bot` (OpenAPI **36** paths; boot `build_api_state_for_http_serve`; orders reconciliação GET + `POST …/poll` + poller testnet observe; PG `0004`/`0006`; paper/testnet/recording; bots runtime/`evaluate_for_kind` + paridade `shared_bot_runtime` — [test-matrix § G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial); agents promote capability), **16** ignorados (PG×14, Neo4j, testnet ccxt manual), `./scripts/verify-backend-gates.sh` **ok**; PG **14/14** via `verify-backend-full.sh` ou `run-pg-integration-tests.sh`. Goal amplo e handoff Critic: [modules-completeness-audit](./modules-completeness-audit.md).
 
 ## Gates de aceitação
 

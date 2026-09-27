@@ -27,20 +27,9 @@ pub(crate) fn ccxt_runtime() -> &'static Runtime {
     &RT
 }
 
-const REDACTED_CREDENTIAL: &str = "<redacted>";
-
 /// Strips configured testnet credential values from exchange error text before it becomes an HTTP/API message.
 pub(crate) fn redact_known_testnet_credentials(message: &str) -> String {
-    let mut out = message.to_string();
-    for var in ["BINANCE_TESTNET_API_KEY", "BINANCE_TESTNET_SECRET"] {
-        if let Ok(value) = std::env::var(var) {
-            let trimmed = value.trim();
-            if !trimmed.is_empty() {
-                out = out.replace(trimmed, REDACTED_CREDENTIAL);
-            }
-        }
-    }
-    out
+    crate::core::config::redact_known_testnet_credentials(message)
 }
 
 pub(crate) fn map_bot_error(error: BotError) -> OrdersError {
@@ -55,10 +44,9 @@ pub(crate) fn testnet_credentials() -> Result<Credentials, OrdersError> {
     if !binance_testnet_credentials_configured() {
         return Err(OrdersError::LiveExchangeNotWired);
     }
-    Ok(Credentials {
-        api_key: std::env::var("BINANCE_TESTNET_API_KEY").ok(),
-        secret: std::env::var("BINANCE_TESTNET_SECRET").ok(),
-    })
+    Ok(crate::core::config::exchanges::credentials_for_environment(
+        crate::core::config::Environment::Dev,
+    ))
 }
 
 pub(crate) fn dev_spot_account(
@@ -203,7 +191,7 @@ mod tests {
             let message = mapped.to_string();
             assert!(!message.contains("marker_key_abc"));
             assert!(!message.contains("marker_secret_xyz"));
-            assert!(message.contains(REDACTED_CREDENTIAL));
+            assert!(message.contains("<redacted>"));
         });
     }
 

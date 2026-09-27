@@ -98,14 +98,7 @@ pub fn validate_https_or_localhost(endpoint: &str) -> BotResult<()> {
 }
 
 pub fn resolve_bearer_api_key() -> BotResult<String> {
-    std::env::var("TYPESAFE_API_KEY")
-        .or_else(|_| std::env::var("OPENAI_API_KEY"))
-        .map_err(|_| {
-            BotError::Configuration(
-                "jev.enabled=true requires TYPESAFE_API_KEY or OPENAI_API_KEY in the process environment"
-                    .into(),
-            )
-        })
+    crate::core::config::providers::resolve_bearer_api_key()
 }
 
 #[cfg(test)]

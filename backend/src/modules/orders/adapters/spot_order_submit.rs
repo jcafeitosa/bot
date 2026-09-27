@@ -3,7 +3,6 @@
 use std::sync::Mutex;
 
 use crate::modules::exchanges::adapters::binance_spot_testnet_submit::submit_testnet_spot_market_order;
-use crate::modules::exchanges::credentials_env::dev_spot_order_submit_testnet_seam_enabled;
 use crate::modules::orders::models::{OrdersError, SubmitOrderRequest};
 
 static SUBMIT_CALLS: Mutex<u32> = Mutex::new(0);
@@ -39,12 +38,6 @@ fn store_last_submit_ack(ack: SpotOrderSubmitAck) {
     *LAST_SUBMIT_ACK.lock().expect("spot submit ack lock") = Some(ack);
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LiveExchangeSubmitBackend {
-    Recording,
-    Testnet,
-}
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RecordingSpotOrderSubmitPort;
 
@@ -72,26 +65,8 @@ impl RecordingSpotOrderSubmitPort {
     }
 }
 
-/// Resolved from `BOT_ORDERS_EXCHANGE_SUBMIT` (`recording` or `testnet` + credentials).
-pub fn live_exchange_submit_backend() -> Option<LiveExchangeSubmitBackend> {
-    match std::env::var("BOT_ORDERS_EXCHANGE_SUBMIT") {
-        Ok(raw) if raw.trim().eq_ignore_ascii_case("recording") => {
-            Some(LiveExchangeSubmitBackend::Recording)
-        }
-        Ok(raw) if raw.trim().eq_ignore_ascii_case("testnet") => {
-            if dev_spot_order_submit_testnet_seam_enabled() {
-                Some(LiveExchangeSubmitBackend::Testnet)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
-}
-
-pub fn live_exchange_submit_backend_enabled() -> bool {
-    live_exchange_submit_backend().is_some()
-}
+pub use crate::core::config::LiveExchangeSubmitBackend;
+pub use crate::core::config::{live_exchange_submit_backend, live_exchange_submit_backend_enabled};
 
 pub fn submit_spot_order(
     request: &SubmitOrderRequest<'_>,

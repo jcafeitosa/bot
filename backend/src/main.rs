@@ -2,8 +2,25 @@ mod core;
 mod modules;
 mod presentation;
 
-use crate::core::config::Config;
+use crate::core::config::{Config, MonitorEnvError};
+use crate::modules::monitor::StartupError;
 use anyhow::Result;
+
+fn map_monitor_env(error: MonitorEnvError) -> StartupError {
+    match error {
+        MonitorEnvError::InvalidFlag => StartupError::InvalidFlag,
+        MonitorEnvError::InvalidUrl => StartupError::InvalidUrl,
+    }
+}
+
+fn read_monitor_database_url() -> Result<Option<String>, StartupError> {
+    crate::core::config::database_url_for_monitor().map_err(map_monitor_env)
+}
+
+fn read_persist_flag() -> Result<Option<String>, StartupError> {
+    crate::core::config::persist_market_data_flag_raw().map_err(map_monitor_env)
+}
+
 use clap::{Parser, Subcommand};
 
 #[derive(Debug, Subcommand)]
@@ -28,7 +45,9 @@ struct TopCli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    crate::core::config::ensure_dotenv_loaded();
     let cli = TopCli::parse();
+    crate::core::config::SystemConfig::init_from_path(&cli.monitor.system_config)?;
     match cli.command {
         Some(BotCommand::Backtest(args)) => modules::backtest::cli::run(&args).await?,
         Some(BotCommand::Serve(args)) => {
@@ -44,24 +63,11 @@ async fn main() -> Result<()> {
                         "HFT is not supported by this REST polling implementation; omit --with-monitor or use a non-HFT operation mode"
                     );
                 }
-                let persist_flag = std::env::var("PERSIST_MARKET_DATA").map(Some).or_else(
-                    |error| match error {
-                        std::env::VarError::NotPresent => Ok(None),
-                        std::env::VarError::NotUnicode(_) => {
-                            Err(modules::monitor::StartupError::InvalidFlag)
-                        }
-                    },
-                )?;
+                let persist_flag = read_persist_flag()?;
                 let database = modules::monitor::bootstrap_monitor(
                     persist_flag.as_deref(),
                     &config.market.timeframe,
-                    || match std::env::var("DATABASE_URL") {
-                        Ok(url) => Ok(Some(url)),
-                        Err(std::env::VarError::NotPresent) => Ok(None),
-                        Err(std::env::VarError::NotUnicode(_)) => {
-                            Err(modules::monitor::StartupError::InvalidUrl)
-                        }
-                    },
+                    read_monitor_database_url,
                     modules::monitor::connect_database,
                 )
                 .await?;
@@ -93,24 +99,11 @@ async fn main() -> Result<()> {
                 anyhow::bail!("HFT is not supported by this REST polling implementation; use a dedicated low-latency feed/execution stack");
             }
 
-            let persist_flag = std::env::var("PERSIST_MARKET_DATA")
-                .map(Some)
-                .or_else(|error| match error {
-                    std::env::VarError::NotPresent => Ok(None),
-                    std::env::VarError::NotUnicode(_) => {
-                        Err(modules::monitor::StartupError::InvalidFlag)
-                    }
-                })?;
+            let persist_flag = read_persist_flag()?;
             let database = modules::monitor::bootstrap_monitor(
                 persist_flag.as_deref(),
                 &config.market.timeframe,
-                || match std::env::var("DATABASE_URL") {
-                    Ok(url) => Ok(Some(url)),
-                    Err(std::env::VarError::NotPresent) => Ok(None),
-                    Err(std::env::VarError::NotUnicode(_)) => {
-                        Err(modules::monitor::StartupError::InvalidUrl)
-                    }
-                },
+                read_monitor_database_url,
                 modules::monitor::connect_database,
             )
             .await?;

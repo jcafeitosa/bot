@@ -25,10 +25,7 @@ impl RestUse {
 }
 
 fn dev_spot_order_submit_recording_seam_enabled() -> bool {
-    match std::env::var("BOT_ORDERS_EXCHANGE_SUBMIT") {
-        Ok(raw) => raw.trim().eq_ignore_ascii_case("recording"),
-        Err(_) => false,
-    }
+    crate::core::config::exchange_submit_recording_enabled()
 }
 
 pub fn authorize_rest_use(

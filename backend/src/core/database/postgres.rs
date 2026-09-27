@@ -46,7 +46,9 @@ impl std::fmt::Debug for PostgresDatabase {
 
 impl PostgresDatabase {
     pub async fn connect_from_env() -> Result<Self, DatabaseError> {
-        let raw = std::env::var("DATABASE_URL").map_err(|_| DatabaseError::MissingUrl)?;
+        let raw = crate::core::config::postgres_url_from_env()
+            .map_err(|_| DatabaseError::InvalidUrl)?
+            .ok_or(DatabaseError::MissingUrl)?;
         Self::connect_from_url(&raw).await
     }
 
@@ -94,6 +96,10 @@ impl PostgresDatabase {
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/core/database/migrations");
         let migrator = sqlx::migrate::Migrator::new(path.as_path()).await?;
         migrator.run(self.pool()).await?;
+        if let Err(error) = crate::core::providers::credentials::reload_from_pool(self.pool()).await
+        {
+            tracing::warn!(target: "providers", %error, "provider credential cache reload failed");
+        }
         Ok(())
     }
 

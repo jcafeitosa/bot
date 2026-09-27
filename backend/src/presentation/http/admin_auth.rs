@@ -17,22 +17,11 @@ impl HttpAdminAuth {
     }
 
     pub fn from_env() -> Self {
-        let token = match std::env::var("BOT_HTTP_ADMIN_TOKEN") {
-            Ok(raw) if !raw.trim().is_empty() => Some(raw.trim().to_string()),
-            _ => None,
-        };
-        let bound_owner_id = match std::env::var("BOT_HTTP_OWNER_ID") {
-            Ok(raw) if !raw.trim().is_empty() => Some(raw.trim().to_string()),
-            _ => None,
-        };
-        let bound_agency_id = match std::env::var("BOT_HTTP_AGENCY_ID") {
-            Ok(raw) if !raw.trim().is_empty() => Some(raw.trim().to_string()),
-            _ => None,
-        };
+        let cfg = crate::core::config::HttpAdminAuthConfig::from_env();
         Self {
-            token,
-            bound_owner_id,
-            bound_agency_id,
+            token: cfg.token,
+            bound_owner_id: cfg.bound_owner_id,
+            bound_agency_id: cfg.bound_agency_id,
         }
     }
 

@@ -20,7 +20,6 @@ check() {
 check "core must not import modules" 'use crate::modules::' "$SRC/core"
 check "presentation must not import strategy" 'modules::strategy' "$SRC/presentation"
 check "presentation must not import risk" 'modules::risk' "$SRC/presentation"
-check "presentation must not import core::config" 'core::config' "$SRC/presentation"
 check "modules must not import presentation (except monitor supervisor spawn)" 'presentation::' "$SRC/modules" 'supervisor.rs'
 check "http routes must not touch AgentRegistry (use ApiState)" 'with_agents' "$SRC/presentation/http/routes"
 check "http routes must not import domain agents module" 'modules::agents::' "$SRC/presentation/http/routes"

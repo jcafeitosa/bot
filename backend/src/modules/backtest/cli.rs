@@ -28,6 +28,7 @@ pub async fn execute_backtest(cli: &BacktestCli) -> BotResult<serde_json::Value>
         operation: None,
         risk_profile: None,
         mode: None,
+        system_config: crate::core::config::SystemConfig::default_path(),
     };
     let config = Config::load(&monitor)?;
     let timeframe = Timeframe::new(parse_timeframe_minutes(&config.market.timeframe)?)
@@ -101,11 +102,7 @@ pub async fn run(cli: &BacktestCli) -> BotResult<()> {
 }
 
 async fn persist_dataset_if_configured(dataset: &HistoricalDataset) -> BotResult<()> {
-    if std::env::var("DATABASE_URL").is_err() {
-        return Err(crate::core::error::BotError::Configuration(
-            "--persist requires DATABASE_URL (postgresql://…/trading_bot)".into(),
-        ));
-    }
+    crate::core::config::require_database_url_for_persist()?;
     let mantis = dataset.candles.iter().map(|c| (*c).to_mantis()).collect();
     let validated = HistoricalDataset::from_mantis_1m(
         &dataset.manifest.symbol,

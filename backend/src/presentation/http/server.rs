@@ -74,21 +74,7 @@ pub async fn run(
 }
 
 fn order_reconciliation_poll_interval_secs() -> Option<u64> {
-    match std::env::var("BOT_ORDERS_RECONCILIATION_POLL_SECS") {
-        Ok(raw) => {
-            let trimmed = raw.trim();
-            if trimmed.is_empty() {
-                return None;
-            }
-            let secs = trimmed.parse::<u64>().ok()?;
-            if secs == 0 {
-                None
-            } else {
-                Some(secs)
-            }
-        }
-        Err(_) => None,
-    }
+    crate::core::config::order_reconciliation_poll_interval_secs()
 }
 
 pub fn build_router(state: ApiState) -> Router {
@@ -245,6 +231,52 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(monitor_cmd.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn documented_post_routes_accept_valid_json() {
+        let app = build_router(ApiState::default());
+        let posts = [
+            (
+                "/api/v1/risk/profile-limits",
+                r#"{"profile":"conservative","base":{"max_order_quote":100.0,"max_daily_loss_quote":50.0,"max_open_positions":3}}"#,
+            ),
+            (
+                "/api/v1/risk/validate-intent",
+                r#"{"intent":{"quote_amount":5.0,"estimated_daily_loss":0.0,"open_positions":0},"limits":{"max_order_quote":10.0,"max_daily_loss_quote":20.0,"max_open_positions":1}}"#,
+            ),
+            (
+                "/api/v1/risk/gate-signal",
+                r#"{"signal":"hold","limits":{"max_order_quote":10.0,"max_daily_loss_quote":20.0,"max_open_positions":1},"run_mode":"paper"}"#,
+            ),
+            (
+                "/api/v1/strategy/evaluate-sma",
+                r#"{"fast_period":2,"slow_period":3,"candles":[{"timestamp_ms":1,"open":1.0,"high":1.0,"low":1.0,"close":1.0,"volume":1.0},{"timestamp_ms":2,"open":1.0,"high":1.0,"low":1.0,"close":2.0,"volume":1.0},{"timestamp_ms":3,"open":2.0,"high":2.0,"low":2.0,"close":3.0,"volume":1.0}]}"#,
+            ),
+            (
+                "/api/v1/backtest/sma-crossover",
+                r#"{"config":"src/core/config/bot.toml","persist":false}"#,
+            ),
+        ];
+        for (path, body) in posts {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri(path)
+                        .header("content-type", "application/json")
+                        .body(Body::from(body))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status(),
+                StatusCode::OK,
+                "unexpected status for {path}"
+            );
+        }
     }
 
     #[tokio::test]

@@ -25,6 +25,12 @@ pub fn load_registry(environment: Environment) -> Result<ExchangeRegistry, Excha
                 detail: error.to_string(),
             })?
             .path();
+        if path
+            .file_name()
+            .is_some_and(|name| name == "credentials.toml")
+        {
+            continue;
+        }
         if path.extension().is_some_and(|ext| ext == "toml") {
             let file = ExchangeConfigFile::load(&path)?;
             for account in file.registrations(environment)? {

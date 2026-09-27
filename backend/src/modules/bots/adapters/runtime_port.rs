@@ -83,19 +83,10 @@ impl BotRuntimePort for InMemoryBotRuntime {
 }
 
 pub fn bot_runtime_from_env() -> std::sync::Arc<dyn BotRuntimePort> {
-    match std::env::var("BOT_RUNTIME_ENABLED") {
-        Ok(raw) if raw.trim().eq_ignore_ascii_case("true") => {
-            std::sync::Arc::new(InMemoryBotRuntime::new())
-        }
-        Ok(raw) if !raw.trim().is_empty() && !raw.trim().eq_ignore_ascii_case("false") => {
-            tracing::warn!(
-                target: "api",
-                value = raw.trim(),
-                "unknown BOT_RUNTIME_ENABLED; using fail-closed bot runtime"
-            );
-            std::sync::Arc::new(FailClosedBotRuntime)
-        }
-        _ => std::sync::Arc::new(FailClosedBotRuntime),
+    if crate::core::config::bot_runtime_enabled_from_env() {
+        std::sync::Arc::new(InMemoryBotRuntime::new())
+    } else {
+        std::sync::Arc::new(FailClosedBotRuntime)
     }
 }
 

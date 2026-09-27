@@ -1,9 +1,8 @@
 //! HTTP API order executor selection (fail-closed by default; no exchange live).
 
 use crate::modules::orders::{
-    live_exchange_submit_backend_enabled, AcceptingExecutor, ExchangeSpotExecutor,
-    FailClosedExecutor, OrderExecutionPort, OrdersError, PaperLedgerExecutor,
-    ReservedLiveExchangeExecutor, SubmitOrderRequest,
+    AcceptingExecutor, ExchangeSpotExecutor, FailClosedExecutor, OrderExecutionPort, OrdersError,
+    PaperLedgerExecutor, ReservedLiveExchangeExecutor, SubmitOrderRequest,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -57,42 +56,30 @@ impl HttpOrderExecutor {
     }
 
     pub fn from_env() -> Self {
-        match std::env::var("BOT_ORDERS_EXECUTION") {
-            Ok(raw) if raw.trim().eq_ignore_ascii_case("dev_accept") => Self::dev_accept(),
-            Ok(raw) if raw.trim().eq_ignore_ascii_case("paper") => {
-                tracing::info!(
-                    target: "api",
-                    value = raw.trim(),
-                    "BOT_ORDERS_EXECUTION selects paper ledger executor"
-                );
+        use crate::core::config::{
+            http_order_execution_mode_from_env, HttpOrderExecutionMode as Mode,
+        };
+        match http_order_execution_mode_from_env() {
+            Mode::DevAccept => Self::dev_accept(),
+            Mode::Paper => {
+                tracing::info!(target: "api", "BOT_ORDERS_EXECUTION selects paper ledger executor");
                 Self::paper()
             }
-            Ok(raw) if raw.trim().eq_ignore_ascii_case("live_exchange") => {
-                if live_exchange_submit_backend_enabled() {
-                    tracing::info!(
-                        target: "api",
-                        value = raw.trim(),
-                        "BOT_ORDERS_EXECUTION selects wired spot executor (recording backend)"
-                    );
-                    Self::live_exchange()
-                } else {
-                    tracing::info!(
-                        target: "api",
-                        value = raw.trim(),
-                        "BOT_ORDERS_EXECUTION selects reserved live exchange seam (not wired)"
-                    );
-                    Self::live_exchange_reserved()
-                }
-            }
-            Ok(raw) if !raw.trim().is_empty() && !raw.trim().eq_ignore_ascii_case("disabled") => {
-                tracing::warn!(
+            Mode::LiveExchange => {
+                tracing::info!(
                     target: "api",
-                    value = raw.trim(),
-                    "unknown BOT_ORDERS_EXECUTION; using fail-closed disabled"
+                    "BOT_ORDERS_EXECUTION selects wired spot executor (recording backend)"
                 );
-                Self::fail_closed()
+                Self::live_exchange()
             }
-            _ => Self::fail_closed(),
+            Mode::LiveExchangeReserved => {
+                tracing::info!(
+                    target: "api",
+                    "BOT_ORDERS_EXECUTION selects reserved live exchange seam (not wired)"
+                );
+                Self::live_exchange_reserved()
+            }
+            Mode::Disabled => Self::fail_closed(),
         }
     }
 
