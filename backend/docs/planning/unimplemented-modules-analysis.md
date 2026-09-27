@@ -11,7 +11,7 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (http_bridge v1 completo; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; runtime live no monitor fora; seam HTTP promote/demote e snapshot com `promoted_bot_id` feitos. **`modules/orders`** existe como seam fail-closed (`submit_order` + `FailClosedExecutor`); execução real permanece bloqueada.
+> Revisão: 2026-09-27 (http_bridge v1 completo; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; runtime live no monitor fora; seam HTTP promote/demote e snapshot com `promoted_bot_id` feitos. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
 
 ## Resumo
 
@@ -24,7 +24,7 @@ O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco,
 5. Gateway de ferramentas, permissões, aprovações e sandbox.
 6. Memória de conhecimento, memória entre sessões e grafo.
 7. Canais de conversa, voz, aplicações e interface externa.
-8. Execução financeira live, saldos privados e ambiente de produção (seam `modules/orders` + HTTP submit com paper/recording/testnet parcial; prod REST e reconciliação ausentes).
+8. Execução financeira **prod** e ambiente de produção completo (seam `modules/orders` + HTTP: paper/recording/testnet + reconciliação **parcial**; prod REST fail-closed; threat model/Critic pendentes).
 9. Observabilidade operacional completa.
 10. Estado de persistência e recuperação do monitor conforme C17.
 11. Round-trip PostgreSQL operacional conforme V18.
