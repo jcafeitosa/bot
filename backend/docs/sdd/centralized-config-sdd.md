@@ -1,40 +1,44 @@
 # SDD: Configuração centralizada (.env)
 
-## Contexto
+## Regra
 
-Todas as variáprocesso do backend `rust-trading-bot` são lidas em arquivos `config.rs` por camada (`core::config/*` e `modules/*/config.rs`, `presentation/*/config.rs`). O bootstrap `core::config::ensure_dotenv_loaded()` roda uma vez em `main` (dotenvy).
+Toda leitura de variável de processo vive em `src/core/config/*.rs`. Módulos e presentation importam `crate::core::config::{...}` ou `AppConfig`; **não** há `config.rs` de env em `modules/*` nem `presentation/*`.
 
-## Seams públicos
+Bootstrap: `ensure_dotenv_loaded()` em `main` (dotenvy, idempotente).
 
-| Módulo | Arquivo | Funções principais |
-|--------|---------|-------------------|
-| core bootstrap | `src/core/config/env_loader.rs` | `ensure_dotenv_loaded()` |
-| core database | `src/core/config/database.rs` | `postgres_url_from_env`, `load_agents_stack_from_env` |
-| core exchanges | `src/core/config/exchanges.rs` | credenciais Binance, redaction |
-| core providers | `src/core/config/providers.rs` | Jev/LLM/NIM env |
-| monitor | `src/modules/monitor/config.rs` | `PERSIST_MARKET_DATA`, `DATABASE_URL` (monitor) |
-| orders | `src/modules/orders/config.rs` | `BOT_ORDERS_*`, paper price |
-| exchanges | `src/modules/exchanges/config.rs` | `BOT_ORDERS_EXCHANGE_SUBMIT`, reexport Binance |
-| agents | `src/modules/agents/config.rs` | `BOT_AGENCY` |
-| bots | `src/modules/bots/config.rs` | `BOT_RUNTIME_ENABLED` |
-| backtest | `src/modules/backtest/config.rs` | `--persist` + `DATABASE_URL` |
-| HTTP | `src/presentation/http/config.rs` | `BOT_HTTP_*` |
-| terminal | `src/presentation/terminal/config.rs` | (sem env hoje) |
+## Árvore `core/config/`
 
-TOML monitor continua em `core::config::Config::load` (não .env).
+| Arquivo | Env keys / notas |
+|---------|------------------|
+| `env_loader.rs` | (carrega `.env`) |
+| `env_parse.rs` | helpers internos |
+| `mod.rs` | TOML `Config`, CLI, reexports |
+| `app.rs` | `AppConfig` agregador (lazy) |
+| `database.rs` | `DATABASE_URL`, `BOT_AGENTS_ENABLED`, `BOT_NEO4J_*` |
+| `neo4j.rs` | doc → vars em `database.rs` |
+| `exchanges.rs` | `BINANCE_TESTNET_*`, `BINANCE_PROD_*` |
+| `providers.rs` | `TYPESAFE_*`, `OPENAI_*`, `NINE_ROUTER_*`, `NVIDIA_*`, `NGC_*` |
+| `monitor.rs` | `PERSIST_MARKET_DATA`, `DATABASE_URL` (bootstrap monitor) |
+| `orders.rs` | `BOT_ORDERS_*`, `BOT_PAPER_FILL_UNIT_PRICE` |
+| `agents.rs` | `BOT_AGENCY` |
+| `bots.rs` | `BOT_RUNTIME_ENABLED` |
+| `http.rs` | `BOT_HTTP_*` |
+| `backtest.rs` | `--persist` → `DATABASE_URL` |
+| `market.rs`, `strategy.rs`, `risk.rs`, `portfolio.rs`, `logging.rs`, `health.rs`, `terminal.rs`, `http_bridge.rs` | sem env (TOML / futuro) |
+| `bot.toml`, `exchanges/binance.toml` | TOML monitor/exchange (não `.env`) |
 
-## Migração
+`core/database/config.rs` reexporta `core::config::database`.
 
-- Call sites de `std::env::var` movidos para os arquivos acima; `core/database/config.rs` reexporta `core::config::database`.
-- `credentials_env.rs` mantido como fachada fina para compatibilidade de imports.
+## Seams
+
+- `MonitorEnvError` mapeado para `StartupError` em `main`.
+- `modules/http_bridge/config.rs` permanece DTO HTTP (snapshot TOML), sem env.
 
 ## Riscos
 
-- Ordem de init: `.env` antes de `TopCli::parse` e de qualquer leitura de config.
-- Testes paralelos: mutações de env usam `core::test_env_lock::with_env_test_lock`.
-- Apresentação não importa `core::config` (regra import-direction); HTTP usa `modules::orders::config` e `presentation::http::config`.
+- Testes: `core::test_env_lock` ao mutar env.
+- Compatibilidade: nomes de env inalterados vs `.env.example`.
 
 ## Validação
 
-- `scripts/verify-backend-gates.sh` (fmt, clippy, test --test-threads=1, import-direction, gate env).
-- Testes unitários em `core/config/{database,exchanges,providers}.rs`, `modules/orders/config.rs`.
+`scripts/verify-backend-gates.sh` — fmt, clippy, env-centralization rg, tests.
