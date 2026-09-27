@@ -18,6 +18,7 @@ fi
 PG_TESTS=(
   postgres_scaffold_tables_exist_after_migrate
   persist_dataset_round_trip
+  pg_persist_dataset_transaction_rollback_and_idempotent_replay
   persist_dataset_rejects_conflicting_manifest_for_same_id
   pg_catalog_store_round_trip
   pg_identity_snapshot_round_trip
@@ -47,7 +48,7 @@ PG_TESTS=(
 )
 
 # Keep in sync with docs (test-matrix, modules-completeness-audit, README).
-EXPECTED_PG_INTEGRATION_TESTS=28
+EXPECTED_PG_INTEGRATION_TESTS=29
 if [[ ${#PG_TESTS[@]} -ne ${EXPECTED_PG_INTEGRATION_TESTS} ]]; then
   echo "error: PG_TESTS manifest drift: expected ${EXPECTED_PG_INTEGRATION_TESTS}, got ${#PG_TESTS[@]}" >&2
   exit 1

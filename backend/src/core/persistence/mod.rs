@@ -6,6 +6,9 @@ mod dataset;
 #[cfg(test)]
 pub mod pg_integration;
 
+#[cfg(test)]
+mod v18_pg_tests;
+
 use crate::core::database::{DatabaseError, PostgresDatabase};
 
 pub type PersistenceError = DatabaseError;

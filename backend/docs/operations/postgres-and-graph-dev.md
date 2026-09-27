@@ -10,7 +10,7 @@ tags:
 
 | Componente | Referência |
 |------------|------------|
-| PostgreSQL 18+ | `timescale/timescaledb-ha` em `docker-compose.bot.yml` |
+| PostgreSQL 18+ (mínimo imposto em runtime por `core/database/postgres.rs`, `MIN_SERVER_VERSION_NUM = 180000`) | `timescale/timescaledb-ha` (pinado por digest) em `docker-compose.bot.yml`; o CI usa `timescaledb-ha:pg16` — divergente (issue aberta) |
 | TimescaleDB | migration `0000_extensions.sql` |
 | pgvector | migration `0000_extensions.sql` |
 | Neo4j | serviço `graph` no compose (Bolt `7688`) |
@@ -30,6 +30,8 @@ CREATE DATABASE trading_bot OWNER bot_agents;
 ```
 
 Testes de integração PG: `cd backend && ./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` apontando para `trading_bot` (sem env, os mesmos testes passam com skip via `core/persistence/pg_integration.rs`).
+
+Auditoria V18 (T-15 rollback/idempotência candles): `cd backend && ./scripts/pg-v18-monitor-persistence-audit.sh` com o mesmo `DATABASE_URL`.
 
 ## Provider credentials (LLM API keys)
 
@@ -62,7 +64,7 @@ Com `DATABASE_URL` → `trading_bot` e Neo4j wired, migração `0009` cria `grap
 |------|-------------------|
 | Backlog no health | `GET /healthz` → `graph_projection_outbox` (`pending`, `retry`, `oldest_pending_age_secs`, `degraded`); `status: degraded` com fila relevante |
 | Drain manual | `cargo run --locked -- graph-projection drain --limit 32` (JSON `processed` / `succeeded` / `failed`; exige PG + Neo4j) |
-| Leitura CLI (F3) | `cargo run --locked -- graph query agents --limit 32`; subcomandos `supervision-chain`, `bots-for-agent`, `code-impact --module-path modules/orders` |
+| Leitura CLI (F3) | `cargo run --locked -- graph query agents --limit 32`; subcomandos `supervision-chain`, `bots-for-agent`, `code-impact --module-path modules/orders` (só retorna entidades após `scripts/sync-code-graph-neo4j.sh`; sem push → `entities: []`) |
 | Evidência no gate | `./scripts/verify-backend-gates.sh` chama `assert-completeness-evidence.sh` após os testes do bin `bot` |
 
 SDD: [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md) (§6–7), [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). Runbook: [runbook.md](./runbook.md#grafo-de-produto--outbox-neo4j-f212--f213).

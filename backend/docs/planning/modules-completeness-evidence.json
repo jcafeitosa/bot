@@ -9,10 +9,10 @@
     "pg_integration": "./scripts/run-pg-integration-tests.sh"
   },
   "observed": {
-    "bot_tests_passed": 518,
+    "bot_tests_passed": 519,
     "bot_tests_ignored": 0,
     "http_integration_passed": 62,
-    "pg_script_tests": 28
+    "pg_script_tests": 29
   },
   "blockers": [
     "agents_md_critic_independent_review",
@@ -26,6 +26,7 @@
     "docs/sdd/provider-credentials-db-sdd.md",
     "scripts/assert-completeness-evidence.sh",
     "docs/sdd/graph-query-port-f3-sdd.md",
-    "docs/sdd/monitor-persistence-c17-sdd.md"
+    "docs/sdd/monitor-persistence-c17-sdd.md",
+    "docs/sdd/monitor-persistence-v18-sdd.md"
   ]
 }
