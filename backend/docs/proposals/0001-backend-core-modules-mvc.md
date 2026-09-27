@@ -70,14 +70,14 @@ A árvore é uma organização por responsabilidade Rust (`models`, `services`, 
 
 ### Monitor e TUI
 
-`modules::monitor` expõe interface de aplicação pública pequena e tipada (nomes orientados a responsabilidades; sem `Controller` genérico):
+`modules::monitor` expõe interface de aplicação pública pequena e tipada, aprovada pelo owner para esta migração:
 
-- `MonitorCommand` contém ações como `Pause`, `Resume`, `Refresh` e `Shutdown` (e seleção explícita de backtest quando aplicável).
-- `MonitorEvent` informa `Paused`, `Resumed`, snapshots/atualizações de estado, resultado/erro operacional e conclusão.
-- `MonitorHandle::send(command)` e `MonitorHandle::subscribe() -> Receiver<MonitorEvent>` são o seam de coordenação; o monitor mantém `MonitorState` e traduz comandos em chamadas aos módulos.
-- `presentation::terminal::Dashboard` renderiza `MonitorState`/eventos e traduz teclas em `MonitorCommand`. Não importa `strategy`, `risk`, `market`, `persistence` nem tipos de domínio diretamente. `AppEvent`/`UiCommand` existentes podem ser adaptados para estes contratos durante a migração; a UI é view/adapter, não dona do estado de execução.
-
-Nomes e assinaturas finais de canal (mpsc/broadcast) são definidos na implementação, preservando cancelamento, concorrência e semântica atuais.
+- `MonitorCommand` contém `Pause`, `Resume`, `Refresh` e `Shutdown`.
+- `MonitorEvent` contém `StateChanged(MonitorSnapshot)`, `Notice(MonitorNotice)` e `Stopped`. `MonitorSnapshot` e `MonitorNotice` são DTOs do monitor, sem tipos de estratégia, exchange ou persistência.
+- `MonitorHandle::send(command) -> Result<(), MonitorSendError>` envia comandos por `tokio::sync::mpsc`; `subscribe() -> tokio::sync::broadcast::Receiver<MonitorEvent>` recebe eventos.
+- Erro de envio e fechamento de qualquer canal são explícitos. A TUI solicita `Shutdown` e aguarda `Stopped`; encerramento do canal antes de `Stopped` é reportado como término inesperado.
+- Cancelamento cooperativo interno usa `CancellationToken`, permanece privado ao monitor e é acionado pelo comando `Shutdown`.
+- `presentation::terminal::Dashboard` renderiza snapshots/eventos e traduz teclas em `MonitorCommand`. Não importa `strategy`, `risk`, `market`, `persistence` nem tipos de domínio diretamente. `AppEvent`/`UiCommand` existentes são adaptados para estes contratos sem alterar as semânticas de pausa, retomada, concorrência ou encerramento; a TUI é adapter/view, não dona do estado de execução.
 
 ### Direção e admissão observável do core
 
