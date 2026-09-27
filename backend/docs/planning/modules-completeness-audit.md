@@ -72,7 +72,7 @@ Evidência (2026-09-27): **387** testes no binário `bot`, **8** ignorados (cont
 |---|---|---|
 | Analisar completude (bots, orders, agents, HTTP) | Este documento + `unimplemented-modules-analysis.md` | Feito |
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
-| Expandir/melhorar implementação | Bots runtime/evaluator, orders G2 (testnet+reconciliação+poll), agents PG + promote | **Parcial** (auth owner; Critic; prod REST política) |
+| Expandir/melhorar implementação | Bots runtime/evaluator, orders G2 (testnet+reconciliação+poll+redação credenciais), agents PG + promote; `.env.example` seams HTTP | **Parcial** (auth owner; Critic; prod REST política) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
 | Build/testes verdes | `cargo test --locked` → **387** ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
@@ -96,6 +96,12 @@ Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-executi
 | Threat model G2 fechado (Critic) + purge PG automatizado | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | Critic independente; retenção ops já em [cli-and-config](../reference/cli-and-config.md#pg-orders-retention-gate-2) |
 | Auth owner verificável | [agents-capability-research.md](../research/agents-capability-research.md) | Bootstrap + decisão produto |
 | Revisão Critic pacote G1/G2 | AGENTS.md | Instância separada |
+
+### Decisões fora do código (bloqueiam fechamento do goal)
+
+1. **Auth owner** — transporte e bootstrap conforme [agents-capability-research.md](../research/agents-capability-research.md); `BOT_HTTP_*` não substitui.
+2. **Critic** — sessão independente com [handoff](#pacote-para-revisão-critic-handoff) abaixo; itens **Não** nos checklists G1/G2 só saem com LGTM registrado.
+3. **Prod REST** — permanece bloqueado até decisão explícita (`modules/exchanges/rest.rs`); não confundir com testnet/paper G2.
 
 ## Pacote para revisão Critic (handoff)
 
