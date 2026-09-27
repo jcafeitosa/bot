@@ -35,7 +35,7 @@ tags:
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` em `server.rs`. |
 | `http_bridge/bots` | `assert_catalog_contains_bot`, `assert_bot_promotion_allowed` (v1/v2 `monitor_registry` + mercado); `catalog_for_config_includes_monitor_strategy_periods`; `catalog_gate_tests`. |
-| `orders` | `submit_order`; `RecordingExecutor` (`submit_invokes_recording_executor_once_after_risk`); `ReservedLiveExchangeExecutor`; idempotência memória/PG (`pg_order_idempotency_round_trip` ignorado). |
+| `orders` | `RecordingExecutor` (`submit_invokes_*`, `recording_executor_accumulates_successful_executions`); `ReservedLiveExchangeExecutor`; idempotência PG (ignorado). |
 | `bots` | Identidade, ranking, `build_catalog_from_monitor_registry` (multi-estratégia registrada), `BotRuntimePort` + `shared_bot_runtime()`, `MonitorStrategyRegistry`, `strategy_evaluation_binding`, métricas coerentes com `BotId`. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
 | `backtest` | Fees, next-open, slippage na venda, stop/take-profit, histórico insuficiente e ausência de lookahead. |
@@ -69,12 +69,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-298 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+299 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 6 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, pg identity, pg order idempotency, market, neo4j)
 ```
 
-Bin `bot`: 298 aprovados, 6 ignorados. Testes `#[ignore]` de PG/Neo4j exigem `DATABASE_URL` → `trading_bot` (PG 18+, extensões) e/ou stack Neo4j local.
+Bin `bot`: 299 aprovados, 6 ignorados. PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ## Lacunas explícitas
 
