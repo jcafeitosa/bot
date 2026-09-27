@@ -42,7 +42,7 @@ status: draft
 | `HttpOrderExecutor::live_exchange_wired` / `ApiState::live_exchange_wired` | Fonte única para `GET /meta` e `GET /orders/execution-status`; `true` somente após adapter exchange real. |
 | `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
 | `ReservedLiveExchangeExecutor` | `BOT_ORDERS_EXECUTION=live_exchange|paper` → `OrdersError::LiveExchangeNotWired` / HTTP `live_exchange_not_wired` até adapter real. |
-| `RecordingExecutor` | Double in-process (contagem de chamadas); evidência Gate 2 sem rede — `submit_invokes_recording_executor_once_after_risk`. |
+| `RecordingExecutor` | Double in-process (contagem de chamadas); `submit_invokes_recording_executor_once_after_risk` + `submit_order_http_records_execution_with_recording_executor` (sem rede). |
 
 ## Validação (baseline G1 antes de Gate 2)
 
