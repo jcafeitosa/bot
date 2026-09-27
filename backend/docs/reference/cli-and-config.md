@@ -57,7 +57,10 @@ A validação de período SMA e timeframe é feita junto com a configuração. C
 | `DATABASE_URL` | Ativa a tentativa de conexão e migração do PostgreSQL. |
 | `PERSIST_MARKET_DATA=1` | Ativa a persistência opcional do monitor. |
 | `TYPESAFE_API_KEY` | Credencial para avaliações consultivas do Jev/TypeSafe quando habilitadas. |
-| `TYPESAFE_ENDPOINT` | Endpoint compatível alternativo; HTTP só é aceito para localhost. |
+| `TYPESAFE_ENDPOINT` | Endpoint compatível alternativo (URL completa do advisory); HTTP só é aceito para localhost. |
+| `OPENAI_API_KEY` | Bearer alternativo quando `TYPESAFE_API_KEY` não está definida (proxies OpenAI-compatible). |
+| `OPENAI_BASE_URL` | Raiz OpenAI-compatible para `core::providers::openai_compatible` (ex.: proxy 9router). |
+| `NINE_ROUTER_BASE_URL` | Alias documentado para a mesma raiz; precede `OPENAI_BASE_URL`. |
 
 Nunca comite `.env` ou credenciais.
 
