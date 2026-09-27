@@ -100,6 +100,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `order_reconciliation_lookup` + `GET /orders/reconciliation/{client_order_id}` | Reconciliação pós-submit live; fallback PG `pg_order_reconciliation_lookup_reads_pg_when_memory_empty` |
 | `reconcile_pending_orders_once` / `POST /orders/reconciliation/poll` + job `BOT_ORDERS_RECONCILIATION_POLL_SECS` | Poller (`LiveExchangeSpotOrderReconciliationQuery`) |
 | `hydrate_order_reconciliation_from_pg` | Infra → domain (boot HTTP `serve`, espelha `order_reconciliation` PG na memória); evidência PG `pg_hydrate_order_reconciliation_from_pg_after_durable_write` |
+| Boot bots catálogo (PG) | `persist_bot_catalog` no boot + `bot_catalog_snapshot` lê PG; evidência `pg_bot_catalog_snapshot_round_trip_via_api_state` |
 | Boot agents (PG) | `server::run` → `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` se registry vazio; evidência PG `pg_cold_start_apply_snapshot_after_write_through` |
 | `register_live_reconciliation_pg_mirror` | Infra: monitor testnet espelha reconciliação no PG quando `DATABASE_URL` ativo |
 | `observe_testnet_spot_order_by_client_id` | Infra exchanges → observação ccxt para poller testnet |
