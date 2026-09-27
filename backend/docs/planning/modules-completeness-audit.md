@@ -19,7 +19,7 @@ tags:
 | `modules/bots` | `MonitorStrategyRegistry`, `[[strategy.monitor_registry]]`, catálogo multi-estratégia, runtime HTTP | `monitor_strategy.rs`, `catalog.rs`, `server.rs` | Evaluators não-SMA; auth owner |
 | `modules/orders` | `ReservedLiveExchangeExecutor`, idempotência PG/memória, `GET /orders/execution-status` | `order_execution.rs`, `http_bridge/orders.rs`, `server.rs` | Adapter exchange real; auth owner |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hydrate no `serve` + `require_bound_agency` | `modules/agents/tests.rs`, `server.rs`, rotas agents | Auth owner produto (fora do seam `HttpAdminAuth`) |
-| `presentation/http` | OpenAPI **34** paths, Scalar `/docs`, `HttpAdminAuth`, `GET /orders/execution-status` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
+| `presentation/http` | OpenAPI **34** paths, `GET /meta` (`http_seams`), `HttpAdminAuth`, orders/bots/agents routes | `meta.rs`, `openapi.rs`, `server.rs` | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 
