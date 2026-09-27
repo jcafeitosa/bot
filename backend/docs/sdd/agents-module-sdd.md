@@ -12,7 +12,7 @@ status: draft
 
 - **Estado:** draft G1 — revisão independente pendente.
 - **Referências:** [Pesquisa de capacidades](../research/agents-capability-research.md), [Módulos não implementados](../planning/unimplemented-modules-analysis.md), [Convenção MVC](./modules-mvc-convention-sdd.md), [Proposta 0001](../proposals/0001-backend-core-modules-mvc.md).
-- **Premissas:** Auth verificável do owner no transporte permanece bloqueada; **registro HTTP** usa `AgentRegistry` em memória com **espelhamento best-effort** em PostgreSQL (`PgAgentIdentityStore` + `persist_agent_after_mutation`) quando `DATABASE_URL` conecta. Fundação **IdentityOnly** com invariantes `IdentityOnly` e seam de advisory delegando a [`core::providers::jev`](../../src/core/providers/jev/mod.rs). Persistência durável e autenticação do owner no transporte ficam para Gate 1; rotas mutantes podem exigir `BOT_HTTP_ADMIN_TOKEN` e, opcionalmente, `BOT_HTTP_OWNER_ID` no registro — seam fail-closed, não bootstrap verificável do owner.
+- **Premissas:** Auth verificável do owner no transporte permanece bloqueada; **registro HTTP** usa `AgentRegistry` em memória com **espelhamento best-effort** em PostgreSQL (`PgAgentIdentityStore` + `persist_agent_after_mutation`) quando `DATABASE_URL` conecta. Fundação **IdentityOnly** com invariantes `IdentityOnly` e seam de advisory delegando a [`core::providers::jev`](../../src/core/providers/jev/mod.rs). Persistência durável e autenticação do owner no transporte ficam para Gate 1; rotas mutantes podem exigir `BOT_HTTP_ADMIN_TOKEN` e, opcionalmente, `BOT_HTTP_OWNER_ID` no registro e `BOT_HTTP_AGENCY_ID` nas rotas de agentes — seam fail-closed, não bootstrap verificável do owner.
 
 ## 1. Contexto e objetivo
 
