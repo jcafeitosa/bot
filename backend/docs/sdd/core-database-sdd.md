@@ -14,7 +14,7 @@ status: draft
 
 ## Contexto e objetivo
 
-Seam único para PostgreSQL 18+ (TimescaleDB + pgvector) e Neo4j opcional. `AppDatabases::bootstrap_http_api` conecta PG quando `DATABASE_URL` aponta para `trading_bot` e Neo4j quando `BOT_AGENTS_ENABLED` está ativo. Falhas logam warn e o processo continua fail-closed.
+Seam único para PostgreSQL 18+ (TimescaleDB + pgvector) e Neo4j opcional. `AppDatabases::bootstrap_runtime` (alias `bootstrap_http_api`) conecta; monitor/backtest via [database-module-integration-sdd.md](./database-module-integration-sdd.md). `AppDatabases::bootstrap_http_api` conecta PG quando `DATABASE_URL` aponta para `trading_bot` e Neo4j quando `BOT_AGENTS_ENABLED` está ativo. Falhas logam warn e o processo continua fail-closed.
 
 ## Seams
 
