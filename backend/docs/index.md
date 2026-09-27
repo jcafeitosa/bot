@@ -41,6 +41,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 ## Design técnico
 
+- [Proposta 0001 — Separação entre core, módulos e MVC no backend](./proposals/0001-backend-core-modules-mvc.md) — proposta `draft`, aguardando revisão e decisão humana.
 - [SDD — Correções de configuração, mercado e organização do backend](./sdd/backend-corrections-sdd.md)
 - [SDD T-05 — Restringir redirects REST do monitor Binance](./sdd/rest-redirect-sdd.md)
 - [SDD T-07 — Fixture do backtest e custo da saída por sinal](./sdd/backtest-trades-and-slippage-sdd.md)
