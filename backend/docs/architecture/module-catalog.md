@@ -11,61 +11,59 @@ tags:
 
 # Catálogo completo de módulos do backend
 
-> Revisão: 2026-09-27. Fonte de verdade: `backend/src`, `backend/tests`, `Cargo.toml` e migrações. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
+> Revisão: 2026-09-26 (pós F1–F6). Fonte de verdade: `backend/src` (`core/`, `modules/`, `presentation/`), `backend/tests`, `Cargo.toml` e `src/core/persistence/migrations/`. Quando uma regra está planejada, ela é marcada como pendência; esta página descreve o comportamento presente.
 
 ## 1. Mapa de execução
 
 O binário tem dois pontos de entrada funcionais:
 
-- **Monitor:** `main → Config → exchanges/bootstrap → app → REST/WS → market_feed → strategy → risk/UI/persistence`.
-- **Backtest:** `main → backtest_cli → fixture 1m → market/resampling → backtest → JSON/persistence opcional`.
+- **Monitor:** `main → core::config → modules::monitor::startup → supervisor → modules::exchanges → REST/WS → modules::market::feed → strategy → risk → presentation::terminal / persistence opcional`.
+- **Backtest:** `main → modules::backtest::cli → fixture 1m → modules::market → modules::backtest → JSON/persistence opcional`.
 
 O backend não envia ordens. O uso REST autorizado hoje é o backfill público de candles Spot da conta `dev`; observe e paper são os modos operacionais disponíveis.
 
 ```mermaid
 flowchart LR
-  Main[main] --> Config[config]
-  Main --> Monitor[app]
-  Main --> BacktestCLI[backtest_cli]
+  Main[main] --> Config[core/config]
+  Main --> Supervisor[monitor/supervisor]
+  Main --> BacktestCLI[backtest/cli]
   Config --> Bootstrap[exchanges/bootstrap]
   Bootstrap --> Registry[exchanges/registry]
-  Monitor --> REST[exchanges/binance + rest]
-  Monitor --> WS[exchanges/live + ws]
-  REST --> Feed[market_feed]
+  Supervisor --> REST[exchanges/binance + rest]
+  Supervisor --> WS[exchanges/live + ws]
+  REST --> Feed[market/controllers/feed]
   WS --> Feed
   Feed --> Strategy[strategy]
   Strategy --> Risk[risk]
-  Risk --> UI[ui]
-  Feed --> Persist[persistence]
-  BacktestCLI --> Market[market]
+  Risk --> TUI[presentation/terminal]
+  Feed --> Persist[core/persistence]
+  BacktestCLI --> Market[market/models]
   Market --> Backtest[backtest]
   Backtest --> Persist
-  Monitor --> Jev[jev]
-  Monitor --> Logging[logging]
+  Supervisor --> Jev[jev]
+  Main --> Logging[core/logging]
 ```
 
-## 2. Inventário dos módulos raiz
+## 2. Inventário por camada
 
-| Módulo | Contrato público | Responsabilidade atual | Testes principais |
-|---|---|---|---|
-| `main` | `main() -> anyhow::Result` | Parseia monitor/backtest, carrega configuração, inicializa logging e banco opcional. | Execução coberta indiretamente por testes de CLI/configuração. |
-| `app` | `run(Config, Option<Database>)` | Orquestra tarefas REST/WS, pausa/retomada, avaliação, Jev, persistência e dashboard. | Testes assíncronos de pausa, stale results, resume, persistência e shutdown em `src/app.rs`. |
-| `config` | `Config::load`, `Config::validate`, enums de operação | Carrega TOML, aplica CLI, valida ambiente, risco, timeframe, produção e Jev. | `src/config/mod.rs`, `tests/config_cli.rs`. |
-| `domain` | IDs, definições, métricas, ranking e sinais | Modela entidades e resultados compartilhados pelo backtest e avaliação. | Testes unitários de ranking, janelas e métricas. |
-| `error` | `BotError`, `BotResult<T>` | Converte erros de configuração, mercado, exchange, persistência e Jev. | Cobertura indireta pelos módulos consumidores. |
-| `market` | `Timeframe`, `Candle`, `HistoricalDataset` | Valida OHLCV, impede gaps/duplicatas e agrega candles 1m. | Testes de gaps, duplicatas, barras parciais e round-trip Mantis. |
-| `market_feed` | `HybridCandleFeed` | Une REST e WS, substitui barras repetidas, ordena, limita e controla watermark de avaliação. | Testes de deduplicação, backlog, gaps e monotonicidade. |
-| `strategy` | `periods_for_mode`, `evaluate`, `StrategySnapshot` | Calcula SMA e sinais sem efeitos colaterais. | Testes de períodos e sinais. |
-| `risk` | `profile_limits`, `validate_intent`, `gate_signal` | Aplica limites por perfil e bloqueia combinações incompatíveis de sinal/modo. | Testes de capital, risco e modo. |
-| `portfolio` | `Asset`, `Position`, `PortfolioSnapshot`, `paper_snapshot` | Representa carteira e estado paper; não executa ordens. | Testes de saldo, posição e consistência. |
-| `backtest` | `run_sma_crossover`, `BacktestConfig`, `BacktestReport` | Simula entradas, saídas, fees, slippage, equity e métricas. | Testes de next-open, stop/take-profit e ausência de lookahead. |
-| `backtest_cli` | `BacktestCli`, `run` | Gera fixture determinística, resample, executa e imprime JSON. | `tests/backtest_fixture.rs` e testes do módulo. |
-| `jev` | `JevAdvisor::review` | Consulta TypeSafe/Jev com timeout e payload reduzido; resposta é somente aconselhamento. | Validações de endpoint e configuração; integração externa não é obrigatória. |
-| `logging` | `init(&LoggingConfig)` | Inicializa tracing em stderr e arquivo rotacionado. | Validado por execução/configuração; sem dependência de domínio. |
-| `persistence` | `Database::connect_from_env`, `migrate`, `persist_dataset` | Conecta ao PostgreSQL dedicado, migra e grava dataset/candles idempotentemente. | Teste PostgreSQL ignorado por padrão; exige `DATABASE_URL`. |
-| `ui` | `Dashboard`, `UiCommand`, `AppEvent`, `ui::run` | Renderiza TUI, transforma teclado em comandos e publica estado do monitor. | Teste da máquina de estados e comando de espaço. |
+| Camada | Módulo | Contrato público | Responsabilidade atual | Testes principais |
+|---|---|---|---|---|
+| raiz | `main` | `main() -> anyhow::Result` | Monitor ou `backtest`; bootstrap de persistência via `modules::monitor::startup`. | CLI/config indiretos. |
+| `core` | `config` | `Config::load`, `Config::validate` | TOML em `src/core/config/`, overrides CLI, validação. | `tests/config_cli.rs`, testes do módulo. |
+| `core` | `error` / `logging` | `BotError`, `init` | Erros e tracing compartilhados. | Consumidores. |
+| `core` | `persistence` | `Database`, `persist_dataset` | Migrações e gravação idempotente. | PostgreSQL ignorado por padrão. |
+| `modules` | `monitor` | `run`, `bootstrap_monitor` | Supervisor REST/WS, pausa/retomada, dashboard, persistência. | Testes em `supervisor.rs` e controllers. |
+| `modules` | `market` | candles, `HybridCandleFeed` | Validação, agregação 1m, feed híbrido. | Testes de feed e modelos. |
+| `modules` | `strategy` | SMA, `evaluate` | Sinais sem efeitos colaterais. | Testes de períodos e sinais. |
+| `modules` | `risk` | `gate_signal` | Limites e modo. | Testes de capital e modo. |
+| `modules` | `portfolio` | snapshots paper | Carteira paper; sem ordens. | Testes de consistência. |
+| `modules` | `backtest` | `run_sma_crossover`, CLI | Simulação e fixture sintética. | `tests/backtest_fixture.rs`. |
+| `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
+| `modules` | `jev` | `JevAdvisor::review` | Advisory TypeSafe. | Endpoint/config. |
+| `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves. | Testes indiretos. |
+| `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
 
-## 3. Módulos de exchanges
+## 3. Módulos de exchanges (`src/modules/exchanges/`)
 
 | Módulo | Contrato e comportamento |
 |---|---|
@@ -98,11 +96,11 @@ flowchart LR
 
 1. `main` carrega config e logging.
 2. Banco opcional é criado somente quando `DATABASE_URL` existe e a flag de persistência permite.
-3. `app` seleciona a conta Spot e cria o adapter Binance.
+3. O supervisor seleciona a conta Spot e cria o adapter Binance.
 4. REST faz backfill; WS entrega somente candle fechado.
 5. `HybridCandleFeed` combina as fontes e libera avaliação quando há histórico contíguo.
 6. `strategy` produz snapshot; `risk` aplica o gate; `jev` pode adicionar nota.
-7. `ui` publica estado e `persistence` grava de modo assíncrono quando habilitado.
+7. `presentation::terminal` e views do monitor publicam estado e `persistence` grava de modo assíncrono quando habilitado.
 8. Pausar cancela o trabalho antigo, drena eventos WS e só aceita dados REST atuais na retomada.
 
 ### Backtest
@@ -128,7 +126,7 @@ flowchart LR
 
 ## 6. Débitos e limites conhecidos
 
-- `app` concentra muita orquestração; decomposição deve esperar uma mudança concreta e manter os seams.
+- O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
 - O round-trip PostgreSQL permanece não executado nesta sessão.
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.
 - A manutenção do vendor `ccxt-core` exige repetir a política de redirect e a prova HTTP após atualizações.

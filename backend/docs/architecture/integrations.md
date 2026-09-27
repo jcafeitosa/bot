@@ -13,8 +13,8 @@ tags:
 
 | Integração | Adapter/seam | Uso atual | Estado |
 |---|---|---|---|
-| Binance Spot Test Network REST | `exchanges::binance` + `MarketDataSource` | Backfill público de candles OHLCV. | Ativo em `dev`; origem restrita. |
-| Binance Spot Test Network WebSocket | `exchanges::live` + `tokio-tungstenite` | Klines fechados `1m` no monitor. | Ativo apenas em `1m`; REST permanece fallback. |
+| Binance Spot Test Network REST | `modules::exchanges::binance` + `MarketDataSource` | Backfill público de candles OHLCV. | Ativo em `dev`; origem restrita. |
+| Binance Spot Test Network WebSocket | `modules::exchanges::live` + `tokio-tungstenite` | Klines fechados `1m` no monitor. | Ativo apenas em `1m`; REST permanece fallback. |
 | `ccxt-core` / `ccxt-exchanges` | Patch local em `vendor/ccxt-core-0.1.5` | Cliente HTTP e adapter da exchange. | Vendorizado; política de redirect sob gate de segurança. |
 | PostgreSQL | `core::persistence::Database` | Migrações e gravação opcional de datasets/candles. | Opt-in; exige banco dedicado `trading_bot`. |
 | TypeSafe/Jev | `JevAdvisor` | Avaliação consultiva de regime, qualidade do sinal e anomalia. | Opcional; não autoriza ordens. |
