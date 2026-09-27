@@ -15,7 +15,7 @@ tags:
 - **ID:** T-05
 - **Autor:** System Designer (Builder)
 - **Revisor:** Crítico de Arquitetura independente, designado pelo Orquestrador
-- **Estado:** G1 tecnicamente aprovado por Crítico independente; usuário aprovou os seams em 2026-09-26; C9 validado com testes de origem e transporte HTTP
+- **Estado:** G1 tecnicamente aprovado por Crítico independente; usuário aprovou os seams em 2026-09-26; C9 G3 aprovado com follow-up após parecer complementar de `/root/c16_critic`; C10/G4 pendentes
 - **Data:** 2026-09-26
 
 ## Contexto e objetivo
@@ -72,4 +72,4 @@ Cada artefato de C9/C10 requer Builder e Crítico independentes. Achados bloquea
 - Ciclo TDD da regra pura: `cargo test --locked --test redirect_origin_test` falhou 3/3 com implementação permissiva e passou 3/3 após a política de origem. Os casos verificam porta efetiva, outro host, downgrade, userinfo, histórico vazio e mais de dez saltos.
 - O teste de transporte em `tests/redirect_policy_test.rs` passou fora do sandbox com loopback permitido: a origem B não recebeu conexão no redirect entre origens e o redirect na própria origem retornou o corpo esperado. O teste mantém limite global de quatro segundos por caso.
 - O Crítico independente identificou um falso positivo possível no primeiro teste HTTP: o listener B expirava após 300 ms, antes de `get` necessariamente terminar. O Builder corrigiu o teste para manter B ativo até o retorno de `get`, com prioridade para conexões pendentes; o Crítico aceitou essa correção.
-- Veredito independente de C9: **APROVADO COM FOLLOW-UP**, após a execução dos dois testes HTTP fora do sandbox. A política pura e o cliente instalado passaram; a manutenção futura deve repetir a prova após atualizações do vendor. C10 pode prosseguir com a documentação do contrato do produto.
+- Parecer complementar independente de `/root/c16_critic` para C9 G3: **APROVADO COM FOLLOW-UP**, após reexecução fora do sandbox de **2/2** testes HTTP de transporte e **3/3** testes puros de origem. A política pura e o cliente instalado passaram; a manutenção futura deve repetir a prova após atualizações do vendor. A restrição cobre destinos de redirect por URL, sem demonstrar contenção contra DNS ou proxy comprometidos. C10 (contrato do produto e documentação final) e G4 permanecem pendentes.
