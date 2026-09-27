@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
                     );
                 }
                 let persist_flag = read_persist_flag()?;
-                let database = modules::monitor::bootstrap_monitor_database(
+                let database = crate::core::database::AppDatabases::bootstrap_monitor_postgres(
                     persist_flag.as_deref(),
                     &config.market.timeframe,
                 )
@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
             }
 
             let persist_flag = read_persist_flag()?;
-            let database = modules::monitor::bootstrap_monitor_database(
+            let database = crate::core::database::AppDatabases::bootstrap_monitor_postgres(
                 persist_flag.as_deref(),
                 &config.market.timeframe,
             )

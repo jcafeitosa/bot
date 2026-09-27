@@ -1,6 +1,8 @@
 use tracing::warn;
 
-use crate::core::persistence::Database;
+use crate::core::persistence::{Database, PersistenceError};
+
+use super::monitor_bootstrap::{bootstrap_monitor_postgres, MonitorBootstrapError};
 
 use super::config::{load_agents_stack_from_env, postgres_url_from_env};
 use super::neo4j::Neo4jGraph;
@@ -75,5 +77,16 @@ impl AppDatabases {
         };
 
         Self { postgres, neo4j }
+    }
+
+    pub async fn bootstrap_monitor_postgres(
+        persist_flag: Option<&str>,
+        timeframe: &str,
+    ) -> Result<Option<Database>, MonitorBootstrapError> {
+        bootstrap_monitor_postgres(persist_flag, timeframe).await
+    }
+
+    pub async fn postgres_for_cli_persist() -> Result<Database, PersistenceError> {
+        super::monitor_bootstrap::postgres_for_cli_persist().await
     }
 }

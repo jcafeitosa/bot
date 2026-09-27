@@ -58,16 +58,7 @@ pub async fn bootstrap_monitor_database(
     persist_flag: Option<&str>,
     timeframe: &str,
 ) -> Result<Option<Database>, StartupError> {
-    bootstrap_monitor(
-        persist_flag,
-        timeframe,
-        || {
-            crate::core::config::monitor::database_url_for_monitor()
-                .map_err(|_| StartupError::InvalidUrl)
-        },
-        connect_database,
-    )
-    .await
+    crate::core::database::AppDatabases::bootstrap_monitor_postgres(persist_flag, timeframe).await
 }
 
 #[cfg(test)]

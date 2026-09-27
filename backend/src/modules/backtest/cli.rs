@@ -6,7 +6,7 @@ use serde_json::json;
 use crate::{
     core::config::{Config, MonitorCli},
     core::error::BotResult,
-    core::persistence::{Database, PersistenceError},
+    core::persistence::PersistenceError,
     modules::backtest::{rank_bots, rank_strategies, RunId, StrategyDefinition, StrategyVersion},
     modules::backtest::{run_sma_crossover, BacktestConfig, ExitPolicy},
     modules::market::{persist_historical_dataset, Candle, HistoricalDataset, Timeframe},
@@ -110,12 +110,9 @@ async fn persist_dataset_if_configured(dataset: &HistoricalDataset) -> BotResult
         mantis,
     )
     .map_err(|e| crate::core::error::BotError::MarketData(e.to_string()))?;
-    let db = Database::connect_from_env()
+    let db = crate::core::database::AppDatabases::postgres_for_cli_persist()
         .await
         .map_err(|e| crate::core::error::BotError::Configuration(e.to_string()))?;
-    db.migrate().await.map_err(|e: PersistenceError| {
-        crate::core::error::BotError::Configuration(e.to_string())
-    })?;
     persist_historical_dataset(&db, &validated)
         .await
         .map_err(|e: PersistenceError| {
