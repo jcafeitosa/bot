@@ -37,7 +37,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 ## Planejamento
 
-- [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md)
+- [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md) — baseline `./scripts/verify-backend-gates.sh`; checklists de fechamento nos SDDs [agents G1](./sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [orders G2](./sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](./sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist)
 - [Status de implementação MVC mínimo](./architecture/module-implementation-status.md) — checklist `core`/`modules`/`presentation` e veredito vs goal de completude
 - [Plano de execução das correções pendentes do backend](./planning/backend-work-plan.md) — sequência de entregas, gates, dependências e bloqueios atuais.
 - [Análise de módulos ainda não desenvolvidos](./planning/unimplemented-modules-analysis.md) — capacidades previstas sem implementação completa, dependências e ordem recomendada.
