@@ -73,7 +73,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 | `agents` | Domain (registry) + infra (PG write-through) | `register_*` / `pause|resume|retire_*_and_persist`, `run_agent_advisory`; `shared_agent_registry` + `BOT_AGENCY` |
 | `bot_catalog` | Infra (`BotCatalogBackend`) | `ApiState::persist_bot_catalog` / `bot_catalog_snapshot`; memória ou PG |
 | `order_executor` | Presentation seam (`HttpOrderExecutor`) | `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` = double local); `for_http_server` lê env |
-| `bot_runtime` | Infra/presentation seam (`BotRuntimePort`) | `shared_bot_runtime()` + `BOT_RUNTIME_ENABLED`; HTTP `/bots/runtime/*`; monitor snapshot lê o mesmo processo; `publish_snapshot` chama `enrich_monitor_snapshot_from_shared_runtime` |
+| `bot_runtime` | Infra/presentation seam (`BotRuntimePort`) | `shared_bot_runtime()` + `BOT_RUNTIME_ENABLED`; HTTP `/bots/runtime/*` (promoção exige `bot_id` no catálogo via `assert_catalog_contains_bot`); monitor snapshot lê o mesmo processo; `publish_snapshot` chama `enrich_monitor_snapshot_from_shared_runtime` |
 | `http_admin_auth` | Presentation seam | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` |
 | `databases` | Infra | Postgres + Neo4j opcional para `/readyz` |
 | `monitor` | Domain handle via infra | `monitor_snapshot` / `accept_monitor_command` quando `--with-monitor` |
@@ -111,7 +111,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking) chamam 
 cargo test --locked --bin bot
 ```
 
-Evidência: **250** testes no bin `bot`, **6** ignorados (PG/Neo4j).
+Evidência: **254** testes no bin `bot`, **6** ignorados (PG/Neo4j).
 
 ## Documentos relacionados
 
