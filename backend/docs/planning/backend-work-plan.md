@@ -58,6 +58,6 @@ Rastreada em [modules-completeness-audit.md](./modules-completeness-audit.md) (g
 | Bots runtime G2 | Parcial: `MonitorEvaluatorKind`, catálogo `monitor_evaluator`, `evaluate_for_kind` | Auth owner; runtime injetado vs `serve` |
 | Orders G2 | Parcial: `RecordingExecutor`, idempotência, `live_exchange_not_wired` | Adapter exchange real + threat model |
 | Agents G1 | Registry + PG + `promote_runtime_bot` capability | Auth owner verificável |
-| Evidência | `./scripts/verify-backend-gates.sh` verde; **303** testes bin `bot`, **6** ignorados | Revisão Critic AGENTS.md (instância separada) |
+| Evidência | `./scripts/verify-backend-gates.sh` verde; **304** testes bin `bot`, **6** ignorados | Revisão Critic AGENTS.md (instância separada) |
 
 Esta trilha não substitui C17/V18; compartilha apenas o gate de verificação (`verify-backend-gates.sh`).
