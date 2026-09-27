@@ -66,3 +66,4 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - Referências estáveis ficam em `reference/`.
 - SDDs e designs técnicos ficam em `sdd/`.
 - O estado de cada entrega continua registrado no próprio documento; o plano consolida a ordem de execução e os bloqueios.
+- [Verificação de imports](scripts/check-import-direction.sh) — heurística MVC

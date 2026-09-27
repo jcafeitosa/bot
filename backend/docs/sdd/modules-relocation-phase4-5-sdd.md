@@ -21,3 +21,11 @@ date: 2026-09-27
 ## Validação
 
 `cargo fmt`, `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked`.
+
+## Addendum (2026-09-27 sessão 2)
+
+- F2: `modules/application_contracts.rs` (`Signal`, `BotSignal`); ranking/IDs em `modules/backtest/models.rs`; `domain.rs` removido.
+- MVC: strategy/risk/portfolio/backtest/market `models`+`controllers`; exchanges `models/` + `adapters/` + `controllers/` reexports.
+- Presentation: só `modules::monitor` + Ratatui; DTOs em `monitor/views/terminal_dashboard.rs`.
+- `MonitorHandle` ligado ao supervisor e à TUI (`presentation::terminal::run`).
+- Script: `scripts/check-import-direction.sh` (exceções documentadas: `core::config`→strategy, persistence tests, supervisor spawn).
