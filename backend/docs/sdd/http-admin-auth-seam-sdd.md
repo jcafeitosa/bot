@@ -1,5 +1,5 @@
 ---
-title: SDD — HTTP admin bearer seam (opcional; sem token = sem auth)
+title: SDD — HTTP admin bearer seam (serve sem token; rotas protegidas retornam 503)
 description: BOT_HTTP_ADMIN_TOKEN, BOT_HTTP_OWNER_ID e BOT_HTTP_AGENCY_ID; não substitui Gate 1 owner auth
 tags:
   - sdd
@@ -11,9 +11,65 @@ status: partial
 w0_01_status: draft
 ---
 
-# SDD — HTTP admin bearer seam
+# SDD — HTTP admin bearer seam (serve sem token; rotas protegidas retornam 503)
 
-TEST
+### Decisão do owner — comportamento sem credencial (2026-09-27)
+
+Owner aprovou este contrato público nesta data: o comando `serve` continua ativo sem `BOT_HTTP_ADMIN_TOKEN`; rotas administrativas e mutáveis respondem **503** quando a autenticação admin não está configurada; quando configurada, essas rotas exigem `Authorization: Bearer <token>` válido; rotas públicas seguem acessíveis sem token. Esta decisão substitui a decisão incompatível anterior deste SDD de falhar todo o startup/recusar abrir socket sem token (A1/A3). Não aprova a tabela exata de rotas, um roteador/tabela central, uma classificação global por tipo de resposta, allowlist de Host, limitador, esquema OpenAPI ou qualquer outro seam listado como pendente.
+
+Contrato de resposta para uma rota administrativa/mutável:
+
+| Configuração e credencial | Resposta observável |
+|---|---|
+| `BOT_HTTP_ADMIN_TOKEN` ausente ou vazio | **503** com código estável `admin_auth_not_configured`; handler não executa |
+| Token configurado; bearer ausente, malformado ou inválido | **401** com código estável `unauthorized`; handler não executa |
+| Token configurado; bearer válido | requisição prossegue ao handler e a resposta normal da operação é preservada |
+
+A resposta de configuração ausente não impede `serve` de inicializar ou abrir o listener. Falha de startup por token ausente é removida da proposta. Validação de token configurado (incluindo força mínima e resposta para valor inválido) continua pendente de seam e acordo; não converter valor inválido em auth desabilitada.
+
+#### Delimitação proposta para W0-01 (lista sujeita a acordo de seam)
+
+Obrigatoriamente protegidos pelo contrato aprovado: todos os endpoints mutáveis/admin já inventariados neste SDD, incluindo:
+
+- todos os métodos em `/api/v1/admin/*` (credenciais de provider e consultas administrativas de grafo);
+- mutações de agentes: `POST /agents`, `POST /agents/{agent_id}/pause`, `POST /agents/{agent_id}/resume`, `POST /agents/{agent_id}/retire`, `POST /agents/{agent_id}/advisory`;
+- mutações de catálogo/runtime de bots: `POST /bots/catalog/persist`, `POST /bots/runtime/promote`, `POST /bots/runtime/demote`;
+- mutações de ordens/reconciliação: `POST /orders/reconciliation/poll`, `POST /orders/submit`;
+- comandos de monitor: `POST /monitor/commands`.
+
+Estas entradas são delimitadores de escopo propostos com base no inventário abaixo; a decisão do owner ainda não ratificou sua classificação individual nem a política para todas as rotas não listadas. GETs com dados administrativos/sensíveis já marcados `Protected` na tabela — por exemplo `/agents*`, `/orders/execution-status`, `/orders/reconciliation/{client_order_id}`, `/config/snapshot`, `/config/active`, `/meta` e `/monitor/snapshot` — continuam propostas que requerem acordo explícito. Rotas públicas continuam sem token, incluindo os endpoints públicos listados no inventário; POST de cálculo sem efeito colateral não é classificado como mutável só pelo método HTTP, mas a lista exata de exceções também precisa de acordo.
+
+#### Rotas futuras e mecanismo de classificação (proposta pendente)
+
+Toda nova rota precisa de classificação explícita antes de ser publicada. A proposta é um registro explícito de rota/classe com comportamento seguro para rota não classificada (negação antes do handler), sem herdar auth aberta por omissão. A forma pública exata — tabela central, middleware, guard estático, classificação local ou composição — não foi escolhida nem aprovada. Não aplicar ainda os testes/invariantes da tabela única descritos em A2.1/A2.3 como decisões do owner.
+
+#### Alternativas e trade-offs
+
+- **Contrato aprovado: responder 503 nas rotas protegidas quando config ausente.** Mantém `serve` e rotas públicas utilizáveis, comunica indisponibilidade de auth na operação protegida e evita executar o handler; exige distinguir “auth não configurada” (503) de credencial rejeitada (401).
+- **Startup falha sem token (decisão antiga, substituída).** Impede qualquer uso do serviço, inclusive rotas públicas e probes, por uma configuração opcional; owner rejeitou esse comportamento.
+- **Deixar rotas protegidas abertas sem token.** Mantém compatibilidade, mas permite operações administrativas sem autenticação; rejeitada pelo contrato aprovado.
+- **Responder 401 quando token não está configurado.** Confunde ausência de configuração do servidor com falha de credencial do cliente; contrato aprovado escolhe 503.
+
+#### Riscos, rollout e rollback
+
+Riscos: caminho de rota novo sem classificação pode ficar aberto; classificação por prefixo pode capturar rotas públicas indevidamente; 503 em config ausente pode ser tratado como indisponibilidade pelo balanceador; validação e comparação do segredo podem vazar informação ou imprimir token; manter chamadas de auth nos handlers além da camada de proteção pode duplicar respostas. A decisão de roteamento pendente precisa cobrir cada risco antes da implementação.
+
+Rollout proposto: implementar 503/401/continuação primeiro em testes do seam público acordado; proteger a lista aprovada de rotas sem mudar as públicas; observar contadores/logs sem registrar credenciais; documentar env e atualizar OpenAPI após acordo sobre classificação. Rollback: reverter apenas o middleware/guard e bindings introduzidos pela fatia, mantendo a instância anterior disponível; não reverter para comportamento sem token aberto. Como o comando continua subindo, a recuperação operacional é configurar token válido e reiniciar, ou reverter a fatia se a proteção bloquear tráfego válido.
+
+#### Validação comportamental observável (design; ainda não executada)
+
+Para uma rota protegida representativa e para cada classe/lista aprovada: sem env, resposta 503 + `admin_auth_not_configured`, handler não chamado; com env e sem bearer / bearer inválido, resposta 401 + `unauthorized`, handler não chamado; com env e bearer válido, handler chamado uma vez e resposta normal. Para cada rota pública, sem env e sem bearer, resposta normal. Para rota futura sem classificação, handler não chamado e resposta de negação conforme seam escolhido. Cobrir também o fluxo real de `serve`: listener ativo sem token, rota pública respondendo e rota protegida retornando 503. Os nomes de helper, localização do middleware, status/corpos estáveis e estratégia de lista exigem acordo antes de testes TDD; nenhum teste foi executado nesta entrega de documentação.
+
+#### Seams públicos exatos que ainda exigem acordo antes do TDD
+
+1. Qual API/config seam expõe o estado de configuração: tipo/enum e campos para ausente, vazio, válido e inválido; regra de força/validação do token e ponto único de leitura do env.
+2. Função/método público que decide/verifica credencial e sua assinatura: entrada do request, como representar segredo sem expô-lo em `Debug`, saída de decisão e erros/códigos públicos exatos.
+3. Lista completa método + path + classe para cada rota existente, em especial GETs sensíveis e as seis POSTs de cálculo atualmente públicas; decidir se novas rotas sem classificação falham na construção, retornam 401/503 em runtime ou são barradas por outro seam.
+4. Ponto de aplicação da autenticação no router e extensão do seam para registro de rotas futuras; confirmar como health, readiness, OpenAPI e docs são tratados.
+5. Contrato público exato de resposta 503, 401 e de bearer válido (status, corpo/código, headers) e comportamento quando a variável está presente mas inválida.
+6. OpenAPI: como declarar bearer e `security` por operação, após a lista ficar acordada.
+
+
 
 ## W0-01 — fail-closed de verdade (Onda 0, proposta para G1) [SEGURANÇA]
 
@@ -44,6 +100,8 @@ Entre `b8370a75` e `d42b71a5`, `backend/src` mudou só em `core/database/postgre
 - **OpenAPI sem esquema de segurança (F-01-5):** `rg 'security|bearer|SecurityScheme|modifiers' presentation/http/openapi.rs` só acha a descrição textual da linha 171. Nenhuma rota declara `security`.
 - Contradições ainda abertas no código: `admin_auth.rs:1` diz "Optional fail-closed"; `disabled_fail_closed()` monta auth aberta. `cli-and-config.md:138` e o título deste SDD já dizem "ausente ou vazio = nenhuma autenticação".
 
+> **Nota de precedência (2026-09-27):** a decisão do owner acima substitui os textos antigos abaixo que dizem que `serve` falha sem token. A2–A6, a tabela de inventário, as classes e os critérios F1–F10 foram preservados como material de design anterior para revisão; são propostas, não decisões do owner. Onde contradizem o contrato acima (especialmente startup obrigatório, classe global/deny-by-default, classificação por tipo de resposta, opt-out dev e escopo exato das rotas), não são normativos e precisam ser reconciliados após acordo dos seams. A tabela abaixo é inventário observado no HEAD citado, não uma classificação aprovada. O frontmatter `w0_01_status: draft` permanece inalterado; G1 não está aprovado.
+
 ### A1 — escopo obrigatório e follow-ups
 
 | Classe | IDs de [F-ADM-01](../security/admin-http-auth-fail-open.md) | Tratamento |
@@ -52,11 +110,11 @@ Entre `b8370a75` e `d42b71a5`, `backend/src` mudou só em `core/database/postgre
 | Follow-up explícito | SEC-ADM-12 (rotação com dois tokens) | item próprio no plano; não bloqueia G4 de W0-01 |
 | Bloqueado | SEC-ADM-14 | depende de P1 (auth humano/IdP); registrado, não implementado |
 
-**Decisão explícita (boot × 401/503):** configuração de auth ausente ou inválida faz o boot falhar (exit ≠ 0, socket não aberto, nenhuma conexão a banco). Não existe modo "sobe e responde 401/503 em tudo" para rotas `Protected`. Com o servidor no ar, o router inteiro é deny-by-default (A2). Antes da auth, a layer de `Host` (A5) recusa hosts fora da allowlist. O destino do opt-out de dev é decisão do owner (A3), com recomendação de removê-lo.
+**Decisão de runtime (2026-09-27):** auth ausente/vazia não impede o boot nem a abertura do socket. Rotas administrativas e mutáveis retornam **503** `admin_auth_not_configured`; com token configurado, credencial ausente/inválida retorna **401** `unauthorized` e bearer válido prossegue. Rotas públicas seguem abertas sem token. A classificação global e os demais detalhes de A2/A5 ainda não foram aprovados.
 
-**Alternativa considerada (A1):** subir o `serve` sem token e responder **503** `admin_auth_not_configured` em toda rota protegida. Adia o erro para a primeira requisição e contradiz SEC-ADM-01. Rejeitada.
+**Decisão antiga substituída:** falhar o startup sem token e impedir o listener. A resposta 503 no endpoint protegido é o contrato escolhido pelo owner, não uma alternativa rejeitada.
 
-### A2 — deny-by-default no router inteiro, com tabela única de rotas
+### A2 — propostas de classificação e roteamento (não aprovadas)
 
 Evidência: o `Router` do axum (0.8.9 no `Cargo.lock`) não lista as rotas registradas; hoje as rotas são registradas em dois arquivos (`routes/mod.rs` e `server.rs`); o OpenAPI vem de `#[utoipa::path]` agregado em `ApiDoc` (`openapi.rs`), então um teste guiado só pelo OpenAPI não vê rota registrada e esquecida na anotação.
 
@@ -166,7 +224,7 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
 - **OpenAPI com segurança declarada por rota:** `ApiDoc` ganha um `Modify` que registra `components.securitySchemes.admin_bearer` (`type: http`, `scheme: bearer`), e cada `#[utoipa::path]` de rota `Protected` declara `security(("admin_bearer" = []))`. Rotas `PublicRead`/`PublicCompute` não declaram `security`. Rotas `Org` futuras declaram um esquema próprio (`owner_bearer`), nunca `admin_bearer`. Assim a quebra fica visível em `/openapi.json`.
 - **Paridade de classe no teste:** F3 (d) passa a comparar, além de método+path, a classe da tabela com o `security` da operação: `Protected` ⇔ `admin_bearer`; `PublicRead`/`PublicCompute` ⇔ sem `security`.
 
-### A3 — decisão de boot no início do `Serve`, `Enforced` sem releitura de env, e o opt-out de dev
+### A3 — proposta antiga de boot obrigatório (supersedida em 2026-09-27)
 
 - **Onde:** a decisão "pode subir?" roda no braço `Some(BotCommand::Serve(args))` de `main.rs`, logo depois de `Config::load` (`main.rs:104`), antes de `--with-monitor` (`:106-136`) e de `run_server` (`:137`). Assim nenhuma conexão a PG/Neo4j, migração, outbox, hidratação ou monitor acontece sem auth válida.
 - **Forma:** função pura em `core/config` (onde o token já é lido, `core/config/http/file.rs`); nenhuma leitura de env em `presentation/`. Entrada: config de auth admin (token, bindings), `allowed_hosts` (A5) e `bind`. Saída: `Enforced` ou erro estável (`admin_auth_not_configured`, `admin_auth_token_weak`, `http_allowed_hosts_required`) sem ecoar o valor.
@@ -234,7 +292,7 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
 | Comparação | digest SHA-256 dos dois lados + comparação em tempo constante (crates `sha2`/`subtle` já no `Cargo.lock` como transitivas; torná-las diretas precisa de acordo) |
 | Helper de teste | `test_request(method, uri)` com `Host: localhost` |
 
-### Critérios de aceite W0-01
+### Critérios de aceite W0-01 (rascunho a reconciliar com a decisão do owner)
 
 - SEC-ADM-01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11 (forma de A6), 13 e 15, conforme [F-ADM-01](../security/admin-http-auth-fail-open.md) §4, referenciados por ID.
 - F1. Teste CLI em `backend/tests/` (padrão de `config_cli.rs`): `serve` sem token → exit ≠ 0, porta não aberta e **zero conexões ao DB**: `DATABASE_URL` aponta para `127.0.0.1:<porta>/trading_bot` de um `TcpListener` do próprio teste, que conta `accept`s; esperado 0. Entra na lista `INTEGRATION_TESTS` de `verify-backend-gates.sh`. Mesmo teste com token fraco.
