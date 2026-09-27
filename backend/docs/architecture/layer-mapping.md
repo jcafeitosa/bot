@@ -75,6 +75,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 | `http_admin_auth` | Presentation seam | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` |
 | `databases` | Infra | Postgres + Neo4j opcional para `/readyz` |
 | `monitor` | Domain handle via infra | `monitor_snapshot` / `accept_monitor_command` quando `--with-monitor` |
+| `jev` + agents | Application bridge | `run_agent_advisory` (prepare + finish) |
 
 ## Lacunas conscientes
 
@@ -88,7 +89,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 cargo test --locked --bin bot
 ```
 
-Evidência: **204** testes no bin `bot`, **5** ignorados (PG/Neo4j).
+Evidência: **205** testes no bin `bot`, **5** ignorados (PG/Neo4j).
 
 ## Documentos relacionados
 
