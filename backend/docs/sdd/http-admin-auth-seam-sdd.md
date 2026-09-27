@@ -31,6 +31,10 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 - Prova de identidade do owner humano, bootstrap único (binding de agência por env é seam, não prova de tenant).
 - Proteção de rotas de simulação (`risk/*`, `backtest/*`) — permanecem abertas quando admin token ativo.
 
+## Observabilidade (read-only)
+
+`GET /api/v1/meta` inclui `http_seams.http_admin_auth_enabled` (espelha se `BOT_HTTP_ADMIN_TOKEN` está ativo no processo). Não substitui auditoria de rotas mutantes.
+
 ## Validação
 
 - Testes unitários `admin_auth.rs`.
