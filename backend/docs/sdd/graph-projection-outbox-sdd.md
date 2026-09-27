@@ -1,0 +1,49 @@
+---
+title: SDD — Outbox PG para projeção Neo4j (F2.1)
+description: Fila durável graph_projection_outbox; enqueue pós-commit PG; drain stub MERGE idempotente
+tags:
+  - sdd
+  - backend
+  - neo4j
+  - postgres
+status: draft
+---
+
+# SDD — Outbox PG para projeção Neo4j (fatia F2.1)
+
+- **Estado:** draft — F2.1 slice 1 (tabela + enqueue unificado + drain stub); PG SoT; Neo4j derivado.
+- **Referências:** [unified-neo4j-graph-strategy](../architecture/unified-neo4j-graph-strategy.md), [agents-neo4j-projection-sdd](./agents-neo4j-projection-sdd.md), [bots-neo4j-projection-sdd](./bots-neo4j-projection-sdd.md), [orders-neo4j-projection-sdd](./orders-neo4j-projection-sdd.md).
+
+## 1. Contexto
+
+F1/F2/F3 projetam agents/bots/orders em Neo4j via `best_effort_*` após commit PG (ou runtime sem PG). Falha de grafo não reverte PG, mas eventos perdidos não são reprocessáveis.
+
+## 2. Objetivo (F2.1)
+
+| Seam | Comportamento |
+|------|----------------|
+| `graph_projection_outbox` | Tabela PG com payload JSON mínimo, `graph_domain`, `idempotency_key`, `status`. |
+| `enqueue_graph_projection_outbox` | INSERT … ON CONFLICT atualiza payload e reabre `pending`. |
+| `graph_projection_best_effort` | Enfileira se PG wired; se PG+Neo4j, chama `drain_graph_projection_outbox` (best-effort inline). Sem PG, MERGE direto no Neo4j (dev). |
+| `drain_graph_projection_outbox(limit)` | `FOR UPDATE SKIP LOCKED`; MERGE via `GraphProjectionPort` composto; sucesso → `done`; erro → `retry` + `last_error`. |
+| `GraphProjectionSync` | `{ postgres?, neo4j? }` passado pelos três entrypoints `best_effort_*`. |
+
+**Timing transacional:** hooks HTTP/monitor executam **após** persist PG — enqueue **não** está na mesma transação que o domínio hoje. F2.1.2 pode aceitar `&mut Transaction`.
+
+**Fora de escopo F2.1:** worker HTTP/cron; DLQ; métricas SLO; enqueue na mesma TX de domínio.
+
+## 3. Schema
+
+`graph_projection_outbox`: `id`, `graph_domain`, `event_kind`, `idempotency_key` (unique com domain), `payload` JSONB (`GraphProjectionPayload`), `status` ∈ `pending|processing|done|retry`, `attempt_count`, `last_error`, `created_at`, `processed_at` (TIMESTAMPTZ).
+
+## 4. Fail-closed
+
+Drain com Neo4j down: `ping` falha → linhas permanecem `pending`/`retry`. MERGE falha → `retry`.
+
+## 5. Validação
+
+`./scripts/verify-backend-gates.sh`; testes `pg_graph_projection_outbox_*` e mock port.
+
+## 6. F2.1.2 (pendente)
+
+Worker em background, readiness lag, CLI operacional, enqueue na mesma TX quando o seam de domínio permitir.

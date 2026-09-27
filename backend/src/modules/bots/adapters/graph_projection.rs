@@ -1,7 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::database::{
-    BotCatalogProjection, BotPromotionProjection, GraphProjectionPort, Neo4jGraph,
+    graph_projection_best_effort, BotCatalogProjection, BotPromotionProjection,
+    GraphProjectionOutboxMessage, GraphProjectionPort, GraphProjectionSync, Neo4jGraph,
 };
 use crate::modules::bots::adapters::pg_catalog::operation_mode_to_sql;
 use crate::modules::bots::models::{BotDefinition, BotPromotionRecord, BotPromotionState};
@@ -56,61 +57,44 @@ fn now_unix_ms() -> i64 {
 }
 
 pub async fn best_effort_project_bot_catalog(
-    neo4j: Option<&Neo4jGraph>,
+    sync: GraphProjectionSync<'_>,
     entries: &[BotDefinition],
 ) {
-    let Some(graph) = neo4j else {
+    if sync.postgres.is_none() && sync.neo4j.is_none() {
         return;
-    };
-    let projector = graph.bot_projector();
-    for definition in entries {
-        if let Err(error) = project_bot_catalog_via_port(&projector, definition).await {
-            tracing::warn!(
-                target: "database",
-                bot_id = %definition.id.as_str(),
-                %error,
-                "neo4j bot catalog projection failed (PostgreSQL already committed)"
-            );
-        }
     }
+    let messages = entries
+        .iter()
+        .map(|definition| {
+            GraphProjectionOutboxMessage::bot_catalog(bot_definition_to_projection(definition))
+        })
+        .collect::<Vec<_>>();
+    graph_projection_best_effort(sync, &messages).await;
 }
 
 pub async fn best_effort_project_bot_promotion(
-    neo4j: Option<&Neo4jGraph>,
+    sync: GraphProjectionSync<'_>,
     record: &BotPromotionRecord,
     agency_id: Option<&str>,
 ) {
-    let Some(graph) = neo4j else {
+    if sync.postgres.is_none() && sync.neo4j.is_none() {
         return;
-    };
-    let projector = graph.bot_projector();
+    }
     let projection = promotion_record_to_projection(record, agency_id);
-    if let Err(error) = projector.project_bot_promotion(&projection).await {
-        tracing::warn!(
-            target: "database",
-            bot_id = %record.bot_id,
-            %error,
-            "neo4j bot promotion projection failed (runtime already committed)"
-        );
-    }
+    let message = GraphProjectionOutboxMessage::bot_promotion(projection);
+    graph_projection_best_effort(sync, &[message]).await;
 }
 
-pub async fn best_effort_retract_bot_promotion(neo4j: Option<&Neo4jGraph>, bot_id: &str) {
-    let Some(graph) = neo4j else {
+pub async fn best_effort_retract_bot_promotion(sync: GraphProjectionSync<'_>, bot_id: &str) {
+    if sync.postgres.is_none() && sync.neo4j.is_none() {
         return;
-    };
-    let projector = graph.bot_projector();
-    let projection = demotion_projection(bot_id);
-    if let Err(error) = projector.project_bot_promotion(&projection).await {
-        tracing::warn!(
-            target: "database",
-            bot_id = %bot_id,
-            %error,
-            "neo4j bot demotion projection failed (runtime already committed)"
-        );
     }
+    let projection = demotion_projection(bot_id);
+    let message = GraphProjectionOutboxMessage::bot_promotion(projection);
+    graph_projection_best_effort(sync, &[message]).await;
 }
 
+#[allow(dead_code)]
 pub async fn project_bot_catalog_via_port(
     port: &dyn GraphProjectionPort,
     definition: &BotDefinition,
@@ -236,14 +220,29 @@ mod neo4j_integration_tests {
             symbol: "BTC/USDT".into(),
             operation: OperationMode::DayTrader,
         };
-        best_effort_project_bot_catalog(Some(&graph), &[definition]).await;
+        best_effort_project_bot_catalog(
+            GraphProjectionSync {
+                postgres: None,
+                neo4j: Some(&graph),
+            },
+            &[definition],
+        )
+        .await;
         let record = BotPromotionRecord {
             bot_id: bot_id.as_str().to_string(),
             promoted_by: "agent-promoter".into(),
             promoted_at_unix_ms: 42,
             state: BotPromotionState::Active,
         };
-        best_effort_project_bot_promotion(Some(&graph), &record, Some("agency-neo4j-test")).await;
+        best_effort_project_bot_promotion(
+            GraphProjectionSync {
+                postgres: None,
+                neo4j: Some(&graph),
+            },
+            &record,
+            Some("agency-neo4j-test"),
+        )
+        .await;
         let edges = graph
             .count_bot_promoted_by_edges(bot_id.as_str(), "agent-promoter", "agency-neo4j-test")
             .await

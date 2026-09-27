@@ -11,13 +11,14 @@ pub const BOTS_GRAPH_DOMAIN: &str = "bots";
 /// Subgraph namespace for redacted order lineage (F3 / G2 orders).
 pub const TRADING_GRAPH_DOMAIN: &str = "trading";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ProjectedSupervisorKind {
     Owner,
     Agent,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AgentHierarchyProjection {
     pub agency_id: String,
     pub agent_id: String,
@@ -29,7 +30,7 @@ pub struct AgentHierarchyProjection {
     pub updated_at_ms: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BotCatalogProjection {
     pub bot_id: String,
     pub strategy_id: String,
@@ -40,7 +41,7 @@ pub struct BotCatalogProjection {
     pub updated_at_ms: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BotPromotionProjection {
     pub bot_id: String,
     pub promoted_by_agent_id: String,
@@ -49,7 +50,7 @@ pub struct BotPromotionProjection {
     pub promoted_at_ms: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct OrderIntentProjection {
     pub client_order_id: String,
     pub symbol: String,
@@ -60,7 +61,7 @@ pub struct OrderIntentProjection {
 }
 
 /// Lineage edge `(:Bot)-[:SUBMITTED]->(:OrderIntent)` (F3.1); no secrets.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SubmittedEdgeProjection {
     pub bot_id: String,
     pub client_order_id: String,

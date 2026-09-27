@@ -1,5 +1,6 @@
 use crate::core::database::{
-    AgentHierarchyProjection, GraphProjectionPort, Neo4jGraph, ProjectedSupervisorKind,
+    graph_projection_best_effort, AgentHierarchyProjection, GraphProjectionOutboxMessage,
+    GraphProjectionPort, GraphProjectionSync, Neo4jGraph, ProjectedSupervisorKind,
 };
 use crate::modules::agents::adapters::pg_registry::lifecycle_to_sql;
 use crate::modules::agents::models::{AgentDefinition, SupervisorRef};
@@ -30,24 +31,18 @@ pub fn agent_definition_to_projection(definition: &AgentDefinition) -> AgentHier
 }
 
 pub async fn best_effort_project_agent_definition(
-    neo4j: Option<&Neo4jGraph>,
+    sync: GraphProjectionSync<'_>,
     definition: &AgentDefinition,
 ) {
-    let Some(graph) = neo4j else {
+    if sync.postgres.is_none() && sync.neo4j.is_none() {
         return;
-    };
-    let projector = graph.agent_hierarchy_projector();
-    if let Err(error) = project_agent_definition_via_port(&projector, definition).await {
-        tracing::warn!(
-            target: "database",
-            agency_id = %definition.agency.as_str(),
-            agent_id = %definition.id.as_str(),
-            %error,
-            "neo4j agent hierarchy projection failed (PostgreSQL already committed)"
-        );
     }
+    let projection = agent_definition_to_projection(definition);
+    let message = GraphProjectionOutboxMessage::agent_hierarchy(projection);
+    graph_projection_best_effort(sync, &[message]).await;
 }
 
+#[allow(dead_code)]
 pub async fn project_agent_definition_via_port(
     port: &dyn GraphProjectionPort,
     definition: &AgentDefinition,
@@ -151,8 +146,8 @@ mod unit_tests {
 #[cfg(test)]
 mod neo4j_integration_tests {
     use super::*;
-    use crate::core::database::load_agents_stack_from_env;
     use crate::core::database::Neo4jGraph;
+    use crate::core::database::{load_agents_stack_from_env, GraphProjectionSync};
     use crate::modules::agents::models::{
         AgencyId, AgentCapabilities, AgentDefinition, AgentId, AgentLifecycleState, AgentRole,
         OwnerId, SupervisorRef,
@@ -196,8 +191,22 @@ mod neo4j_integration_tests {
             created_at_ms: 2,
             updated_at_ms: 2,
         };
-        best_effort_project_agent_definition(Some(&graph), &ceo).await;
-        best_effort_project_agent_definition(Some(&graph), &worker).await;
+        best_effort_project_agent_definition(
+            GraphProjectionSync {
+                postgres: None,
+                neo4j: Some(&graph),
+            },
+            &ceo,
+        )
+        .await;
+        best_effort_project_agent_definition(
+            GraphProjectionSync {
+                postgres: None,
+                neo4j: Some(&graph),
+            },
+            &worker,
+        )
+        .await;
         let chains = graph
             .count_agent_supervision_paths(&agency, "ceo-proj", "worker-proj")
             .await

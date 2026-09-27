@@ -1,7 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::database::{
-    GraphProjectionPort, Neo4jGraph, OrderIntentProjection, SubmittedEdgeProjection,
+    graph_projection_best_effort, GraphProjectionOutboxMessage, GraphProjectionPort,
+    GraphProjectionSync, Neo4jGraph, OrderIntentProjection, SubmittedEdgeProjection,
 };
 use crate::modules::orders::OrderSide;
 
@@ -45,46 +46,31 @@ fn now_unix_ms() -> i64 {
 }
 
 pub async fn best_effort_project_order_intent(
-    neo4j: Option<&Neo4jGraph>,
+    sync: GraphProjectionSync<'_>,
     snapshot: &RedactedOrderSubmitSnapshot,
 ) {
     if snapshot.client_order_id.trim().is_empty() {
         return;
     }
-    let Some(graph) = neo4j else {
-        return;
-    };
-    let projector = graph.order_intent_projector();
-    let projection = redacted_order_submit_to_projection(snapshot);
-    if let Err(error) = project_order_intent_via_port(&projector, &projection).await {
-        tracing::warn!(
-            target: "database",
-            client_order_id = %snapshot.client_order_id,
-            symbol = %snapshot.symbol,
-            %error,
-            "neo4j order intent projection failed (order already committed)"
-        );
+    if sync.postgres.is_none() && sync.neo4j.is_none() {
         return;
     }
+    let mut messages = vec![GraphProjectionOutboxMessage::order_intent(
+        redacted_order_submit_to_projection(snapshot),
+    )];
     if let Some(bot_id) = snapshot
         .submitting_bot_id
         .as_deref()
         .filter(|id| !id.trim().is_empty())
     {
-        let edge = SubmittedEdgeProjection {
-            bot_id: bot_id.to_string(),
-            client_order_id: snapshot.client_order_id.clone(),
-        };
-        if let Err(error) = projector.project_submitted_edge(&edge).await {
-            tracing::warn!(
-                target: "database",
-                client_order_id = %snapshot.client_order_id,
-                bot_id = %bot_id,
-                %error,
-                "neo4j submitted edge projection failed (order already committed)"
-            );
-        }
+        messages.push(GraphProjectionOutboxMessage::submitted_edge(
+            SubmittedEdgeProjection {
+                bot_id: bot_id.to_string(),
+                client_order_id: snapshot.client_order_id.clone(),
+            },
+        ));
     }
+    graph_projection_best_effort(sync, &messages).await;
 }
 
 pub async fn project_order_intent_via_port(
@@ -97,7 +83,7 @@ pub async fn project_order_intent_via_port(
 #[cfg(test)]
 mod unit_tests {
     use super::*;
-    use crate::core::database::GraphProjectionError;
+    use crate::core::database::{GraphProjectionError, GraphProjectionSync};
     use std::sync::Mutex;
 
     struct RecordingPort {
@@ -271,7 +257,14 @@ mod neo4j_integration_tests {
             execution_mode: "dev_accept".into(),
             submitting_bot_id: None,
         };
-        best_effort_project_order_intent(Some(&graph), &snapshot).await;
+        best_effort_project_order_intent(
+            GraphProjectionSync {
+                postgres: None,
+                neo4j: Some(&graph),
+            },
+            &snapshot,
+        )
+        .await;
         let nodes = graph
             .count_order_intent_nodes(&snapshot.client_order_id, &snapshot.symbol)
             .await
@@ -301,7 +294,14 @@ mod neo4j_integration_tests {
             execution_mode: "paper".into(),
             submitting_bot_id: Some(bot_id.clone()),
         };
-        best_effort_project_order_intent(Some(&graph), &snapshot).await;
+        best_effort_project_order_intent(
+            GraphProjectionSync {
+                postgres: None,
+                neo4j: Some(&graph),
+            },
+            &snapshot,
+        )
+        .await;
         let edges = graph
             .count_submitted_edges(&bot_id, &snapshot.client_order_id)
             .await

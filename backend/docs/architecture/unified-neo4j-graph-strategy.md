@@ -149,7 +149,7 @@ flowchart LR
 | Dev/ops | `graphify update` + `graphify export neo4j --push` | `sync-code-graph-neo4j.sh`; compose serviço `graph` |
 | Agentes de documentação | `graphify-out/graph.json` local (não é o runtime HTTP) | skill graphify em `docs/.codex/skills/graphify` |
 
-**Gap principal (2026-09-27):** F1/F2/F3 **write-only** agents/bots/orders (`OrderIntent` redigido) estão no código; **não há** leitura do grafo no runtime de domínio; aresta `SUBMITTED` Bot→OrderIntent e outbox F2.1 permanecem futuros. O subgrafo **graphify** (código) continua separado do subgrafo **governance/bots** de produto.
+**Gap principal (2026-09-27):** F1/F2/F3 **write-only** agents/bots/orders estão no código; **F2.1** outbox PG + drain stub entregue ([graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md)); **não há** leitura autorizativa do grafo no runtime; worker contínuo F2.1.2 pendente. O subgrafo **graphify** (código) continua separado do subgrafo **governance/bots** de produto.
 
 ### Nota sobre `agents_stack`
 
@@ -337,5 +337,5 @@ Gate: `./scripts/verify-backend-gates.sh` se tocar código; doc-only não exige.
 
 1. SDD [bots-neo4j-projection-sdd](../sdd/bots-neo4j-projection-sdd.md).
 2. Adapter `modules/bots/adapters/graph_projection.rs` após `persist_bot_catalog` e promote/demote HTTP.
-3. Outbox durável: **F2.1** (documentado, não implementado).
+3. Outbox durável **F2.1** (*implemented* slice 1): migração `0009`, `graph_projection_outbox`, enqueue unificado nos `best_effort_*`; [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md).
 4. **F3 next:** `OrderIntent` redigido + memória semântica (strategy §10).

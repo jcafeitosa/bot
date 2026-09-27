@@ -15,7 +15,7 @@ use crate::modules::monitor::views::terminal_dashboard::{AppEvent, Dashboard, Mo
 use crate::modules::monitor::MonitorHandle;
 use crate::{
     core::config::{Config, RunMode},
-    core::database::Neo4jGraph,
+    core::database::{GraphProjectionSync, Neo4jGraph},
     core::error::{BotError, BotResult},
     core::notifications::{LogNotifier, Notification, Notifier, Severity},
     core::persistence::Database,
@@ -143,6 +143,7 @@ struct EvaluationSettings<'a> {
     event_tx: &'a mpsc::Sender<AppEvent>,
     dashboard_tx: &'a watch::Sender<Dashboard>,
     neo4j: Option<&'a Neo4jGraph>,
+    postgres: Option<&'a Database>,
 }
 
 async fn apply_strategy_snapshot(
@@ -161,6 +162,7 @@ async fn apply_strategy_snapshot(
         event_tx,
         dashboard_tx,
         neo4j,
+        postgres,
     } = settings;
     info!(
         target: "market",
@@ -244,7 +246,10 @@ async fn apply_strategy_snapshot(
                             let execution_mode =
                                 monitor_submit_execution_mode(config.run_mode, spot_seam);
                             crate::modules::orders::adapters::best_effort_project_order_intent(
-                                *neo4j,
+                                GraphProjectionSync {
+                                    postgres: postgres.as_ref().map(|db| db.as_postgres()),
+                                    neo4j: *neo4j,
+                                },
                                 &crate::modules::orders::adapters::RedactedOrderSubmitSnapshot {
                                     client_order_id: client_order_id.clone(),
                                     symbol: config.market.symbol.clone(),
@@ -349,6 +354,7 @@ struct MarketLoop {
     interval: time::Interval,
     now_ms: Clock,
     neo4j: Option<Neo4jGraph>,
+    postgres: Option<Database>,
 }
 
 struct EvaluationCandidate {
@@ -769,6 +775,7 @@ async fn run_market_loop(mut inputs: MarketLoop) {
                     event_tx: &inputs.events,
                     dashboard_tx: &inputs.dashboard_tx,
                     neo4j: inputs.neo4j.as_ref(),
+                    postgres: inputs.postgres.as_ref(),
                 };
                 if !apply_strategy_snapshot(candidate.snapshot, candidate.note, candidate.source, candidate.promoted_bot_id.clone(), &settings, &mut execution_ctx, &mut dashboard).await {
                     break;
@@ -1032,6 +1039,7 @@ async fn run_with_agent_hook_inner(
         interval,
         now_ms: Arc::new(|| chrono::Utc::now().timestamp_millis()),
         neo4j,
+        postgres: database.clone(),
     }));
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
@@ -1196,6 +1204,7 @@ mod tests {
             interval: time::interval(poll_interval),
             now_ms: Arc::new(|| 420_000),
             neo4j: None,
+            postgres: None,
         }));
         (monitor_handle, event_rx, state_rx, handle)
     }
@@ -2501,6 +2510,7 @@ mod tests {
             event_tx: &events,
             dashboard_tx: &dashboard_tx,
             neo4j: None,
+            postgres: None,
         };
         let mut dashboard = new_dashboard(&config, limits);
         let snapshot = StrategySnapshot {
@@ -2568,6 +2578,7 @@ mod tests {
             event_tx: &events,
             dashboard_tx: &dashboard_tx,
             neo4j: None,
+            postgres: None,
         };
         let mut dashboard = new_dashboard(&config, limits);
         let snapshot = StrategySnapshot {
@@ -2629,6 +2640,7 @@ mod tests {
             event_tx: &events,
             dashboard_tx: &dashboard_tx,
             neo4j: None,
+            postgres: None,
         };
         let mut dashboard = new_dashboard(&config, limits);
         dashboard.persistence_status = "GAP · reconciliação externa necessária".into();

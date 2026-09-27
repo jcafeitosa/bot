@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::core::database::AppDatabases;
+use crate::core::database::{AppDatabases, GraphProjectionSync};
 use crate::core::error::BotError;
 use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
@@ -323,7 +323,7 @@ impl ApiState {
         let record = bots_runtime::promote_bot(self.inner.bot_runtime.as_ref(), request)
             .map_err(ApiError::from_bots_error)?;
         crate::modules::bots::adapters::graph_projection::best_effort_project_bot_promotion(
-            self.inner.databases.neo4j(),
+            self.graph_projection_sync(),
             &record,
             agency_id,
         )
@@ -336,7 +336,7 @@ impl ApiState {
         bots_runtime::demote_bot(self.inner.bot_runtime.as_ref())?;
         if let Some(active) = previous {
             crate::modules::bots::adapters::graph_projection::best_effort_retract_bot_promotion(
-                self.inner.databases.neo4j(),
+                self.graph_projection_sync(),
                 &active.bot_id,
             )
             .await;
@@ -485,7 +485,7 @@ impl ApiState {
 
         if let Some(key) = idem_key.as_deref() {
             crate::modules::orders::adapters::best_effort_project_order_intent(
-                self.inner.databases.neo4j(),
+                self.graph_projection_sync(),
                 &crate::modules::orders::adapters::RedactedOrderSubmitSnapshot {
                     client_order_id: key.to_string(),
                     symbol: symbol.clone(),
@@ -510,6 +510,13 @@ impl ApiState {
 
     pub fn database(&self) -> Option<&Database> {
         self.inner.databases.postgres_handle()
+    }
+
+    fn graph_projection_sync(&self) -> GraphProjectionSync<'_> {
+        GraphProjectionSync {
+            postgres: self.database().map(|db| db.as_postgres()),
+            neo4j: self.inner.databases.neo4j(),
+        }
     }
 
     pub fn jev(&self) -> Option<&JevAdvisor> {
@@ -678,7 +685,7 @@ impl ApiState {
             .await
             .map_err(BotError::Configuration)?;
         crate::modules::bots::adapters::graph_projection::best_effort_project_bot_catalog(
-            self.inner.databases.neo4j(),
+            self.graph_projection_sync(),
             &entries,
         )
         .await;
@@ -878,7 +885,7 @@ impl ApiState {
             .map_err(ApiError::from_agents_error)?;
         }
         crate::modules::agents::adapters::graph_projection::best_effort_project_agent_definition(
-            self.inner.databases.neo4j(),
+            self.graph_projection_sync(),
             &snapshot.0,
         )
         .await;

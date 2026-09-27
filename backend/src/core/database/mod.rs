@@ -4,6 +4,7 @@
 mod bundle;
 mod config;
 mod graph_projection;
+mod graph_projection_outbox;
 pub(crate) mod monitor_bootstrap;
 mod neo4j;
 mod neo4j_agent_hierarchy;
@@ -17,6 +18,12 @@ pub use graph_projection::{
     AgentHierarchyProjection, BotCatalogProjection, BotPromotionProjection, GraphProjectionError,
     GraphProjectionPort, OrderIntentProjection, ProjectedSupervisorKind, SubmittedEdgeProjection,
     AGENTS_GRAPH_DOMAIN, BOTS_GRAPH_DOMAIN, TRADING_GRAPH_DOMAIN,
+};
+pub use graph_projection_outbox::{
+    drain_graph_projection_outbox, drain_graph_projection_outbox_with_port,
+    enqueue_graph_projection_outbox, graph_projection_best_effort, DrainSummary,
+    GraphProjectionOutboxError, GraphProjectionOutboxMessage, GraphProjectionPayload,
+    GraphProjectionSync,
 };
 pub use monitor_bootstrap::{
     bootstrap_monitor_postgres, connect_postgres_for_monitor, postgres_for_cli_persist,
