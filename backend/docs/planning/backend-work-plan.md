@@ -30,7 +30,7 @@ O `AGENTS.md` exige acordo do usuário com os seams públicos antes de escrever 
 | C15 | Produtor WS não bloqueia com canal cheio; overflow e canal fechado têm testes; README descreve perda recuperável. | C14 aprovado com follow-up | `/root/c15_builder` / `/root/c15_critic` — **G3 APROVADO COM FOLLOW-UP**: C17 deve transmitir timestamp de `Full` ao estado de persistência |
 | C16 | Opt-in PostgreSQL inválido falha antes do monitor; opt-out não abre banco; `backtest --persist` permanece independente. | Interface T-15 aprovada | `/root/c16_builder` / `/root/c16_critic` — **G3 APROVADO COM FOLLOW-UP**; runtime C17 e PostgreSQL V18 pendentes |
 | C17 | Estado de persistência e recuperação REST na TUI; falha/commit incerto, lacuna, pausa e overflow exercitados com armazenamento falso. Adicionar em `live.rs` sinal interno com timestamp descartado em `Full` e consumi-lo no monitor: log/contador de C15 sozinho não atualiza o estado de persistência. | C14, C15 e C16 aprovados com follow-ups | `/root/c17_builder` / `/root/c17_critic` — em andamento |
-| Documentação | Índice, arquitetura, integrações, runbook e referência de CLI consolidados no OpenKnowledge. | C13 follow-up documental | Verificado por auditoria de links; 16 documentos, zero links quebrados |
+| Documentação | Índice, arquitetura, integrações, runbook, referência de CLI, catálogo de módulos, matriz de testes e análise de lacunas consolidados no OpenKnowledge. | C13 follow-up documental | Verificado por auditoria de links; 26 documentos, zero links quebrados |
 | V18 | Integração PostgreSQL em database `trading_bot` descartável: migração, commit, rollback após erro e idempotência observados; setup, host, resultado e limpeza registrados. | C16 e C17 aprovados; ambiente isolado acessível | QA/Dados / Crítico de Dados, instâncias a ativar; **BLOQUEADA pelo ambiente** |
 
 C9/C10, C12/C13, C14/C15 e C16 foram executados com pares independentes e vereditos registrados acima. C17 depende dos estados de pausa, do commit de janelas REST, do descarte WS e do bootstrap de persistência dessas entregas. Alterações simultâneas no README são sequenciadas para evitar sobrescrita. Achado bloqueante ou importante volta ao Builder; após até três ciclos sem acordo, o Orquestrador arbitra sem substituir aprovação obrigatória.
@@ -44,6 +44,6 @@ O teste PostgreSQL ignorado e V18 requerem database `trading_bot` **descartável
 ## Próximas ações do Orquestrador
 
 1. Acompanhar C17 e sua revisão independente; resolver achados de integridade e atualizar README/SDD T-15.
-2. Reavaliar D19 e o índice documental após estabilizar as escritas externas; não alegar G3 enquanto houver duplicação ou artefato ausente.
+2. Manter o índice, catálogo, matriz de testes e análise de lacunas sincronizados quando os contratos mudarem.
 3. Preparar V18 em banco PostgreSQL descartável e isolado quando houver ambiente acessível; registrar setup e execução reais.
 4. Consolidar G4 após C17, D19 e V18, sem antecipar lançamento.

@@ -45,14 +45,14 @@ tags:
 | T-07 — fixture e slippage | Design e parte da implementação/testes registrados; revisão documental acompanha os gates. | [SDD T-07](../sdd/backtest-trades-and-slippage-sdd.md) |
 | T-10 — pausa/retomada | C14/C15 implementados e aprovados com follow-up; C17 ainda depende do sinal de overflow no estado de persistência. | [SDD T-10](../sdd/monitor-pause-resume-sdd.md) |
 | T-13 — limpeza de arquivos legados | Design e implementação registrados como aprovados, sujeito à verificação do worktree. | [SDD T-13](../sdd/legacy-file-cleanup-sdd.md) |
-| T-15 — persistência opcional | Design técnico aprovado; implementação/testes do fluxo completo ainda pendentes. | [SDD T-15](../sdd/monitor-persistence-policy-sdd.md) |
+| T-15 — persistência opcional | C16 aprovado com follow-up; C17, G4 e V18 continuam pendentes. | [SDD T-15](../sdd/monitor-persistence-policy-sdd.md) |
 | T-16 — mapa de módulos | Documentação do README concluída conforme o SDD. | [SDD T-16](../sdd/backend-module-map-sdd.md) |
 
 ## Pendências e bloqueios
 
 1. Fechar T-03 com revisão independente e acordo dos seams públicos.
-2. Confirmar a implementação de T-10 com testes de pausa, retomada, cancelamento e geração.
-3. Completar T-15 com testes de persistência opt-in, falha de escrita, gap e reconciliação.
+2. Concluir C17 com o sinal de overflow do WS refletido no estado de persistência e sua revisão independente.
+3. Executar V18 em PostgreSQL descartável e completar G4 de persistência.
 4. Confirmar T-13 no estado atual do worktree e garantir que não há caminhos legados ativos.
 5. Revisar o contrato de Jev, timeout, telemetria e comportamento quando o endpoint falha.
 6. Definir observabilidade operacional: métricas de WS/REST, estado de persistência, idade do último candle, falhas de Jev e runbook de credenciais.
@@ -67,12 +67,12 @@ tags:
 - Confirmada a política instalada no `HttpClient`.
 - Manter a proveniência, licença e checksum do vendor sob revisão quando a dependência mudar.
 
-### P1 — Fechar contratos do monitor
+### P1 — Fechar runtime e persistência
 
-- Confirmar os seams públicos de T-10 e T-15.
-- Implementar testes red para pausa/retomada e persistência.
-- Implementar o mínimo green.
-- Testar cancelamento, stale results, gaps e degradação sem transformar falha em execução.
+- Concluir C17 preservando os estados `DEGRADED`, `HEALTHY` e `GAP`.
+- Propagar overflow e descarte WS para o estado de persistência.
+- Validar cancelamento, stale results, gaps e recuperação sem transformar falha em execução.
+- Executar V18 e registrar a evidência real do PostgreSQL.
 
 ### P2 — Fechar integração e operação
 
