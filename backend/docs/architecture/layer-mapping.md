@@ -91,7 +91,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `register_agent_and_persist`, `pause|resume|retire_agent_and_persist` | Agents (mutação + PG) |
 | `run_agent_advisory` | Agents + Jev |
 | `persist_agent_after_mutation` | Agents PG write-through |
-| `bot_catalog_for_config`, `persist_bot_catalog`, `bot_catalog_snapshot` | Bots |
+| `bot_catalog_for_config`, `persist_bot_catalog`, `bot_catalog_snapshot`, `bot_ranking_from_metrics` | Bots |
 | `bot_runtime_status`, `promote_bot_http`, `demote_bot_http` | Bots runtime seam (Gate 2 parcial) |
 | `GET /portfolio/paper-snapshot` | `ApiState::paper_wallet_snapshot` → `http_bridge/portfolio` + ledger paper |
 | `submit_order_http` (async) | Orders: risco + `HttpOrderExecutor`; reconciliação memória/PG; idempotência memória/PG |
@@ -106,7 +106,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `register_live_reconciliation_pg_mirror` | Infra: monitor testnet espelha reconciliação no PG quando `DATABASE_URL` ativo |
 | `observe_testnet_spot_order_by_client_id` | Infra exchanges → observação ccxt para poller testnet |
 
-Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, `application/signals`, `config/snapshot` por path) chamam `http_bridge` diretamente com body/query. **`GET /portfolio/paper-snapshot`** usa `ApiState::paper_wallet_snapshot` → `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (fills de `PaperLedgerExecutor` após submit paper HTTP ou monitor `RunMode::Paper`; `paper_fill_unit_price` no body ou `BOT_PAPER_FILL_UNIT_PRICE`).
+Rotas puramente stateless (risk, strategy, backtest, exchanges, `application/signals`, `config/snapshot` por path) chamam `http_bridge` diretamente com body/query. **`GET /portfolio/paper-snapshot`** usa `ApiState::paper_wallet_snapshot` → `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (fills de `PaperLedgerExecutor` após submit paper HTTP ou monitor `RunMode::Paper`; `paper_fill_unit_price` no body ou `BOT_PAPER_FILL_UNIT_PRICE`).
 
 ## Lacunas conscientes
 
