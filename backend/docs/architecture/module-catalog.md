@@ -107,6 +107,8 @@ Seam fail-closed ([SDD orders](../sdd/orders-module-sdd.md)).
 | `controllers` | `submit_order` — valida request e `risk::validate_intent`. |
 | `adapters` | `OrderExecutionPort`, `FailClosedExecutor` (`ExecutionDisabled`). |
 
+**HTTP:** `POST /api/v1/orders/submit` (fail-closed `503` após gate de risco) via `presentation/http/routes/orders.rs`.
+
 ## 4. Módulos de exchanges (`src/modules/exchanges/`)
 
 | Módulo | Contrato e comportamento |
