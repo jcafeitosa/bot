@@ -131,7 +131,7 @@ Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** /
 
 ## ENTREGA — pacote completude módulos (G4 Builder)
 
-- **Builder:** fatia técnica bots/orders/agents/HTTP + Neo4j F1–F3.1 + outbox F2.1.2 (worker + `/healthz` backlog) + F2.1.3 CLI drain + F3 read-only `GraphQueryPort` (agents list, supervision chain, bots_for_agent); docs SDD/catálogo/roadmap/README alinhados.
+- **Builder:** fatia técnica bots/orders/agents/HTTP + Neo4j F1–F3.1 + outbox F2.1.2 (worker + `/healthz` backlog) + F2.1.3 CLI drain + F3 read-only `GraphQueryPort` (agents, supervision chain, bots_for_agent, code_impact_for_module); docs SDD/catálogo/roadmap/README alinhados.
 - **Testes/evidências:** `./scripts/verify-backend-gates.sh` + `assert-completeness-evidence.sh` → **469** passed, **0** ignored; `./scripts/verify-backend-full.sh` + `DATABASE_URL` → PG **21/21**; `http_integration` → **48** passed; `pg_store_error` + HTTP **503** `order_store_unavailable`; F2.1.2 worker + `/healthz` outbox; F2.1.3 `graph_projection_cli_*` + `bot graph-projection drain`; F3 `graph_query_port_*` / `graph_cli_*` + [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md) ([cli-and-config](../reference/cli-and-config.md)).
 - **Achados/revisão:** **PENDENTE** — Critic independente (`AGENTS.md`); IdP/owner humano fora do escopo da fatia bootstrap; seam `BOT_HTTP_*` + `VerifiedProductOwner` cobertos por testes.
 - **Veredito:** **PENDENTE** até sessão Critic + decisões de produto (auth owner, prod REST).
