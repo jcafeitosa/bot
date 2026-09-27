@@ -112,20 +112,21 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, `application/sig
 ## Lacunas conscientes
 
 - Monitor `RunMode::Paper` grava fills no mesmo `PaperLedgerExecutor` que HTTP/portfolio (`paper_run_mode_*` + `http_bridge::portfolio`); `RunMode::Testnet` usa `ExchangeSpotExecutor` quando `BOT_ORDERS_EXCHANGE_SUBMIT` está ativo; demais modos fail-closed.
-- Runtime live de bots e execução exchange: ports existem; implementação live pendente.
+- Runtime live de bots: `shared_bot_runtime` no `serve`; testes HTTP majoritariamente isolados — ver [test-matrix (G2 runtime)](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial). Execução exchange prod: ports existem; REST prod bloqueado.
 - Auth owner verificável: seam HTTP em [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
 
 ## Verificação
 
 ```text
 ./scripts/verify-backend-gates.sh
+./scripts/verify-backend-full.sh   # gates + PG 14/14 quando DATABASE_URL → trading_bot
 cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-backend-gates.sh
 ```
 
 
 ### Testes PG em `presentation/http/state.rs` (camada application ↔ infra)
 
-Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×14): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` via `build_api_state_for_http_serve` + `build_router` + `GET /agents`, `GET /bots/catalog`, `GET /orders/reconciliation/{client_order_id}` (mesmo caminho que `server::run`).
+Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×14): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` via `build_api_state_for_http_serve` + `build_router` + `GET /agents`, `GET /bots/catalog`, `GET /config/active`, `GET /orders/reconciliation/{client_order_id}` (mesmo caminho que `server::run`).
 
 Evidência: **395** testes no bin `bot`, **16** ignorados (PG×14 + Neo4j + testnet manual; ver [test-matrix](../reference/test-matrix.md)).
 

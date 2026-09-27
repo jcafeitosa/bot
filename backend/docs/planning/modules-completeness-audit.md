@@ -20,7 +20,7 @@ tags:
 | `modules/orders` | Paper/recording/testnet, idempotência+PG, reconciliação+poll (`LiveExchangeSpotOrderReconciliationQuery` + testnet observe), `SpotOrderSubmitAck` | `spot_order_reconciliation_query.rs`, `binance_spot_testnet_reconcile.rs`, `state.rs` | Prod REST; threat model/Critic |
 | `modules/portfolio` | `paper_snapshot_with_fills` + posições; HTTP `GET /portfolio/paper-snapshot` via `ApiState::paper_wallet_snapshot` | `controllers.rs`, `http_bridge/portfolio.rs`, `routes/portfolio.rs`, `state.rs` | Preço de mercado dinâmico (não só env fixo) |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
-| `presentation/http` | OpenAPI **36** paths; boot `ApiState::build_api_state_for_http_serve` (espelha `serve`); `GET /meta`; orders reconciliação; portfolio paper; `meta_and_*`; `HttpAdminAuth` ([test-matrix](../reference/test-matrix.md)) | `server.rs`, `state.rs`, `routes/*`, `verify-backend-gates.sh` (**395** / **16** ignored) | Auth owner produto (Gate 1) |
+| `presentation/http` | OpenAPI **36** paths; boot `ApiState::build_api_state_for_http_serve` (espelha `serve`); `GET /meta`; orders reconciliação; portfolio paper; `meta_and_*`; `HttpAdminAuth` ([test-matrix](../reference/test-matrix.md), [runtime G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial)) | `server.rs`, `state.rs`, `routes/*`, `verify-backend-gates.sh` / `verify-backend-full.sh` (**395** / **16** ignored; PG **14/14**) | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 
