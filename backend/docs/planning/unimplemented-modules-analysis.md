@@ -27,7 +27,7 @@ O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco,
 8. Execução financeira **prod** e ambiente de produção completo (seam `modules/orders` + HTTP: paper/recording/testnet + reconciliação **parcial**; prod REST fail-closed; threat model/Critic pendentes).
 9. Observabilidade operacional completa.
 10. Estado de persistência e recuperação do monitor conforme C17.
-11. Round-trip PostgreSQL operacional conforme V18 (migração 0002 agents/bots scaffold aplicável via `Database::migrate`; repositórios Rust e round-trip ainda pendentes).
+11. Round-trip PostgreSQL operacional conforme V18.
 
 Essas capacidades não devem ser tratadas como módulos parcialmente prontos só porque existem tipos auxiliares, flags de configuração ou documentação de design.
 
