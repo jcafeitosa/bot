@@ -99,7 +99,7 @@ Evidência G1 (2026-09-27): **350** testes bin `bot`, **8** ignorados; `orders_s
 | Credenciais testnet em log | CI sem credenciais; adapter não loga keys | Auditar erros ccxt e tracing em submit testnet |
 | Bypass de risco | `submit_order` sempre chama `risk::validate_intent` antes do port | — |
 | Admin token vazado | `BOT_HTTP_ADMIN_TOKEN` em rotas mutantes; não substitui auth owner | [agents G1](./agents-module-sdd.md) |
-| Estado de reconciliação inconsistente | Memória + PG `order_reconciliation`; `GET /orders/reconciliation/{client_order_id}` read-only | Poller exchange / divergência automática ausente |
+| Estado de reconciliação inconsistente | Memória + PG; GET reconciliation; `POST /orders/reconciliation/poll` + job `BOT_ORDERS_RECONCILIATION_POLL_SECS` (recording) | Consulta testnet/prod no poller ausente |
 | Vazamento de `exchange_order_id` em logs HTTP | Resposta JSON só em GET reconciliation; submit retorna `accepted` apenas | Revisar tracing em adapters ccxt |
 
 Revisão Critic e hardening de produção permanecem **pendentes** antes de fechar G2.
