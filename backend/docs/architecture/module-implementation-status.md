@@ -20,7 +20,7 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --all-targets -- -D warnings` | PASS | exit 0 |
-| `cargo test --locked` | PASS | 196 testes (bin `bot`) no bin `bot`; 5 ignorados (dataset PG, scaffold, pg catalog, pg identity, Neo4j) |
+| `cargo test --locked` | PASS | 197 testes (bin `bot`) no bin `bot`; 5 ignorados (dataset PG, scaffold, pg catalog, pg identity, Neo4j) |
 | `./scripts/verify-backend-gates.sh (fmt, clippy, import-direction, tests)` | PASS | `OK: import direction heuristics passed` |
 
 ## Critério de linha
@@ -77,7 +77,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Lacunas conhecidas (não bloqueiam o objetivo literal)
 
-- `PgBotCatalogStore` wired quando `DATABASE_URL` ok; `PgAgentRegistry` + auth owner ainda pendente.
+- `PgBotCatalogStore` wired quando `DATABASE_URL` ok; `PgAgentIdentityStore` + hydrate no `serve`; auth owner verificável (Gate 1) ainda pendente.
 - `core/error` e `core/logging` sem testes dedicados: aceitável como infraestrutura com cobertura indireta.
 
 ## Veredito
