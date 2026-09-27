@@ -17,6 +17,7 @@ O binário tem dois caminhos principais:
 |---|---|
 | Monitor | Executado sem subcomando; inicia a TUI e o fluxo de mercado configurado. |
 | Backtest | `cargo run -- backtest --config <arquivo>`; gera candles sintéticos e imprime um resumo JSON. |
+| HTTP API | `cargo run -- --config src/core/config/bot.toml serve --bind 127.0.0.1:8080`; OpenAPI em `/openapi.json`, UI Scalar em `/docs`. |
 
 Exemplo do monitor:
 
@@ -25,6 +26,22 @@ cargo run -- --config src/core/config/bot.toml --environment dev --mode observe 
 ```
 
 Sem `--config`, o processo procura `src/core/config/bot.toml` relativo ao diretório de execução (execute a partir de `backend/` ou passe caminho absoluto).
+
+## Subcomando `serve` (HTTP)
+
+Flags globais (`--config`, `--environment`, …) vêm **antes** de `serve`. Também é possível repetir o TOML no subcomando:
+
+```sh
+cargo run -- --config src/core/config/bot.toml serve --bind 127.0.0.1:8080
+cargo run -- serve --config src/core/config/bot.toml --bind 127.0.0.1:8080
+```
+
+| Opção | Descrição |
+|---|---|
+| `--bind` | Endereço de escuta (padrão `127.0.0.1:8080`). |
+| `--config` | Override opcional do caminho `bot.toml` só para o processo da API. |
+
+Rotas `/api/v1/monitor/*` respondem **503** quando o monitor live não está no mesmo processo (apenas `serve`, sem TUI). Registro de agents, risco, estratégia, backtest e config snapshot funcionam sem monitor anexo. Advisory Jev exige `jev.enabled` e credenciais no ambiente.
 
 ## Opções do monitor
 

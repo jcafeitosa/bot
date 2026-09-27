@@ -60,8 +60,9 @@ flowchart LR
 | `modules` | `backtest` | `run_sma_crossover`, CLI | Simulação e fixture sintética. | `tests/backtest_fixture.rs`. |
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `modules` | `jev` | `JevAdvisor::review` | Advisory TypeSafe. | Endpoint/config. |
-| `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly` em memória; lifecycle e advisory Jev sem worker nem API HTTP. | `modules/agents/tests.rs`. |
-| `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves. | Testes indiretos. |
+| `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly` em memória; lifecycle e advisory Jev sem worker nem API HTTP. **Não** é o módulo `bots`. | `modules/agents/tests.rs`. |
+| `modules` | `bots` | — | **Não implementado.** Futuro: executores versionados de trading e promoção; ver [SDD agents — Relação com bots](../sdd/agents-module-sdd.md). | — |
+| `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
 
 ## 3. Módulo `agents` (`src/modules/agents/`)
@@ -78,6 +79,8 @@ Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-mo
 | `adapters/jev` | Adaptador fino para `JevAdvisor`; sem política de domínio nova. |
 
 **Limites:** sem PostgreSQL de identidades, sem autenticação do owner no transporte, sem runtime durável, scheduler, gateway MCP ou canais externos.
+
+**Agents vs bots vs backtest:** `backtest::BotId` identifica uma corrida simulada (`strategy@version:timeframe:symbol`), não um agente administrativo nem um executor `modules/bots`. O monitor opera o loop de mercado e pode, no futuro, usar `MonitorAgentHook`; hoje permanece noop. Tabela completa: [SDD agents — Relação com bots](../sdd/agents-module-sdd.md).
 
 ## 4. Módulos de exchanges (`src/modules/exchanges/`)
 

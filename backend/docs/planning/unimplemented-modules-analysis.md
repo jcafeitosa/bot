@@ -11,7 +11,7 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (atualização agents). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. O módulo `modules/agents` existe como **fundação IdentityOnly em memória**; Gate 1 (auth do owner, bootstrap, PostgreSQL) permanece pendente — ver [SDD agents](../sdd/agents-module-sdd.md).
+> Revisão: 2026-09-27 (agents vs bots). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. O módulo `modules/agents` existe como **fundação IdentityOnly em memória**; **`modules/bots` não existe** (distinto de `agents` e de `backtest::BotId`); Gate 1 (auth do owner, bootstrap, PostgreSQL) permanece pendente — ver [SDD agents](../sdd/agents-module-sdd.md).
 
 ## Resumo
 
@@ -75,6 +75,29 @@ A primeira etapa descrita na pesquisa é `IdentityOnly`, com:
 - permissões PostgreSQL;
 - contrato público das transições;
 - revisão independente de segurança.
+
+### Distinção explícita: agents, bots (futuro), backtest, monitor
+
+| | `modules/agents` | `modules/bots` (futuro) | `backtest::BotId` | `modules/monitor` |
+|---|---|---|---|---|
+| Status | Implementado (memória) | Não implementado | Implementado (simulação) | Implementado (mercado live/paper) |
+| Papel | Governança e identidade `IdentityOnly` | Executor versionado e ciclo de vida de bot de trading | ID composto para ranking/backtest | Supervisor operacional de candles/sinais |
+
+Cadastrar um **agente** não cria um **bot** executor. Rodar backtest com um **BotId** não registra agente nem bot futuro. O monitor não substitui nenhum dos dois cadastros.
+
+## 1b. Módulo `bots` (futuro — não confundir com agents)
+
+### O que está previsto
+
+Bots especializados como **artefatos versionados**, com limites de autoridade, métricas, avaliação e ciclo de promoção — separados da hierarquia administrativa de agentes e separados do identificador de simulação `BotId` usado hoje no backtest.
+
+### O que existe
+
+Apenas o **nome** “bot” em contextos legados de simulação: `BotId`, `BotDefinition`, `BotMetrics` em `modules/backtest`, e campo opcional `BotSignal.bot_id` em `application_contracts`. Nenhum registro durável de executor, versionamento de promoção ou runtime de bot.
+
+### Decisão
+
+Não implementar `modules/bots` como alias de `modules/agents`. Não tratar `backtest::BotId` como identidade de produto. Quando o SDD de `bots` existir, definir mapeamento explícito (se houver) entre executor versionado, estratégia simulada e agentes autorizadores.
 
 ## 2. Controle, autenticação e autorização
 
