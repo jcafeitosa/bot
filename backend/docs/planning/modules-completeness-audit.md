@@ -16,8 +16,8 @@ tags:
 
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
-| `modules/bots` | Fundação + ranking + PG + `BotRuntimePort` + `MonitorStrategyRegistry` + catálogo HTTP com períodos SMA | + `shared_bot_runtime()` + HTTP catalog/runtime | `monitor_strategy.rs`, `http_bridge/bots.rs`, `server.rs` | Registrar estratégias além de `sma-cross@1` no catálogo/backtest; auth owner |
-| `modules/orders` | Seam fail-closed + `HttpOrderExecutor` (`BOT_ORDERS_EXECUTION`); HTTP 422/503 | `modules/orders/tests.rs`, `order_execution.rs`, `server.rs` | Adapter exchange, idempotência, auth |
+| `modules/bots` | `MonitorStrategyRegistry`, `[[strategy.monitor_registry]]`, catálogo multi-estratégia, runtime HTTP | `monitor_strategy.rs`, `catalog.rs`, `server.rs` | Evaluators não-SMA; auth owner |
+| `modules/orders` | `ReservedLiveExchangeExecutor`, idempotência PG/memória, `GET /orders/execution-status` | `order_execution.rs`, `http_bridge/orders.rs`, `server.rs` | Adapter exchange real; auth owner |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hydrate no `serve` + `require_bound_agency` | `modules/agents/tests.rs`, `server.rs`, rotas agents | Auth owner produto (fora do seam `HttpAdminAuth`) |
 | `presentation/http` | OpenAPI ~33 paths, Scalar `/docs`, `HttpAdminAuth` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
 
@@ -57,10 +57,10 @@ Evidência (2026-09-27): **273** testes no binário `bot`, **6** ignorados (`per
 
 | Requisito | Evidência | Status |
 |-----------|-----------|--------|
-| Completude bots | `modules/bots/`, `PgBotCatalogStore`, HTTP `/bots/*`, runtime + catálogo na promoção | **Parcial** (sem exchange/orders live; SMA global) |
-| Completude orders | `submit_order`, HTTP 422/503, `HttpOrderExecutor`, `client_order_id` + memória + `PgOrderIdempotencyStore` | **Parcial** (fail-closed default; sem exchange live) |
+| Completude bots | Registry + catálogo HTTP, runtime promote, supervisor binding | **Parcial** (evaluators não-SMA; sem orders live) |
+| Completude orders | `submit_order`, execution-status, `live_exchange_not_wired`, idempotência | **Parcial** (adapter exchange ausente) |
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth`, `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando `BOT_HTTP_AGENCY_ID` | **Parcial** (seam admin; não substitui auth owner completo) |
-| Integração HTTP + camadas | OpenAPI ~33 paths, `http_bridge` (`assert_bot_promotion_allowed`), boot PG catálogo + hydrate agents, monitor + `strategy_evaluation_binding` | **Parcial** (auth owner, orders exchange) |
+| Integração HTTP + camadas | OpenAPI **34** paths, orders/bots/agents bridges, monitor + PG boot | **Parcial** (auth owner, exchange adapter) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | 273 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
@@ -88,7 +88,7 @@ Evidência (2026-09-27): **273** testes no binário `bot`, **6** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **273** testes bin `bot`, **6** ignorados; OpenAPI **33** paths (`openapi_surface_lists_core_paths` em `server.rs`).
+Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **273** testes bin `bot`, **6** ignorados; OpenAPI **34** paths (`openapi_surface_lists_core_paths` em `server.rs`).
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|

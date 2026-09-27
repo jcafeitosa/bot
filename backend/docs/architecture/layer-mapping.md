@@ -72,7 +72,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 |---|---|---|
 | `agents` | Domain (registry) + infra (PG write-through) | `register_*` / `pause|resume|retire_*_and_persist`, `run_agent_advisory`; `shared_agent_registry` + `BOT_AGENCY` |
 | `bot_catalog` | Infra (`BotCatalogBackend`) | `persist_bot_catalog` / `bot_catalog_snapshot`; write-through no boot HTTP quando PG; memória ou PG |
-| `order_executor` | Presentation seam (`HttpOrderExecutor`) | `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` = double local); `for_http_server` lê env |
+| `order_executor` | Presentation seam (`HttpOrderExecutor`) | `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` = double local, `live_exchange`/`paper` = `ReservedLiveExchangeExecutor` → **503** `live_exchange_not_wired`); `for_http_server` lê env |
 | `bot_runtime` | Infra/presentation seam (`BotRuntimePort`) | `shared_bot_runtime()` + `BOT_RUNTIME_ENABLED`; HTTP `/bots/runtime/*` (`assert_bot_promotion_allowed`: catálogo + mercado do config); monitor snapshot + `enrich_monitor_snapshot_from_shared_runtime` |
 | `http_admin_auth` | Presentation seam | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` |
 | `databases` | Infra | Postgres + Neo4j opcional para `/readyz` |
