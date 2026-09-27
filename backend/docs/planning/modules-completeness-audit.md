@@ -41,7 +41,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace).
 
-Evidência (2026-09-27): **207** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
+Evidência (2026-09-27): **208** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -77,4 +77,4 @@ Evidência (2026-09-27): **207** testes no binário `bot`, **5** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Auth owner de produto (além de `BOT_HTTP_ADMIN_TOKEN`), adapter real de orders ([SDD orders](../sdd/orders-module-sdd.md)), runtime bots live, revisão Critic AGENTS.md. PG scaffold: [Gate 1](../sdd/bots-catalog-persistence-gate1-sdd.md).
+Auth owner de produto (além de `BOT_HTTP_ADMIN_TOKEN`), adapter real de orders ([SDD orders G1](../sdd/orders-module-sdd.md) + [Gate 2 live draft](../sdd/orders-live-execution-gate2-sdd.md)), runtime bots live, revisão Critic AGENTS.md. PG scaffold: [Gate 1](../sdd/bots-catalog-persistence-gate1-sdd.md).
