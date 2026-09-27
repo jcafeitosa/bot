@@ -53,6 +53,6 @@ status: draft
 
 Desligar `BOT_AGENTS_ENABLED` ou remover hook; PG intacto.
 
-## 7. F2 (pendente)
+## 7. F2 (bots — SDD separado)
 
-Outbox durável, projeção `Bot`/`PROMOTED_BY`, leitura consultiva.
+Projeção `Bot`/`PROMOTED_BY`: [bots-neo4j-projection-sdd](./bots-neo4j-projection-sdd.md). Outbox durável permanece F2.1.

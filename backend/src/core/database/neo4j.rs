@@ -92,6 +92,35 @@ impl Neo4jGraph {
         Ok(chains)
     }
 
+    /// Test-only helper for F2 `PROMOTED_BY` assertions (modules integration tests).
+    #[cfg(test)]
+    pub async fn count_bot_promoted_by_edges(
+        &self,
+        bot_id: &str,
+        agent_id: &str,
+        agency_id: &str,
+    ) -> Result<i64, Neo4jError> {
+        let mut rows = self
+            .inner_graph()
+            .execute(
+                query(
+                    "MATCH (a:Agent {agent_id: $agent_id, agency_id: $agency_id})                      -[:PROMOTED_BY]->(b:Bot {bot_id: $bot_id}) RETURN count(b) AS edges",
+                )
+                .param("agent_id", agent_id)
+                .param("agency_id", agency_id)
+                .param("bot_id", bot_id),
+            )
+            .await?;
+        let row = rows
+            .next()
+            .await?
+            .ok_or_else(|| Neo4jError::Probe("promoted_by count returned no row".into()))?;
+        let edges: i64 = row
+            .get("edges")
+            .map_err(|error| Neo4jError::Probe(error.to_string()))?;
+        Ok(edges)
+    }
+
     #[allow(dead_code)]
     pub async fn node_count(&self) -> Result<u64, Neo4jError> {
         let mut rows = self

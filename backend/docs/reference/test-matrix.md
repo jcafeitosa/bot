@@ -81,7 +81,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**18/18** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **417** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **18/18** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **421** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **18/18** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -107,7 +107,8 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `pg_http_boot_sequence_mirrors_serve_wiring` | `presentation/http/state.rs` | cold-start agents + `for_http_server` + hydrate orders/catálogo (espelha `server::run`) |
 | `loads_credentials_from_postgres` | `core/providers/credentials/pg_integration.rs` | `run-pg-integration-tests.sh` (migração `0007`) |
 | `ping_and_node_count_against_local_graph` | `core/database/neo4j.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
-| `neo4j_agent_supervision_chain_after_projection` | `core/database/modules/agents/adapters/graph_projection.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
+| `neo4j_agent_supervision_chain_after_projection` | `modules/agents/adapters/graph_projection.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
+| `neo4j_bot_promoted_by_after_catalog_and_promotion_projection` | `modules/bots/adapters/graph_projection.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | `BINANCE_TESTNET_*` + rede; `cargo test integration_submits` |
 | `pg_order_idempotency_try_claim_and_release` | `modules/orders/adapters/pg_idempotency.rs` | `DATABASE_URL` |
 | `pg_submit_order_idempotency_releases_claim_when_submit_fails` | `presentation/http/state.rs` | `DATABASE_URL`; falha de risco libera claim PG |
@@ -129,7 +130,7 @@ Conclusão documentada: G2 **não** exige que todo teste HTTP use runtime partil
 
 ## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
 
-Testes abaixo em `presentation/http/http_integration_tests.rs` (**41** passed com `cargo test --bin bot http_integration -- --test-threads=1`; salvo rotas OpenAPI/meta ainda em `server.rs`).
+Testes abaixo em `presentation/http/http_integration_tests.rs` (**42** passed com `cargo test --bin bot http_integration -- --test-threads=1`; salvo rotas OpenAPI/meta ainda em `server.rs`).
 
 | Rota | 401 sem Bearer | 2xx com Bearer (quando aplicável) |
 |------|----------------|-----------------------------------|

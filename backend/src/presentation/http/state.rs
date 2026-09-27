@@ -5,7 +5,7 @@ use crate::core::error::BotError;
 use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
 use crate::modules::agents::AgentRegistry;
-use crate::modules::bots::{BotCatalogBackend, BotRuntimePort};
+use crate::modules::bots::{BotCatalogBackend, BotCatalogStore, BotRuntimePort};
 use crate::modules::bots::{BotPromotionRecord, BotRuntimeStatus, PromoteBotRequest};
 use crate::modules::config_api::Config;
 use crate::modules::http_bridge::agents::{
@@ -319,12 +319,29 @@ impl ApiState {
         )
         .await
         .map_err(ApiError::from_bot_error)?;
-        bots_runtime::promote_bot(self.inner.bot_runtime.as_ref(), request)
-            .map_err(ApiError::from_bots_error)
+        let agency_id = self.inner.http_admin_auth.bound_agency_id_opt();
+        let record = bots_runtime::promote_bot(self.inner.bot_runtime.as_ref(), request)
+            .map_err(ApiError::from_bots_error)?;
+        crate::modules::bots::adapters::graph_projection::best_effort_project_bot_promotion(
+            self.inner.databases.neo4j(),
+            &record,
+            agency_id,
+        )
+        .await;
+        Ok(record)
     }
 
-    pub fn demote_bot_http(&self) -> Result<(), crate::modules::bots::BotsError> {
-        bots_runtime::demote_bot(self.inner.bot_runtime.as_ref())
+    pub async fn demote_bot_http(&self) -> Result<(), crate::modules::bots::BotsError> {
+        let previous = self.bot_runtime_status().active;
+        bots_runtime::demote_bot(self.inner.bot_runtime.as_ref())?;
+        if let Some(active) = previous {
+            crate::modules::bots::adapters::graph_projection::best_effort_retract_bot_promotion(
+                self.inner.databases.neo4j(),
+                &active.bot_id,
+            )
+            .await;
+        }
+        Ok(())
     }
 
     #[cfg(test)]
@@ -639,7 +656,19 @@ impl ApiState {
     pub async fn persist_bot_catalog(&self) -> Result<BotCatalogPersistResponse, BotError> {
         let config = self.app_config().clone();
         let mut guard = self.inner.bot_catalog.lock().await;
-        crate::modules::http_bridge::bots::persist_catalog_for_config(&config, &mut *guard).await
+        let response =
+            crate::modules::http_bridge::bots::persist_catalog_for_config(&config, &mut *guard)
+                .await?;
+        let entries = guard
+            .load_catalog()
+            .await
+            .map_err(BotError::Configuration)?;
+        crate::modules::bots::adapters::graph_projection::best_effort_project_bot_catalog(
+            self.inner.databases.neo4j(),
+            &entries,
+        )
+        .await;
+        Ok(response)
     }
 
     pub fn monitor_snapshot(&self) -> Result<MonitorSnapshotResponse, ApiError> {
@@ -1173,7 +1202,7 @@ mod state_tests {
             .await
             .expect("promote");
         assert!(state.bot_runtime_status().active.is_some());
-        state.demote_bot_http().expect("demote");
+        state.demote_bot_http().await.expect("demote");
         assert!(state.bot_runtime_status().active.is_none());
     }
 

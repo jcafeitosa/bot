@@ -133,6 +133,9 @@ pub async fn bot_runtime_demote(
     headers: HeaderMap,
 ) -> Result<axum::http::StatusCode, ApiError> {
     state.require_http_admin(&headers)?;
-    state.demote_bot_http().map_err(ApiError::from_bots_error)?;
+    state
+        .demote_bot_http()
+        .await
+        .map_err(ApiError::from_bots_error)?;
     Ok(axum::http::StatusCode::NO_CONTENT)
 }

@@ -5,6 +5,9 @@ use thiserror::Error;
 /// Subgraph namespace for agent hierarchy projection (F1).
 pub const AGENTS_GRAPH_DOMAIN: &str = "agents";
 
+/// Subgraph namespace for bot catalog and runtime promotion (F2).
+pub const BOTS_GRAPH_DOMAIN: &str = "bots";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProjectedSupervisorKind {
     Owner,
@@ -23,6 +26,26 @@ pub struct AgentHierarchyProjection {
     pub updated_at_ms: i64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BotCatalogProjection {
+    pub bot_id: String,
+    pub strategy_id: String,
+    pub strategy_version: u32,
+    pub timeframe: String,
+    pub symbol: String,
+    pub operation_mode: String,
+    pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BotPromotionProjection {
+    pub bot_id: String,
+    pub promoted_by_agent_id: String,
+    pub agency_id: Option<String>,
+    pub promotion_state: String,
+    pub promoted_at_ms: i64,
+}
+
 #[derive(Debug, Error)]
 pub enum GraphProjectionError {
     #[error("graph projection driver error: {0}")]
@@ -36,5 +59,15 @@ pub trait GraphProjectionPort: Send + Sync {
     async fn project_agent_hierarchy(
         &self,
         projection: &AgentHierarchyProjection,
+    ) -> Result<(), GraphProjectionError>;
+
+    async fn project_bot_catalog_entry(
+        &self,
+        projection: &BotCatalogProjection,
+    ) -> Result<(), GraphProjectionError>;
+
+    async fn project_bot_promotion(
+        &self,
+        projection: &BotPromotionProjection,
     ) -> Result<(), GraphProjectionError>;
 }

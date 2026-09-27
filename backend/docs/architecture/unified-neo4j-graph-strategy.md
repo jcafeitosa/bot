@@ -256,7 +256,7 @@ flowchart LR
 |------|------------|-----------|
 | **F0** (atual) | Bolt + readyz; graphify → Neo4j em dev | `ping_and_node_count_against_local_graph`; script sync |
 | **F1** | Projeção `Agent`/`Owner`/`SUPERVISES` após mutação PG; labels `graph_domain`; link `Module` ↔ `CodeEntity` documentado | Teste integração: MERGE após `pg_agent_lifecycle_write_through`; query Cypher em CI opcional |
-| **F2** | `Bot`/`Strategy`/`PROMOTED_BY`; eventos `OrderIntent` redigidos | Sem live prod; recording/testnet only |
+| **F2** | `Bot`/`Strategy`/`PROMOTED_BY` após catálogo PG + promote runtime (*implemented* parcial — sem `OrderIntent`) | `neo4j_bot_promoted_by_after_catalog_and_promotion_projection`; ver [bots-neo4j-projection-sdd](../sdd/bots-neo4j-projection-sdd.md) |
 | **F3** | Memória semântica, proveniência ([agents research](../research/agents-capability-research.md)) | SDD próprio + threat model |
 
 **Rollback F1+:** desabilitar projeção (flag); truncar subgrafo `graph_domain='governance'` via job; PG intacto.
@@ -330,3 +330,11 @@ Gate: `./scripts/verify-backend-gates.sh` se tocar código; doc-only não exige.
 - [layer-mapping.md](./layer-mapping.md) — composition root e infra.
 - [module-catalog.md](./module-catalog.md) — contratos por módulo.
 - [integrations.md](./integrations.md) — PG e seams HTTP.
+
+
+## 16. F2 entregue (bots write-only, best-effort)
+
+1. SDD [bots-neo4j-projection-sdd](../sdd/bots-neo4j-projection-sdd.md).
+2. Adapter `modules/bots/adapters/graph_projection.rs` após `persist_bot_catalog` e promote/demote HTTP.
+3. Outbox durável: **F2.1** (documentado, não implementado).
+4. **F3 next:** `OrderIntent` redigido + memória semântica (strategy §10).

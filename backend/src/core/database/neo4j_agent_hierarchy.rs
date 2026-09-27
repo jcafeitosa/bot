@@ -54,6 +54,20 @@ impl Neo4jGraph {
 
 #[async_trait::async_trait]
 impl GraphProjectionPort for Neo4jAgentHierarchyProjector {
+    async fn project_bot_catalog_entry(
+        &self,
+        _projection: &super::graph_projection::BotCatalogProjection,
+    ) -> Result<(), GraphProjectionError> {
+        Ok(())
+    }
+
+    async fn project_bot_promotion(
+        &self,
+        _projection: &super::graph_projection::BotPromotionProjection,
+    ) -> Result<(), GraphProjectionError> {
+        Ok(())
+    }
+
     async fn project_agent_hierarchy(
         &self,
         projection: &AgentHierarchyProjection,

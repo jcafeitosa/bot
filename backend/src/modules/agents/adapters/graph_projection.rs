@@ -79,6 +79,20 @@ mod unit_tests {
             *self.last.lock().expect("lock") = Some(projection.clone());
             Ok(())
         }
+
+        async fn project_bot_catalog_entry(
+            &self,
+            _projection: &crate::core::database::BotCatalogProjection,
+        ) -> Result<(), GraphProjectionError> {
+            Ok(())
+        }
+
+        async fn project_bot_promotion(
+            &self,
+            _projection: &crate::core::database::BotPromotionProjection,
+        ) -> Result<(), GraphProjectionError> {
+            Ok(())
+        }
     }
 
     fn sample_definition() -> AgentDefinition {

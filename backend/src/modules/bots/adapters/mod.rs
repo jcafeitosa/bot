@@ -1,4 +1,5 @@
 mod catalog_backend;
+pub mod graph_projection;
 mod persistence;
 mod pg_catalog;
 mod runtime_port;
