@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**361** no bin `bot` + integração workspace).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**364** no bin `bot` + integração workspace).
 
 ## Resumo executivo
 
@@ -42,7 +42,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
-Evidência (2026-09-27): **361** testes no binário `bot`, **8** ignorados (PG×6 incl. `pg_order_reconciliation_round_trip`, Neo4j, testnet manual). `./scripts/verify-backend-gates.sh` verde; `./scripts/run-pg-integration-tests.sh` **6/6** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste.
+Evidência (2026-09-27): **364** testes no binário `bot`, **8** ignorados (PG×6 incl. `pg_order_reconciliation_round_trip`, Neo4j, testnet manual). `./scripts/verify-backend-gates.sh` verde; `./scripts/run-pg-integration-tests.sh` **6/6** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste.
 
 ## Documentação relacionada
 
@@ -63,7 +63,7 @@ Evidência (2026-09-27): **361** testes no binário `bot`, **8** ignorados (PG×
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
 | Integração HTTP + camadas | OpenAPI **36** paths; `GET /meta`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` (`paper_fill_unit_price`); testnet ccxt opt-in; PG hydrate | **Parcial** (auth owner; reconciliação; prod) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | **361** + clippy/fmt/import; PG 6/6 opcional (`verify-backend-full.sh`) | **Feito** |
+| Build/testes verdes | **364** + clippy/fmt/import; PG 6/6 opcional (`verify-backend-full.sh`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -74,7 +74,7 @@ Evidência (2026-09-27): **361** testes no binário `bot`, **8** ignorados (PG×
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots runtime/evaluator, orders G2 (testnet+reconciliação PG), agents PG + promote | **Parcial** (auth owner; poller; prod) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → **361** ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → **364** ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
@@ -89,10 +89,10 @@ Evidência (2026-09-27): **361** testes no binário `bot`, **8** ignorados (PG×
 
 ## Fechamento do goal (pendente)
 
-Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **361** testes bin `bot`, **8** ignorados; OpenAPI **36** paths.
+Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **364** testes bin `bot`, **8** ignorados; OpenAPI **36** paths.
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
-| Poller reconciliação / divergência | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | Exchange status + Critic |
-| Threat model G2 fechado | orders G2 SDD | Critic |
-| Auth owner verificável | [agents-capability-research.md](../research/agents-capability-research.md) | Bootstrap + segurança |
+| Threat model G2 fechado + TTL ops | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | Critic independente |
+| Auth owner verificável | [agents-capability-research.md](../research/agents-capability-research.md) | Bootstrap + decisão produto |
+| Revisão Critic pacote G1/G2 | AGENTS.md | Instância separada |
