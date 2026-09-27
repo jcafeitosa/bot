@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (184 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (185 unitários + integração).
 
 ## Resumo executivo
 
@@ -40,7 +40,7 @@ cargo test --locked
 ./scripts/check-import-direction.sh
 ```
 
-Evidência: **184** testes no binário `bot`, **4** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, Neo4j integration).
+Evidência: **185** testes no binário `bot`, **4** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -57,7 +57,7 @@ Evidência: **184** testes no binário `bot`, **4** ignorados (`persist_dataset_
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Store bots (`BotCatalogBackend` mem/PG), HTTP orders/bots/agents | **Parcial** (sem PG/auth/live) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 184 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 185 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Fechamento do goal (pendente)
