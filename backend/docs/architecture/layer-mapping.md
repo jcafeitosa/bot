@@ -113,7 +113,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 cargo test --locked --bin bot
 ```
 
-Evidência: **340** testes no bin `bot`, **7** ignorados (PG/Neo4j + testnet manual).
+Evidência: **342** testes no bin `bot`, **7** ignorados (PG/Neo4j + testnet manual).
 
 ## Documentos relacionados
 

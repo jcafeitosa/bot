@@ -20,7 +20,7 @@ tags:
 | `modules/orders` | Paper/live seams, idempotência HTTP+PG, reconciliação (`pending` + auto-`confirm` recording via `take_last_spot_submit_ack`), monitor paper → ledger | `http_bridge/orders.rs`, `state.rs`, `supervisor.rs` | PG reconciliação; confirm exchange; prod REST |
 | `modules/portfolio` | `paper_snapshot_with_fills` + posições com `fill_unit_price`/`BOT_PAPER_FILL_UNIT_PRICE`; HTTP `positions[]` | `controllers.rs`, `http_bridge/portfolio.rs`, `paper_ledger_executor.rs` | Preço de mercado dinâmico (não só env fixo) |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
-| `presentation/http` | OpenAPI **34** paths; `GET /meta` (`order_reconciliation_pending`); catálogo bots `monitor_evaluator`; contratos `meta_and_*`; `HttpAdminAuth` | `meta.rs`, `server.rs` (`bots_catalog_http_*`) | Auth owner produto (Gate 1) |
+| `presentation/http` | OpenAPI **35** paths; `GET /meta` (`order_reconciliation_pending`); catálogo bots `monitor_evaluator`; contratos `meta_and_*`; `HttpAdminAuth` | `meta.rs`, `server.rs` (`bots_catalog_http_*`) | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 
@@ -42,7 +42,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
-Evidência (2026-09-27): **340** testes no binário `bot`, **7** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). `./scripts/verify-backend-gates.sh` verde; `./scripts/run-pg-integration-tests.sh` **5/5** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste.
+Evidência (2026-09-27): **342** testes no binário `bot`, **7** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). `./scripts/verify-backend-gates.sh` verde; `./scripts/run-pg-integration-tests.sh` **5/5** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste.
 
 ## Documentação relacionada
 
@@ -61,7 +61,7 @@ Evidência (2026-09-27): **340** testes no binário `bot`, **7** ignorados (`per
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor + backtest `evaluate_for_kind` (SMA/EMA) | **Parcial** (sem orders live; auth owner) |
 | Completude orders | `submit_order`, `PaperLedgerExecutor`, `exchange_order_gate`, `spot_order_submit` (`recording` + testnet ccxt buy/sell), `ExchangeSpotExecutor`, execution-status, idempotência | **Parcial** (prod/reconciliação; threat model; Critic) |
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
-| Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` (`paper_fill_unit_price`); testnet ccxt opt-in; PG hydrate | **Parcial** (auth owner; reconciliação; prod) |
+| Integração HTTP + camadas | OpenAPI **35** paths; `GET /meta`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` (`paper_fill_unit_price`); testnet ccxt opt-in; PG hydrate | **Parcial** (auth owner; reconciliação; prod) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | **340** + clippy/fmt/import; PG 5/5 opcional (`verify-backend-full.sh`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
@@ -89,7 +89,7 @@ Evidência (2026-09-27): **340** testes no binário `bot`, **7** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **340** testes bin `bot`, **7** ignorados; OpenAPI **34** paths.
+Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **342** testes bin `bot`, **7** ignorados; OpenAPI **35** paths.
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
