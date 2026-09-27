@@ -10,9 +10,9 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Snapshot machine-readable: [modules-completeness-evidence.json](./modules-completeness-evidence.json). Fonte: `backend/src`, SDDs em `docs/sdd/`. Evidência: `./scripts/verify-backend-full.sh` (com `DATABASE_URL`) → gates **450**/**0** ignored + PG **21/21**; `cargo test --bin bot http_integration -- --test-threads=1` → **47** passed.
+> Revisão: 2026-09-27. Snapshot machine-readable: [modules-completeness-evidence.json](./modules-completeness-evidence.json). Fonte: `backend/src`, SDDs em `docs/sdd/`. Evidência: `./scripts/verify-backend-full.sh` (com `DATABASE_URL`) → gates **456**/**0** ignored + PG **21/21**; `cargo test --bin bot http_integration -- --test-threads=1` → **47** passed.
 >
-> **Bloqueio de fechamento:** fatia técnica/doc do goal entregue (`verify-backend-gates.sh` **450**/**0** ignored, PG **21/21**, `pg_integration`); **IdP / owner humano verificável** e **Critic** `AGENTS.md` permanecem bloqueadores (bootstrap PG `0010` é fatia parcial — [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
+> **Bloqueio de fechamento:** fatia técnica/doc do goal entregue (`verify-backend-gates.sh` **456**/**0** ignored, PG **21/21**, `pg_integration`); **IdP / owner humano verificável** e **Critic** `AGENTS.md` permanecem bloqueadores (bootstrap PG `0010` é fatia parcial — [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
 
 ## Resumo executivo
 
@@ -44,7 +44,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1`, depois `cargo test --locked --test <…>` (5 suítes em `tests/`; evita reexecutar bin `bot` em paralelo). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
-Evidência (2026-09-27; `verify-backend-gates.sh` → **450** passed, **0** ignored; `verify-backend-full.sh` → `OK: backend full verification passed` com `DATABASE_URL`): **450** casos no bin `bot` (linha `OK:` de `verify-backend-gates.sh`). PG×**21** no script (`run-pg-integration-tests.sh`, manifesto validado por `assert-pg-integration-manifest.sh`), incl. agents/bots/orders, `loads_credentials_from_postgres` (0007), `pg_product_owner_bootstrap_*` (0010), `pg_graph_projection_outbox_*` (0009 F2.1); Neo4j/testnet via `pg_integration` (skip sem stack). HTTP mutante/bearer: `cargo test --locked --bin bot http_integration -- --test-threads=1` → **47** passed. Neo4j write-only F1–F3.1 + outbox F2.1/F2.1.2 (worker + health): [unified-neo4j-graph-strategy](../architecture/unified-neo4j-graph-strategy.md) §5, [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md).
+Evidência (2026-09-27; `verify-backend-gates.sh` → **456** passed, **0** ignored; `verify-backend-full.sh` → `OK: backend full verification passed` com `DATABASE_URL`): **456** casos no bin `bot` (linha `OK:` de `verify-backend-gates.sh`). PG×**21** no script (`run-pg-integration-tests.sh`, manifesto validado por `assert-pg-integration-manifest.sh`; snapshot JSON validado por `assert-completeness-evidence.sh` no gate), incl. agents/bots/orders, `loads_credentials_from_postgres` (0007), `pg_product_owner_bootstrap_*` (0010), `pg_graph_projection_outbox_*` (0009 F2.1); Neo4j/testnet via `pg_integration` (skip sem stack). HTTP mutante/bearer: `cargo test --locked --bin bot http_integration -- --test-threads=1` → **47** passed. Neo4j write-only F1–F3.1 + outbox F2.1/F2.1.2 (worker + health): [unified-neo4j-graph-strategy](../architecture/unified-neo4j-graph-strategy.md) §5, [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md).
 
 ## Documentação relacionada
 
@@ -66,7 +66,7 @@ Evidência (2026-09-27; `verify-backend-gates.sh` → **450** passed, **0** igno
 | Completude agents | Registry + PG; promote capability; bootstrap `0010` + `VerifiedProductOwner` ([owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) | **Parcial** (IdP; Critic G1) |
 | Integração HTTP + camadas | OpenAPI ≥**36** paths; boot `serve`; admin bearer; owner bootstrap + provider credentials admin CRUD; reconciliação; **47** `http_integration`; PG `pg_http_boot_*` + owner `0010`; [layer-mapping](../architecture/layer-mapping.md) | **Parcial** (IdP; política prod REST) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | **450** + clippy/fmt/import; PG **21/21** em CI (`postgres-integration`) e opcional local (`verify-backend-full.sh` + `DATABASE_URL`) | **Feito** |
+| Build/testes verdes | **456** + clippy/fmt/import; PG **21/21** em CI (`postgres-integration`) e opcional local (`verify-backend-full.sh` + `DATABASE_URL`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -77,7 +77,7 @@ Evidência (2026-09-27; `verify-backend-gates.sh` → **450** passed, **0** igno
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/orders/agents G2 parcial; owner bootstrap PG; provider credentials HTTP+PG; outbox Neo4j worker; HTTP **47** testes | **Parcial** (IdP; Critic; prod REST) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `./scripts/verify-backend-gates.sh` → **450** ok (bin `bot`) + 5 suítes `tests/`; clippy/fmt/import | Feito nesta revisão |
+| Build/testes verdes | `./scripts/verify-backend-gates.sh` → **456** ok (bin `bot`) + 5 suítes `tests/`; clippy/fmt/import | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
@@ -93,7 +93,7 @@ Evidência (2026-09-27; `verify-backend-gates.sh` → **450** passed, **0** igno
 
 ## Fechamento do goal (pendente)
 
-Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `verify-backend-gates.sh` → **450**/**0** ignored; `http_integration` → **47**; PG script → **21/21**; OpenAPI **36** paths.
+Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `verify-backend-gates.sh` → **456**/**0** ignored; `http_integration` → **47**; PG script → **21/21**; OpenAPI **36** paths.
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
@@ -113,7 +113,7 @@ Escopo sugerido para uma instância **independente** (não substitui decisão de
 
 | Área | Artefatos | Verificação mínima |
 |------|-----------|-------------------|
-| HTTP admin seam | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md), `admin_auth.rs`, `http_integration_tests.rs`, matriz em [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token) | `./scripts/verify-backend-gates.sh` (**450** passed); `cargo test --locked --bin bot http_integration -- --test-threads=1` (**47** passed) |
+| HTTP admin seam | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md), `admin_auth.rs`, `http_integration_tests.rs`, matriz em [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token) | `./scripts/verify-backend-gates.sh` (**456** passed); `cargo test --locked --bin bot http_integration -- --test-threads=1` (**47** passed) |
 | Orders G2 | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) (checklist + threat model), `modules/orders/`, `order_execution.rs`, `binance_spot_testnet_submit.rs` (`redact_known_testnet_credentials`) | Confirmar `authorize_rest_use` / prod REST bloqueado; retenção ops documentada; teste `map_bot_error_redacts_*`; sem credenciais em CI |
 | Bots runtime G2 | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md), `evaluation_binding.rs`, `runtime_port.rs` | Promote capability + `evaluate_for_kind`; [matriz runtime vs serve](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial) (linha checklist **Parcial**) |
 | Product owner bootstrap G1 | [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md), `pg_owner_bootstrap.rs`, `register_owner.rs`, `meta.rs` | PG `pg_product_owner_bootstrap_*`; HTTP `agents_register_rejects_owner_mismatch_when_product_owner_verified`, `bots_runtime_promote_rejects_promoted_by_mismatch_when_product_owner_verified`, `meta_reports_product_owner_bootstrap_active_when_verified` |
@@ -122,7 +122,7 @@ Escopo sugerido para uma instância **independente** (não substitui decisão de
 | Provider credentials admin | [provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md), `http_bridge/provider_credentials.rs`, `routes/provider_credentials_admin.rs` | HTTP `provider_credentials_admin_*`; PG `loads_credentials_from_postgres` no script **21/21** |
 | Portfolio paper (HTTP) | `http_bridge/portfolio.rs`, `routes/portfolio.rs`, `state.rs` (`paper_wallet_snapshot`) | `paper_wallet_snapshot_reflects_in_process_ledger`; `portfolio_paper_snapshot_http_reflects_paper_submit` em `http_integration_tests.rs` |
 
-Comandos canônicos: `./scripts/verify-backend-gates.sh` (**450** passed / **0** ignored na linha `OK:`); com `DATABASE_URL` → `trading_bot`: `./scripts/verify-backend-full.sh` (gates + PG **21/21**, mensagem `OK: backend full verification passed`); só PG: `./scripts/run-pg-integration-tests.sh`. Testnet: `cargo test --locked integration_submits_minimal_market_buy_on_testnet` (skip sem `BINANCE_TESTNET_*`; fora de CI).
+Comandos canônicos: `./scripts/verify-backend-gates.sh` (**456** passed / **0** ignored na linha `OK:`); com `DATABASE_URL` → `trading_bot`: `./scripts/verify-backend-full.sh` (gates + PG **21/21**, mensagem `OK: backend full verification passed`); só PG: `./scripts/run-pg-integration-tests.sh`. Testnet: `cargo test --locked integration_submits_minimal_market_buy_on_testnet` (skip sem `BINANCE_TESTNET_*`; fora de CI).
 
 Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** / **REPROVADO** por SDD, com achados ligados a teste ou linha de código; autor do pacote não aprova o próprio artefato (`AGENTS.md`).
 
@@ -131,6 +131,6 @@ Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** /
 ## ENTREGA — pacote completude módulos (G4 Builder)
 
 - **Builder:** fatia técnica bots/orders/agents/HTTP + Neo4j F1–F3.1 + outbox F2.1.2 (worker + `/healthz` backlog) + F2.1.3 CLI drain; docs SDD/catálogo/roadmap/README alinhados.
-- **Testes/evidências:** `./scripts/verify-backend-gates.sh` → **450** passed, **0** ignored; `./scripts/verify-backend-full.sh` + `DATABASE_URL` → PG **21/21**; `http_integration` → **47** passed; `pg_store_error` + HTTP **503** `order_store_unavailable`; F2.1.2 worker + `/healthz` outbox; F2.1.3 `graph_projection_cli_*` + `bot graph-projection drain` ([cli-and-config](../reference/cli-and-config.md)).
+- **Testes/evidências:** `./scripts/verify-backend-gates.sh` + `assert-completeness-evidence.sh` → **456** passed, **0** ignored; `./scripts/verify-backend-full.sh` + `DATABASE_URL` → PG **21/21**; `http_integration` → **47** passed; `pg_store_error` + HTTP **503** `order_store_unavailable`; F2.1.2 worker + `/healthz` outbox; F2.1.3 `graph_projection_cli_*` + `bot graph-projection drain` ([cli-and-config](../reference/cli-and-config.md)).
 - **Achados/revisão:** **PENDENTE** — Critic independente (`AGENTS.md`); IdP/owner humano fora do escopo da fatia bootstrap; seam `BOT_HTTP_*` + `VerifiedProductOwner` cobertos por testes.
 - **Veredito:** **PENDENTE** até sessão Critic + decisões de produto (auth owner, prod REST).

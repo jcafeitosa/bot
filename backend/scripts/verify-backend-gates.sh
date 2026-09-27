@@ -18,6 +18,13 @@ trap 'rm -f "$BOT_TEST_LOG"' EXIT
 CARGO_INCREMENTAL=0 cargo test --locked --bin bot -- --test-threads=1 2>&1 | tee "$BOT_TEST_LOG"
 # Source of truth for docs baseline (passed/ignored): sync SDDs, README, test-matrix to this summary.
 BOT_TEST_SUMMARY="$(rg '^test result:' "$BOT_TEST_LOG" | tail -1)"
+BOT_PASSED="$(echo "$BOT_TEST_SUMMARY" | sed -n 's/.*ok\. \([0-9][0-9]*\) passed.*/\1/p')"
+if [[ -z "$BOT_PASSED" ]]; then
+  echo "FAIL: could not parse passed count from: $BOT_TEST_SUMMARY" >&2
+  exit 1
+fi
+export BOT_PASSED
+bash scripts/assert-completeness-evidence.sh
 # Do not re-run `cargo test --locked` (would execute bin `bot` unit tests again in parallel and flake).
 INTEGRATION_TESTS=(
   backtest_fixture

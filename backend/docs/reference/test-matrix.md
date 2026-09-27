@@ -81,7 +81,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**21/21** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **450** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **456** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -107,6 +107,9 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `pg_http_boot_sequence_mirrors_serve_wiring` | `presentation/http/state.rs` | cold-start + `build_api_state_for_http_serve`; carrega owner bootstrap PG (`product_owner_bootstrap_active`) |
 | `loads_credentials_from_postgres` | `core/providers/credentials/pg_integration.rs` | `run-pg-integration-tests.sh` (migração `0007`) |
 | `pg_graph_projection_outbox_enqueue_and_drain_mock` | `core/database/graph_projection_outbox.rs` | F2.1 outbox enqueue + drain mock port |
+| `graph_query_port_list_agents_returns_projected_nodes` | `core/database/graph_query.rs` | F3 mock `GraphQueryPort` |
+| `graph_cli_parses_query_agents_with_limit` | `core/database/graph_cli.rs` | F3 CLI parse |
+| `list_agents_limit_clamped_in_neo4j_impl_signature` | `core/database/graph_query.rs` | F3 limit clamp unit |
 | `graph_projection_cli_parses_drain_with_limit` | `graph_projection_cli.rs` | F2.1.3 CLI parse |
 | `graph_projection_drain_maps_neo4j_unavailable_fail_closed` | `graph_projection_cli.rs` | F2.1.3 mensagem fail-closed Neo4j |
 | `degraded_when_pending_or_retry_positive` | `graph_projection_outbox_worker.rs` | F2.1.2 health degraded signal |
@@ -178,6 +181,7 @@ Seam admin bearer (sem IdP); ver [http-admin-auth-seam-sdd.md](../sdd/http-admin
 | GET sem PG → **503** `provider_credentials_store_unavailable` | `provider_credentials_admin_list_returns_503_without_postgres` |
 | POST upsert + GET lista → `secret_masked` sem secret em claro | `provider_credentials_admin_upsert_list_masked_never_returns_raw_secret` (requer `DATABASE_URL`) |
 | GET sem bearer quando admin token ativo → **401** | `provider_credentials_admin_list_requires_admin_bearer_when_enabled` |
+| DELETE remove linha; segundo DELETE → **404** | `provider_credentials_admin_delete_removes_row` (requer `DATABASE_URL`) |
 
 ## Lacunas explícitas
 
