@@ -1,19 +1,12 @@
 ---
 title: SDD — integração unificada de módulos com PostgreSQL + Neo4j
-description: Bootstrap único AppDatabases, seams por entrypoint e rollback operacional
-tags:
-  - sdd
-  - backend
-  - database
-  - integration
 status: accepted
 ---
 
-# SDD — integração de módulos com bancos de dados
+# Integração `AppDatabases`
 
-Ver `AppDatabases::bootstrap_runtime`, `bootstrap_monitor_postgres`, `postgres_for_cli_persist` em `src/core/database/bundle.rs` e `monitor_bootstrap.rs`.
+Entrypoints: `bootstrap_runtime` (HTTP), `bootstrap_monitor_postgres` (TUI/monitor), `postgres_for_cli_persist` (backtest `--persist`).
 
-## Validação
+Config: `core::config::database` + `system.toml`. Neo4j só com agents stack habilitado.
 
-- `./scripts/verify-backend-gates.sh`
-- `./scripts/run-pg-integration-tests.sh`
+Validação: `./scripts/verify-backend-gates.sh`, `./scripts/run-pg-integration-tests.sh`.
