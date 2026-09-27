@@ -49,6 +49,19 @@ Evidência: **189** testes no binário `bot`, **5** ignorados (`persist_dataset_
 - SDDs: [bots](../sdd/bots-module-sdd.md), [orders](../sdd/orders-module-sdd.md), [agents](../sdd/agents-module-sdd.md)
 
 
+
+## Matriz de requisitos (objetivo)
+
+| Requisito | Evidência | Status |
+|-----------|-----------|--------|
+| Completude bots | `modules/bots/`, `PgBotCatalogStore`, HTTP `/bots/*` | **Parcial** (sem runtime live) |
+| Completude orders | `submit_order`, HTTP 422/503 | **Fundação** (fail-closed) |
+| Completude agents | `AgentRegistry`, PG write-through + hydrate | **Parcial** (sem auth owner) |
+| Integração HTTP | OpenAPI 30 paths, `server.rs` testes | **Feito** |
+| Gaps documentados | SDDs + esta auditoria | **Feito** |
+| Build/testes verdes | 189 + clippy/fmt/import (2026-09-27) | **Feito** |
+| Revisão Critic | AGENTS.md | **Bloqueado** |
+
 ## Checklist do objetivo
 
 | Item do goal | Evidência | Status |
