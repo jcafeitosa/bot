@@ -81,7 +81,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**21/21** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **456** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **461** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -107,6 +107,8 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `pg_http_boot_sequence_mirrors_serve_wiring` | `presentation/http/state.rs` | cold-start + `build_api_state_for_http_serve`; carrega owner bootstrap PG (`product_owner_bootstrap_active`) |
 | `loads_credentials_from_postgres` | `core/providers/credentials/pg_integration.rs` | `run-pg-integration-tests.sh` (migração `0007`) |
 | `pg_graph_projection_outbox_enqueue_and_drain_mock` | `core/database/graph_projection_outbox.rs` | F2.1 outbox enqueue + drain mock port |
+| `graph_query_port_supervision_chain_returns_ordered_nodes` | `core/database/graph_query.rs` | F3 port stub |
+| `graph_cli_parses_query_supervision_chain` | `core/database/graph_cli.rs` | F3 CLI parse |
 | `graph_query_port_list_agents_returns_projected_nodes` | `core/database/graph_query.rs` | F3 mock `GraphQueryPort` |
 | `graph_cli_parses_query_agents_with_limit` | `core/database/graph_cli.rs` | F3 CLI parse |
 | `list_agents_limit_clamped_in_neo4j_impl_signature` | `core/database/graph_query.rs` | F3 limit clamp unit |
@@ -139,7 +141,7 @@ Conclusão documentada: G2 **não** exige que todo teste HTTP use runtime partil
 
 ## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
 
-Testes abaixo em `presentation/http/http_integration_tests.rs` (**47** passed com `cargo test --bin bot http_integration -- --test-threads=1`; salvo rotas OpenAPI/meta ainda em `server.rs`).
+Testes abaixo em `presentation/http/http_integration_tests.rs` (**48** passed com `cargo test --bin bot http_integration -- --test-threads=1`; salvo rotas OpenAPI/meta ainda em `server.rs`).
 
 | Rota | 401 sem Bearer | 2xx com Bearer (quando aplicável) |
 |------|----------------|-----------------------------------|
@@ -174,7 +176,7 @@ Seam admin bearer (sem IdP); ver [http-admin-auth-seam-sdd.md](../sdd/http-admin
 
 ## Admin provider credentials (HTTP)
 
-[provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md). Incluídos nos **47** testes `http_integration`.
+[provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md). Incluídos nos **48** testes `http_integration`.
 
 | Comportamento | Teste |
 |---------------|-------|

@@ -146,6 +146,7 @@ mod unit_tests {
 #[cfg(test)]
 mod neo4j_integration_tests {
     use super::*;
+    use crate::core::database::GraphQueryPort;
     use crate::core::database::Neo4jGraph;
     use crate::core::database::{load_agents_stack_from_env, GraphProjectionSync};
     use crate::modules::agents::models::{
@@ -212,5 +213,14 @@ mod neo4j_integration_tests {
             .await
             .expect("count");
         assert_eq!(chains, 1);
+
+        let chain = graph
+            .graph_query()
+            .supervision_chain(&agency, "worker-proj")
+            .await
+            .expect("graph query supervision chain");
+        assert_eq!(chain.chain.len(), 3);
+        assert_eq!(chain.chain[0].kind, "owner");
+        assert_eq!(chain.chain[2].id, "worker-proj");
     }
 }

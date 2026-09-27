@@ -62,6 +62,13 @@ if needle not in readme:
 test_matrix = Path("docs/reference/test-matrix.md").read_text()
 if needle not in test_matrix:
     sys.exit(f"FAIL: test-matrix.md missing baseline {needle}")
+if http_expected is not None:
+    http_bold = f"**{http_expected}** passed"
+    if http_bold not in test_matrix and f"**{http_expected}** testes" not in test_matrix:
+        sys.exit(
+            f"FAIL: test-matrix.md missing http_integration baseline **{http_expected}**"
+        )
+
 
 print(f"OK: completeness evidence aligned (bot {passed}, PG {pg_expected})")
 PY

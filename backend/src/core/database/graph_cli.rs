@@ -30,6 +30,8 @@ pub struct GraphQueryCli {
 pub enum GraphQueryCommand {
     /// List projected `Agent` nodes in the governance subgraph.
     Agents(GraphQueryAgentsCli),
+    /// Supervision path from graph root to the target agent (F3 fatia 2).
+    SupervisionChain(GraphQuerySupervisionChainCli),
 }
 
 #[derive(Debug, Parser)]
@@ -37,6 +39,14 @@ pub struct GraphQueryAgentsCli {
     /// Maximum rows to return (1–500).
     #[arg(long, default_value_t = 32)]
     pub limit: u32,
+}
+
+#[derive(Debug, Parser)]
+pub struct GraphQuerySupervisionChainCli {
+    #[arg(long)]
+    pub agency_id: String,
+    #[arg(long)]
+    pub agent_id: String,
 }
 
 pub async fn run(cli: &GraphCli) -> Result<()> {
@@ -48,6 +58,7 @@ pub async fn run(cli: &GraphCli) -> Result<()> {
 async fn run_query(cli: &GraphQueryCli) -> Result<()> {
     match &cli.command {
         GraphQueryCommand::Agents(args) => run_query_agents(args).await,
+        GraphQueryCommand::SupervisionChain(args) => run_query_supervision_chain(args).await,
     }
 }
 
@@ -63,6 +74,17 @@ async fn run_query_agents(args: &GraphQueryAgentsCli) -> Result<()> {
             "limit": limit,
         })
     );
+    Ok(())
+}
+
+async fn run_query_supervision_chain(args: &GraphQuerySupervisionChainCli) -> Result<()> {
+    let neo4j = connect_neo4j_for_query().await?;
+    let port = Neo4jGraphQuery::new(neo4j);
+    let chain = port
+        .supervision_chain(&args.agency_id, &args.agent_id)
+        .await
+        .map_err(map_query_error)?;
+    println!("{}", json!(chain));
     Ok(())
 }
 
@@ -102,10 +124,35 @@ mod tests {
     fn graph_cli_parses_query_agents_with_limit() {
         let cli =
             GraphCli::try_parse_from(["graph", "query", "agents", "--limit", "10"]).expect("parse");
+        let GraphCommand::Query(GraphQueryCli {
+            command: GraphQueryCommand::Agents(args),
+        }) = cli.command
+        else {
+            panic!("expected agents query");
+        };
+        assert_eq!(args.limit, 10);
+    }
+
+    #[test]
+    fn graph_cli_parses_query_supervision_chain() {
+        let cli = GraphCli::try_parse_from([
+            "graph",
+            "query",
+            "supervision-chain",
+            "--agency-id",
+            "agency-a",
+            "--agent-id",
+            "worker-1",
+        ])
+        .expect("parse");
         match cli.command {
             GraphCommand::Query(GraphQueryCli {
-                command: GraphQueryCommand::Agents(args),
-            }) => assert_eq!(args.limit, 10),
+                command: GraphQueryCommand::SupervisionChain(args),
+            }) => {
+                assert_eq!(args.agency_id, "agency-a");
+                assert_eq!(args.agent_id, "worker-1");
+            }
+            _ => panic!("expected supervision-chain"),
         }
     }
 
