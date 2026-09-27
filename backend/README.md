@@ -47,7 +47,7 @@ The backtest builds a deterministic synthetic 1m dataset for the selected timefr
 
 When `market.timeframe` is `1m`, the monitor runs **both**:
 
-- **WebSocket** (`wss://testnet.binance.vision/ws/<symbol>@kline_1m` in `dev`): the base URL comes from the active `src/core/config/exchanges/binance.toml` Spot account. Each **closed** 1m kline upserts into `HybridCandleFeed` (`src/market_feed.rs`) and triggers SMA evaluation if that bar timestamp was not already evaluated (avoids duplicate eval when REST catches up).
+- **WebSocket** (`wss://testnet.binance.vision/ws/<symbol>@kline_1m` in `dev`): the base URL comes from the active `src/core/config/exchanges/binance.toml` Spot account. Each **closed** 1m kline upserts into `HybridCandleFeed` ([modules/market/controllers/feed.rs](src/modules/market/controllers/feed.rs)) and triggers SMA evaluation if that bar timestamp was not already evaluated (avoids duplicate eval when REST catches up).
 - **REST poll** (`market.poll_seconds`): the Spot testnet origin in the same TOML is applied to ccxt's public endpoint as `https://testnet.binance.vision/api/v3`. It refreshes the sliding candle window as backfill/fallback; evaluates only when the newest bar timestamp advances past `last_evaluated_ts`.
 
 For timeframes other than `1m`, only REST drives strategy (WS is not started). Shutdown cancels the stream via `CancellationToken`.
@@ -100,7 +100,7 @@ cargo test
 
 ## Architecture
 
-[main.rs](src/main.rs) is the composition root (`core`, `domain`, `modules`, `presentation`). The monitor path loads [core::config](src/core/config/mod.rs), bootstraps persistence via [modules::monitor::controllers::startup](src/modules/monitor/controllers/startup.rs), then runs [modules::monitor::controllers::supervisor](src/modules/monitor/controllers/supervisor.rs). Exchange wiring lives under [modules::exchanges](src/modules/exchanges/mod.rs) (Binance REST, optional `1m` WS via [live](src/modules/exchanges/live.rs)). [modules::market](src/modules/market/mod.rs) merges hybrid candles; [modules::strategy](src/modules/strategy/mod.rs), [modules::risk](src/modules/risk/mod.rs), and optional [modules::jev](src/modules/jev/mod.rs) gate paper signals. [presentation::terminal](src/presentation/terminal/mod.rs) renders the TUI. Opt-in [core::persistence](src/core/persistence/mod.rs) stores validated 1m datasets; [persistence_health](src/modules/monitor/controllers/persistence_health.rs) tracks session baseline/gaps.
+[main.rs](src/main.rs) is the composition root (`core`, `modules`, `presentation`). The monitor path loads [core::config](src/core/config/mod.rs), bootstraps persistence via [modules::monitor::controllers::startup](src/modules/monitor/controllers/startup.rs), then runs [modules::monitor::controllers::supervisor](src/modules/monitor/controllers/supervisor.rs). Exchange wiring lives under [modules::exchanges](src/modules/exchanges/mod.rs) (Binance REST, optional `1m` WS via [adapters/live](src/modules/exchanges/adapters/live.rs)). [modules::market](src/modules/market/mod.rs) merges hybrid candles; [modules::strategy](src/modules/strategy/mod.rs), [modules::risk](src/modules/risk/mod.rs), and optional [modules::jev](src/modules/jev/mod.rs) gate paper signals. [presentation::terminal](src/presentation/terminal/mod.rs) renders the TUI. Opt-in [core::persistence](src/core/persistence/mod.rs) stores validated 1m datasets; [persistence_health](src/modules/monitor/controllers/persistence_health.rs) tracks session baseline/gaps.
 
 For `backtest`, [modules::backtest::cli](src/modules/backtest/cli.rs) drives synthetic 1m fixtures through [modules::market](src/modules/market/mod.rs) and [modules::backtest](src/modules/backtest/mod.rs) simulation before JSON output.
 
@@ -109,6 +109,5 @@ For `backtest`, [modules::backtest::cli](src/modules/backtest/cli.rs) drives syn
 | Module | Responsibility |
 |---|---|
 | [core](src/core/mod.rs) | Shared `config`, `error`, `logging`, and `persistence`. |
-| [domain](src/domain.rs) | Strategy/bot identifiers, ranking helpers, shared domain types. |
-| [modules](src/modules/mod.rs) | Domain modules: `market`, `monitor`, `exchanges`, `strategy`, `risk`, `portfolio`, `backtest`, `jev`. |
+| [modules](src/modules/mod.rs) | Domain modules: `market`, `monitor`, `exchanges`, `strategy`, `risk`, `portfolio`, `backtest`, `jev`; shared seams in [application_contracts](src/modules/application_contracts.rs). |
 | [presentation](src/presentation/mod.rs) | Terminal UI (`presentation::terminal`). |
