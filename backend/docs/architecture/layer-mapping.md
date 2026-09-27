@@ -106,7 +106,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 
 ## Lacunas conscientes
 
-- Monitor testnet (seam recording/testnet): `client_order_id` `mon:{symbol}:{ts}:{side}` + `shared_live_order_reconciliation_ledger` com HTTP `ApiState`.
+- Monitor testnet (seam recording/testnet): `client_order_id` `mon:{symbol}:{ts}:{side}`, ledger partilhado com HTTP `ApiState`; espelho PG via `try_mirror_reconciliation_upsert` quando `serve` registra `PgOrderReconciliationStore`.
 - Monitor `RunMode::Paper` grava fills no mesmo `PaperLedgerExecutor` que HTTP/portfolio (`paper_run_mode_*` + `http_bridge::portfolio`); `RunMode::Testnet` usa `ExchangeSpotExecutor` quando `BOT_ORDERS_EXCHANGE_SUBMIT` está ativo; demais modos fail-closed.
 - Runtime live de bots e execução exchange: ports existem; implementação live pendente.
 - Auth owner verificável: seam HTTP em [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
@@ -118,7 +118,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 cargo test --locked --bin bot
 ```
 
-Evidência: **365** testes no bin `bot`, **8** ignorados (PG/Neo4j + testnet manual).
+Evidência: **366** testes no bin `bot`, **8** ignorados (PG/Neo4j + testnet manual).
 
 ## Documentos relacionados
 
