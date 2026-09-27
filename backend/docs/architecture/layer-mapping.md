@@ -102,7 +102,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `reconcile_pending_orders_once` / `POST /orders/reconciliation/poll` + job `BOT_ORDERS_RECONCILIATION_POLL_SECS` | Poller (`LiveExchangeSpotOrderReconciliationQuery`) |
 | `hydrate_order_reconciliation_from_pg` | Infra → domain (boot HTTP `serve`, espelha `order_reconciliation` PG na memória); evidência PG `pg_hydrate_order_reconciliation_from_pg_after_durable_write` |
 | Boot bots catálogo (PG) | `persist_bot_catalog` no boot + `bot_catalog_snapshot` lê PG; evidência `pg_bot_catalog_snapshot_round_trip_via_api_state` |
-| Boot agents (PG) | `server::run` → `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` se registry vazio; evidência PG `pg_cold_start_apply_snapshot_after_write_through` |
+| Boot HTTP (PG) | `ApiState::build_api_state_for_http_serve` (agents hydrate + `for_http_server` + reconciliação hydrate + catálogo persist); `server::run` delega; evidência `build_api_state_for_http_serve_without_database_wires_executor`, PG `pg_http_boot_sequence_mirrors_serve_wiring` |
 | `register_live_reconciliation_pg_mirror` | Infra: monitor testnet espelha reconciliação no PG quando `DATABASE_URL` ativo |
 | `observe_testnet_spot_order_by_client_id` | Infra exchanges → observação ccxt para poller testnet |
 
@@ -124,9 +124,9 @@ cargo test --locked --bin bot -- --test-threads=1  # gate canônico via verify-b
 
 ### Testes PG em `presentation/http/state.rs` (camada application ↔ infra)
 
-Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×14): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` (agents cold-start + `for_http_server` + hydrate + catálogo, espelha `server::run`).
+Executados por `./scripts/run-pg-integration-tests.sh` (subset de PG×14): agents `pg_register_agent_and_persist_cold_start_via_snapshot`; bots `pg_bot_catalog_snapshot_round_trip_via_api_state`; orders idempotência `pg_submit_order_idempotency_reads_pg_when_memory_empty`; reconciliação `pg_hydrate_order_reconciliation_from_pg_after_durable_write`, `pg_order_reconciliation_lookup_reads_pg_when_memory_empty`; boot HTTP `pg_http_boot_sequence_mirrors_serve_wiring` via `build_api_state_for_http_serve` (mesmo caminho que `server::run`).
 
-Evidência: **393** testes no bin `bot`, **16** ignorados (PG×14 + Neo4j + testnet manual; ver [test-matrix](../reference/test-matrix.md)).
+Evidência: **394** testes no bin `bot`, **16** ignorados (PG×14 + Neo4j + testnet manual; ver [test-matrix](../reference/test-matrix.md)).
 
 ## Documentos relacionados
 

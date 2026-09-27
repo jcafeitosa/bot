@@ -73,5 +73,5 @@ modules/bots/
 
 - Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
 - [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): checklist **Critérios de fechamento G2**; promoção HTTP + `evaluate_for_kind` (SMA/EMA) feitos; pendem auth owner, alinhamento runtime `serve` vs testes HTTP, Critic.
-- Baseline: `./scripts/verify-backend-gates.sh` verde; bin `bot` **393** testes (promote SMA/EMA em `monitor_strategy.rs`; catálogo HTTP `monitor_*_period` incl. `bots_catalog_http_lists_monitor_registry_v2_periods`).
+- Baseline: `./scripts/verify-backend-gates.sh` verde; bin `bot` **394** testes (promote SMA/EMA em `monitor_strategy.rs`; catálogo HTTP `monitor_*_period` incl. `bots_catalog_http_lists_monitor_registry_v2_periods`).
 - Auth owner verificável no transporte (fora do seam `BOT_HTTP_*`).

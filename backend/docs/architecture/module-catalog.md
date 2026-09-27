@@ -146,7 +146,7 @@ Testes de contrato da facade: `http_bridge/mod.rs` (`bridge_tests` — catalog p
 |---|---|
 | `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
 | `state` | `ApiState` (composition root); agents/bots/orders/portfolio (`submit_order_http`, `paper_wallet_snapshot`, `bot_ranking_from_metrics`, catálogo PG); `hydrate_order_reconciliation_from_pg` no boot; `order_reconciliation_lookup` (ledger + fallback PG); PG ignorados em `state_tests` — [test-matrix](../reference/test-matrix.md). |
-| `server::run` | Bootstrap `AppDatabases`, hydrate agents + reconciliação orders PG, `ApiState::for_http_server` (`HttpApiSeams::from_env`), poll reconciliação em background (opcional), Axum + Scalar. |
+| `server::run` | Bootstrap `AppDatabases`, `ApiState::build_api_state_for_http_serve` (agents PG + env seams + reconciliação hydrate + catálogo), poll reconciliação em background (opcional), Axum + Scalar. |
 | `routes/*` | Superfície v1: agents, bots (catalog `monitor_evaluator` + runtime), orders, monitor, risk, backtest, `config/active` e `config/snapshot` (`monitor_registry[].evaluator`), health, `GET /meta` (`http_seams`). |
 
 Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `bots/runtime/promote|demote`, `orders/submit`, `orders/reconciliation/poll`, `monitor/commands`.
@@ -216,7 +216,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 
 ## 7. Débitos e limites conhecidos
 
-- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **393** testes no bin `bot`, **16** ignorados (PG×14 via `run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
+- Evidência reproduzível (goal completude módulos): `./scripts/verify-backend-gates.sh` → **394** testes no bin `bot`, **16** ignorados (PG×14 via `run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`); auditoria [modules-completeness-audit](../planning/modules-completeness-audit.md).
 - O supervisor do monitor concentra orquestração; evoluções devem respeitar MVC e os seams públicos.
 - Round-trips PostgreSQL de domínio (dataset, scaffold, catálogo bots, snapshot agents) existem como testes `#[ignore]` — exigem `DATABASE_URL` → `trading_bot` (PG 18+).
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.
