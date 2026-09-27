@@ -1,3 +1,12 @@
+---
+title: SDD — Remoção de arquivos legados de configuração e migração
+description: Design da remoção de arquivos legados e migração de configuração
+tags:
+  - sdd
+  - backend
+  - configuration
+---
+
 # SDD — Remoção de arquivos legados de configuração e migração
 
 - **ID:** T-13

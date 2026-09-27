@@ -1,3 +1,12 @@
+---
+title: SDD — Fixture do backtest e custo da saída por sinal
+description: Design da fixture de trades e do custo de saída do backtest
+tags:
+  - sdd
+  - backend
+  - backtest
+---
+
 # SDD — Fixture do backtest e custo da saída por sinal
 
 - **ID:** T-07 (design para implementação posterior)
@@ -77,10 +86,11 @@ O rollout é apenas código local do subcomando e documentação; não há servi
 - O teste do binário `backtest --config` falhou em red com `scalper/1m` e `trades: 0`; após a mudança passou nos oito pares permitidos de operação e timeframe, com `trades >= 1` e `wins + losses == trades`.
 - A fixture final tem `(slow + fast + 3) * timeframe.minutes()` candles de 1m. A análise e o teste observam Buy no open da barra 22 e Sell no open da barra 27 para SMA 5/20; sem taxas, slippage ou stops, `run_sma_crossover` fecha exatamente um trade com P&L zero. Ao mudar somente a última barra para `open=95`, mantendo `close` anterior em 100, o mesmo sinal Sell fecha um trade com P&L -5; isso distingue preenchimento no próximo open de execução no fechamento do sinal. Sem a última barra agregada, nenhum trade é fechado.
 - O teste de limite cobre 17.520 candles para 4h/SMA 20/50, o teto inclusivo de 20.000 e erro de configuração acima dele ou em overflow. O comando padrão 15m retornou `trades: 1`, `wins: 0`, `losses: 1`, `dataset_id: fnv1a64:4c0b6491c373e08c`.
-- C13 ainda deve corrigir o slippage da venda por sinal; esta evidência não o aprova nem representa teste de persistência PostgreSQL.
+- Na conclusão de C12, o slippage da venda por sinal permanecia para C13; a evidência de C12 não aprova C13 nem representa teste de persistência PostgreSQL.
 
 ## Evidência de C13 (revisão G3 pendente)
 
-- O teste público `run_sma_crossover` com Buy no open 101 e Sell no open 95, após fechamento anterior em 100, falhou antes da correção: com slippage de 1%, lucro observado -7,05813155572983 versus -7,9875502401725385 calculado com taxa de 0,2% sobre proceeds efetivos. Após passar `config.slippage_rate` ao fechamento do ramo Sell, o mesmo teste passou para slippage zero e 1%, conferindo trades, lucro líquido e bruto, custos agregados e equity final por tolerância de 1e-9.
+- O teste público `run_sma_crossover` com Buy no open 101 e Sell no open 95, após fechamento anterior em 100, falhou antes da correção: com slippage de 1%, lucro bruto observado -7,05813155572983 versus -7,9875502401725385 calculado com a venda adversa. A taxa de 0,2% foi calculada sobre proceeds efetivos. Após passar `config.slippage_rate` ao fechamento do ramo Sell, o mesmo teste passou para slippage zero e 1%, conferindo trades, lucro líquido e bruto, custos agregados e equity final por tolerância de 1e-9.
 - Um teste separado de stop loss e take profit forçados na barra 23 confirmou saída na própria barra de trigger, slippage de 1%, taxa sobre proceeds pós-slippage e custo agregado; ambos passaram. O Sell por sinal da fixture continua na barra 27, de modo que esse teste distingue o exit intrabar do ramo corrigido.
 - O resumo JSON do CLI continua sem `total_costs_quote`. O custo está disponível em `BacktestReport`; a correção altera o P&L do comando padrão, sem alterar o contrato JSON nem o identificador da fixture.
+- Após C13, `cargo run --locked -- backtest --config src/config/bot.toml` retornou `trades: 1`, `wins: 0`, `losses: 1`, `net_pnl_quote: -0.09982519980019333`, `dataset_id: fnv1a64:4c0b6491c373e08c`. `cargo fmt --check`, Clippy com `--all-targets -- -D warnings`, `git diff --check` e a suíte sem testes HTTP locais passaram (74 unitários, um de fixture, dois de configuração e três de política de origem; um PostgreSQL ignorado). A suíte completa falhou apenas nos dois testes HTTP locais de C9 porque o sandbox negou a criação de sockets (`Operation not permitted`); esse gate permanece separado de C13.

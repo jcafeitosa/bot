@@ -1,3 +1,13 @@
+---
+title: SDD T-15 — Política de persistência opcional do monitor
+description: Design da política de persistência opcional do monitor
+tags:
+  - sdd
+  - backend
+  - monitor
+  - persistence
+---
+
 # SDD T-15 — Política de persistência opcional do monitor
 
 - **Autor:** System Designer / Dados Builder `/root/persistence_designer`

@@ -1,3 +1,12 @@
+---
+title: SDD T-10 — Pausa e retomada do monitor de candles
+description: Design das transições de pausa e retomada do monitor de candles
+tags:
+  - sdd
+  - backend
+  - monitor
+---
+
 # SDD T-10 — Pausa e retomada do monitor de candles
 
 - **Autor:** System Designer Builder `/root/resume_designer`
