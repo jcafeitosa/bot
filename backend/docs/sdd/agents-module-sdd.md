@@ -131,3 +131,4 @@ modules/agents/
 - `GET /api/v1/meta` → `http_seams` (bindings owner/agency booleanos; ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
 - `assert_runtime_promotion_authorized`: capability, lifecycle, `promotion_rejects_invalid_bot_id` (`bot_promotion.rs`).
 - Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **305** testes (**6** ignorados PG/Neo4j).
+- **Gap Gate 1 produto:** autenticação/autorização do owner humano além de `BOT_HTTP_*` — ver [pesquisa de capacidades](../research/agents-capability-research.md); bloqueia fechamento do goal de completude de módulos.

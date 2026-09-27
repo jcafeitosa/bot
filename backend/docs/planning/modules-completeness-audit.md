@@ -39,7 +39,7 @@ Gate canônico (recomendado):
 ./scripts/verify-backend-gates.sh
 ```
 
-Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
+Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
 Evidência (2026-09-27): **305** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
 
@@ -60,7 +60,7 @@ Evidência (2026-09-27): **305** testes no binário `bot`, **6** ignorados (`per
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor + backtest `evaluate_for_kind` (SMA/EMA) | **Parcial** (sem orders live; auth owner) |
 | Completude orders | `submit_order`, `RecordingExecutor` (fake port), execution-status, `live_exchange_not_wired`, idempotência | **Parcial** (adapter exchange ausente) |
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
-| Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta` (`http_seams`) + testes `meta_and_*_agree_on_*`; `http_bridge` → domain; catálogo `monitor_evaluator`; orders/bots/agents v1; PG boot hydrate | **Parcial** (auth owner, exchange adapter) |
+| Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `config/active` + catálogo com `evaluator`/`monitor_evaluator`; `meta_and_*`; orders/bots/agents v1; PG hydrate | **Parcial** (auth owner, exchange adapter) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | 305 + clippy/fmt/import; PG 5/5 opcional (`run-pg-integration-tests.sh`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
