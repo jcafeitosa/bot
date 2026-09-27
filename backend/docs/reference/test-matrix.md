@@ -106,6 +106,20 @@ Bin `bot`: **395** aprovados, **16** ignorados (incl. `integration_submits_minim
 | `ping_and_node_count_against_local_graph` | `core/database/neo4j.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | credenciais testnet + rede; `cargo test -- --ignored integration_submits` |
 
+### Bot runtime no `serve` vs testes HTTP (G2 parcial)
+
+Checklist [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist): linha **Parcial** (“runtime injetado em testes HTTP = `serve`”).
+
+| Modo | Onde | Evidência |
+|------|------|-----------|
+| **Produção / boot** | `server::run`, `ApiState::build_api_state_for_http_serve`, `HttpApiSeams::from_env` | `shared_bot_runtime()` — mesmo `Arc` process-wide |
+| **Paridade explícita (unit)** | `presentation/http/state.rs` | `for_http_server_wires_process_wide_bot_runtime_like_serve`; `from_env_shares_process_wide_bot_runtime_with_serve` |
+| **Paridade boot + PG** | `presentation/http/state.rs` | `pg_http_boot_sequence_mirrors_serve_wiring` (`#[ignore]`; script PG **14/14**) |
+| **Router após boot canônico** | `presentation/http/server.rs` | `router_after_build_api_state_serves_catalog_and_meta` usa `build_api_state_for_http_serve` |
+| **Isolado por teste** | Maioria dos `bots_runtime_*` / promote em `server.rs` e helpers em `state.rs` | `Arc::new(InMemoryBotRuntime::new())` — evita vazamento de estado entre casos; **não** prova sozinho o wiring do `serve` |
+
+Conclusão documentada: G2 **não** exige que todo teste HTTP use runtime partilhado; exige seams + testes que provam o mesmo `Arc` que o `serve`. Fechamento total continua bloqueado por auth owner e Critic.
+
 ## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
 
 | Rota | 401 sem Bearer | 2xx com Bearer (quando aplicável) |
