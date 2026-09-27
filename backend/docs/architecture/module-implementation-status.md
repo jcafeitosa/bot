@@ -12,7 +12,7 @@ tags:
 **Data da verificação:** 2026-09-27 (PG agents/bots write-through + hydrate)  
 **Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
 **Correção aplicada nesta verificação:** `InMemoryBotCatalogStore` deixou de ser `#[cfg(test)]` para compilar o seam HTTP de catálogo de bots (`presentation/http/state.rs`, `http_bridge/bots.rs`).  
-**Fatia pós-goal:** `0002_agents_bots_scaffold.sql` — schema PostgreSQL para agents/bots; runtime em memória com espelho PG opcional (agents hydrate + write-through; bots `BotCatalogBackend`); Gate 1 auth owner ainda pendente.
+**Fatia pós-goal:** `0002_agents_bots_scaffold.sql` — schema PostgreSQL para agents/bots; espelho PG opcional (agents hydrate + write-through; bots `BotCatalogBackend`); seam HTTP admin (`BOT_HTTP_*`) + `require_bound_agency` em rotas agents. **Completude de produto** (orders live, runtime bots, auth owner): ver [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado**.
 
 ## Gates (G4)
 
@@ -53,7 +53,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | backtest | `modules/backtest/` | M+C + `cli` | simulation tests, `tests/backtest_fixture.rs` |
 | exchanges | `modules/exchanges/` | M+A; `controllers` reexporta orquestração | `exchanges::tests`, adapters tests |
 | monitor | `modules/monitor/` | M+C+views | supervisor/handle/startup tests; `main` monitor path |
-| agents | `modules/agents/` | M+C+A (`jev`, `pg_registry`) | hydrate `serve`, HTTP persist | `modules/agents/tests.rs`, HTTP agents routes |
+| agents | `modules/agents/` | M+C+A (`jev`, `pg_registry`) | `modules/agents/tests.rs`, HTTP agents + PG hydrate |
 | bots | `modules/bots/` | M+C+A (`PgBotCatalogStore`, `BotCatalogBackend`) | `modules/bots/tests.rs`, HTTP bots routes |
 | orders | `modules/orders/` | M+C+A (`FailClosedExecutor`) | `modules/orders/tests.rs`, HTTP 503 fail-closed |
 | http_bridge | `modules/http_bridge/` | Facades por domínio | `bridge_tests::persist_catalog_bridge_wires_store_seam` |
@@ -65,7 +65,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | Módulo | Caminho | MVC / seam | Testes ou wiring |
 |--------|---------|------------|------------------|
 | terminal | `presentation/terminal/` | View TUI | `monitor_state_tests`, monitor supervisor |
-| http | `presentation/http/` | Rotas + `server` + `state` | `presentation::http::server::tests` (OpenAPI, orders, bots, agents) |
+| http | `presentation/http/` | Rotas + `server` + `state` + `admin_auth` | `server::tests` (OpenAPI ~30 paths, admin bearer, agency bind, orders/bots/agents/monitor) |
 
 ## Restrições do objetivo literal
 
@@ -82,6 +82,8 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Veredito
 
-**GOAL_LITERAL_MET=yes**
+**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**203** testes bin `bot`, **5** ignorados).
 
-**Raciocínio:** Todos os nós da árvore alvo existem, exportados em `core/mod.rs`, `modules/mod.rs` e `presentation/mod.rs`. Domínios de negócio expõem models + controllers (ou adapters equivalentes) com testes ou superfície HTTP/main. Compilação e os quatro gates passam após publicar `InMemoryBotCatalogStore` para o estado HTTP. Não há live trading nem módulo `technical_analysis`.
+**COMPLETUDE_MODULOS_GOAL=parcial** — fundação bots/orders/agents/HTTP documentada e testada; pendem orders live, runtime bots, auth owner de produto e revisão Critic ([auditoria](../planning/modules-completeness-audit.md)).
+
+**Raciocínio:** Todos os nós da árvore alvo existem em `src/`. Domínios expõem models + controllers/adapters com testes ou HTTP/main. Não há live trading nem `technical_analysis`. O veredito MVC **não** substitui o fechamento do goal de completude de módulos.
