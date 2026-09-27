@@ -60,7 +60,7 @@ Evidência (2026-09-27): **289** testes no binário `bot`, **6** ignorados (`per
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor binding | **Parcial** (evaluators não-SMA; sem orders live) |
 | Completude orders | `submit_order`, execution-status, `live_exchange_not_wired`, idempotência | **Parcial** (adapter exchange ausente) |
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth`, `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando `BOT_HTTP_AGENCY_ID` | **Parcial** (seam admin; não substitui auth owner completo) |
-| Integração HTTP + camadas | OpenAPI **34** paths; `http_bridge` → domain; `ApiState` composition; catálogo/promoção `monitor_registry` v2 + snapshot monitor; orders execution-status + submit; PG boot hydrate | **Parcial** (auth owner, exchange adapter; supervisor usa `shared_bot_runtime` no `serve`, não o runtime injetado em testes HTTP isolados) |
+| Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta` (`http_seams`) + testes `meta_and_*_agree_on_*`; `http_bridge` → domain; orders/bots/agents v1; PG boot hydrate | **Parcial** (auth owner, exchange adapter; evaluators não-SMA) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | 289 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |

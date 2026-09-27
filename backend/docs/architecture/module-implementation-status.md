@@ -65,7 +65,7 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | Módulo | Caminho | MVC / seam | Testes ou wiring |
 |--------|---------|------------|------------------|
 | terminal | `presentation/terminal/` | View TUI | `monitor_state_tests`, monitor supervisor |
-| http | `presentation/http/` | Rotas + `server` + `state` + `admin_auth` | `server::tests` (OpenAPI **34** paths, admin bearer, agency bind, orders execution-status/submit, bots/agents/monitor) |
+| http | `presentation/http/` | Rotas + `server` + `state` + `admin_auth` | `server::tests` (OpenAPI **34** paths, `GET /meta` + `meta_and_*`, admin/binding flags, orders/bots/agents/monitor) |
 
 ## Restrições do objetivo literal
 

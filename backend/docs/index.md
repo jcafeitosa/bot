@@ -14,7 +14,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 - [Guia de execução e operação](./operations/runbook.md) — pré-requisitos, inicialização, modos suportados, persistência e diagnóstico.
 - [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente e validações.
-- [API HTTP (OpenAPI + Scalar)](./reference/cli-and-config.md#subcomando-serve-http) — subcomando `serve`, `/openapi.json`, `/docs`, agents e `--with-monitor`.
+- [API HTTP (OpenAPI + Scalar)](./reference/cli-and-config.md#subcomando-serve-http) — subcomando `serve`, `/openapi.json`, `/docs`, `GET /meta` (`http_seams`), agents e `--with-monitor`.
 - [Referência de módulos do backend](./architecture/backend-module-reference.md) — visão consolidada, interfaces, seams, fluxos e limites.
 - [Catálogo completo de módulos](./architecture/module-catalog.md) — todos os módulos Rust, submódulos de exchange, contratos e invariantes.
 - [Matriz de testes](./reference/test-matrix.md) — cobertura por módulo, integração, evidências e lacunas.
@@ -59,8 +59,8 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD — Gate 1 persistência catálogo bots](./sdd/bots-catalog-persistence-gate1-sdd.md) — draft PostgreSQL (`0002_agents_bots_scaffold.sql`).
 - [SDD — Módulo bots (estratégia × timeframe)](./sdd/bots-module-sdd.md) — identidade versionada, catálogo, ranking e HTTP.
 - [SDD — Módulo orders (fail-closed)](./sdd/orders-module-sdd.md) — validação de risco e port de execução bloqueado.
-- [SDD — Gate 2 orders live (draft)](./sdd/orders-live-execution-gate2-sdd.md) — adapter exchange, idempotência; não implementado.
-- [SDD — Gate 2 bots runtime (draft)](./sdd/bots-runtime-live-gate2-sdd.md) — promoção/executor no monitor; não implementado.
+- [SDD — Gate 2 orders live (parcial)](./sdd/orders-live-execution-gate2-sdd.md) — `HttpOrderExecutor`, idempotência HTTP; adapter exchange real pendente.
+- [SDD — Gate 2 bots runtime (parcial)](./sdd/bots-runtime-live-gate2-sdd.md) — `BotRuntimePort`, `MonitorStrategyRegistry`, promoção HTTP; evaluators não-SMA pendentes.
 - [SDD — Módulo agents (fundação IdentityOnly)](./sdd/agents-module-sdd.md) — registry + espelhamento/hidratação PG, hierarquia, lifecycle e seam Jev; auth owner pendente.
 - [SDD — HTTP admin bearer seam](./sdd/http-admin-auth-seam-sdd.md) — `BOT_HTTP_ADMIN_TOKEN`, binds opcionais de owner/agency; não substitui auth owner Gate 1.
 
