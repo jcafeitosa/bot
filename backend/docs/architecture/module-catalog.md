@@ -123,7 +123,7 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 
 ## 3d. Facade `http_bridge` (`src/modules/http_bridge/`)
 
-Camada de aplicação fina entre `presentation::http::routes` e os módulos de domínio — rotas **não** importam `modules::*` diretamente ([import check](../../scripts/check-import-direction.sh)).
+Camada de aplicação fina entre `presentation::http::routes` e os módulos de domínio — rotas **não** importam `modules::*` diretamente (`backend/scripts/check-import-direction.sh`).
 
 | Arquivo | Responsabilidade HTTP |
 |---------|------------------------|

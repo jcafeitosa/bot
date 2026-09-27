@@ -28,7 +28,24 @@
 
 ## Rotation
 
-- Update row in `provider_credentials`; restart process or call `reload_from_pool` (HTTP admin CRUD: **not implemented** — fail-closed stub deferred).
+- Update row in `provider_credentials`; restart process or call `reload_from_pool`.
+
+## Dev seed (ops)
+
+- Template: `backend/scripts/seed-provider-credentials.example.sql` (placeholders only).
+- Migração `0008_provider_credentials_dev_seed_note.sql` — sem INSERT automático.
+- Procedimento: [postgres-and-graph-dev.md](../operations/postgres-and-graph-dev.md#provider-credentials-llm-api-keys).
+
+## HTTP admin CRUD (stub, fail-closed)
+
+| Método | Path | Auth | Resposta |
+|--------|------|------|----------|
+| GET | `/api/v1/admin/provider-credentials` | `BOT_HTTP_ADMIN_TOKEN` quando definido | **501** `provider_credentials_admin_not_implemented` |
+| POST | `/api/v1/admin/provider-credentials` | idem | **501** |
+| PUT | `/api/v1/admin/provider-credentials/{provider_id}/{key_name}` | idem | **501** |
+| DELETE | `/api/v1/admin/provider-credentials/{provider_id}/{key_name}` | idem | **501** |
+
+Nenhuma rota retorna coluna `secret`. Implementação futura exige owner auth Gate 1 e ADR opcional de encryption-at-rest.
 
 ## Tests
 

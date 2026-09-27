@@ -9,7 +9,7 @@ tags:
 
 # SDD T-16 — Mapa de módulos do backend no README
 
-> **Superseded (2026-09-26):** Este SDD descreve o inventário plano pré-migração F1–F6 (`app`, `src/config/`, 16 `mod` na raiz). O layout atual é `core/`, `modules/` (MVC) e `presentation/`. Use o [README do backend](../../README.md#architecture), o [SDD de convenção MVC](./modules-mvc-convention-sdd.md) e o [SDD de realocação F4–F5](./modules-relocation-phase4-5-sdd.md) como fontes ativas. Mantido como registro histórico de T-16.
+> **Superseded (2026-09-26):** Este SDD descreve o inventário plano pré-migração F1–F6 (`app`, `src/config/`, 16 `mod` na raiz). O layout atual é `core/`, `modules/` (MVC) e `presentation/`. Use o README do backend em `backend/README.md`, o [SDD de convenção MVC](./modules-mvc-convention-sdd.md) e o [SDD de realocação F4–F5](./modules-relocation-phase4-5-sdd.md) como fontes ativas. Mantido como registro histórico de T-16.
 
 - **Autor:** System Designer Builder `/root/module_map_designer`
 - **Crítico designado:** `/root/module_map_design_critic` (instância independente)

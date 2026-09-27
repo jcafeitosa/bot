@@ -9,7 +9,7 @@ tags:
 ---
 # Arquitetura do backend
 
-> Revisão: 2026-09-27 (agents/bots PG opcional, HTTP admin seam, orders fail-closed). Layout: `src/core/`, `src/modules/` (MVC), `src/presentation/`. Este documento descreve `backend/src`, `backend/tests` e os SDDs referenciados. Entrada resumida: [README](../../README.md#architecture), [catálogo](./module-catalog.md) e [convenção MVC](../sdd/modules-mvc-convention-sdd.md).
+> Revisão: 2026-09-27 (agents/bots PG opcional, HTTP admin seam, orders fail-closed). Layout: `src/core/`, `src/modules/` (MVC), `src/presentation/`. Este documento descreve `backend/src`, `backend/tests` e os SDDs referenciados. Entrada resumida: README em `backend/README.md`, [catálogo](./module-catalog.md) e [convenção MVC](../sdd/modules-mvc-convention-sdd.md).
 
 ## Visão do sistema
 
