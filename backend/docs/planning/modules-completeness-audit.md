@@ -10,14 +10,14 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (205 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (207 unitários + integração).
 
 ## Resumo executivo
 
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
 | `modules/bots` | Fundação + ranking + `PgBotCatalogStore` + `BotCatalogBackend` + HTTP catalog/persist/snapshot | `modules/bots/tests.rs`, `pg_catalog.rs`, `server.rs` | Runtime live, auth, promoção executor |
-| `modules/orders` | Seam fail-closed + HTTP 503 após risco | `modules/orders/tests.rs`, testes HTTP orders | Adapter exchange, idempotência, auth |
+| `modules/orders` | Seam fail-closed + HTTP 503 após risco; `ApiState::submit_order_http` | `modules/orders/tests.rs`, `server.rs`, `state.rs` | Adapter exchange, idempotência, auth |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hook monitor | `modules/agents/tests.rs`, rotas agents | Auth owner; `require_bound_agency` em rotas agents; cold-start hydrate PG |
 | `presentation/http` | OpenAPI ~30 paths, Scalar `/docs`, `HttpAdminAuth` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
 
@@ -61,7 +61,7 @@ Evidência (2026-09-27): **207** testes no binário `bot`, **5** ignorados (`per
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN`; opcional `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`; não substitui auth owner completo) |
 | Integração HTTP + camadas | OpenAPI 30 paths, `http_bridge`, [layer-mapping.md](../architecture/layer-mapping.md) | **Feito** |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 205 + clippy/fmt/import (2026-09-27) | **Feito** |
+| Build/testes verdes | 207 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -72,7 +72,7 @@ Evidência (2026-09-27): **207** testes no binário `bot`, **5** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 205 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 207 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Fechamento do goal (pendente)

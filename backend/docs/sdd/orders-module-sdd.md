@@ -42,7 +42,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_risk_rejected_returns_422`, `orders_submit_fail_closed_returns_503`, `orders_submit_requires_admin_bearer_when_enabled` em `presentation/http/server.rs`.
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_*` em `presentation/http/server.rs`; `submit_order_fail_closed_via_state_returns_execution_disabled` em `presentation/http/state.rs` (`ApiState::submit_order_http` + `FailClosedExecutor`).
 
 ## Rollback
 
