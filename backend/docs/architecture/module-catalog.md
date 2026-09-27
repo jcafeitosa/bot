@@ -60,7 +60,7 @@ flowchart LR
 | `modules` | `market` | candles, `HybridCandleFeed` | Validação, agregação 1m, feed híbrido. | Testes de feed e modelos. |
 | `modules` | `strategy` | SMA/EMA, `evaluate_for_kind` | Sinais sem efeitos colaterais. | Testes de períodos e sinais. |
 | `modules` | `risk` | `gate_signal` | Limites e modo. | Testes de capital e modo. |
-| `modules` | `portfolio` | snapshots paper | `paper_snapshot_with_fills` + `positions`; HTTP lê ledger in-process. | `controllers.rs`, `http_bridge/portfolio.rs`, `server.rs` (`orders_submit_paper_*` + `positions`). |
+| `modules` | `portfolio` | snapshots paper | `paper_snapshot_with_fills` + `positions`; HTTP lê ledger in-process. | `controllers.rs`, `http_bridge/portfolio.rs`, `http_integration_tests.rs` (`orders_submit_paper_*`, `portfolio_paper_snapshot_http_*`). |
 | `modules` | `backtest` | `run_sma_crossover`, CLI | Simulação e fixture sintética. | `tests/backtest_fixture.rs`. |
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |

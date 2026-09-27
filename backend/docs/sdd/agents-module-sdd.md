@@ -127,7 +127,7 @@ modules/agents/
 - Rotas `/api/v1/agents*`: `require_bound_agency` quando `BOT_HTTP_AGENCY_ID` está definido; mutações exigem bearer quando `BOT_HTTP_ADMIN_TOKEN` está definido ([SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
 - Mutations: `ApiState::persist_agent_after_mutation` (snapshot em memória, `persist_identity_rows` em PG quando conectado).
 - Boot: `presentation/http/server.rs` chama `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` quando o registry compartilhado está vazio (`apply_agent_identity_snapshot` não sobrescreve registry já populado — teste `http_bridge/agents.rs`).
-- Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `server.rs`).
+- Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `http_integration_tests.rs`).
 - `GET /api/v1/meta` → `http_seams` (bindings owner/agency booleanos; ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
 - `assert_runtime_promotion_authorized`: capability, lifecycle, `promotion_rejects_invalid_bot_id` (`bot_promotion.rs`).
 - Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **379** testes (**16** ignorados: PG×14, Neo4j, testnet manual); PG domínio **14/14** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.

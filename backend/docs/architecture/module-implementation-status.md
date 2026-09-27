@@ -9,10 +9,10 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-27 (PG agents/bots write-through + hydrate)  
+**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-full.sh` → **379** passed + **16** ignored, PG **14/14**).  
 **Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
-**Correção aplicada nesta verificação:** `InMemoryBotCatalogStore` deixou de ser `#[cfg(test)]` para compilar o seam HTTP de catálogo de bots (`presentation/http/state.rs`, `http_bridge/bots.rs`).  
-**Fatia pós-goal:** `0002_agents_bots_scaffold.sql` — schema PostgreSQL para agents/bots; espelho PG opcional (agents hydrate + write-through; bots `BotCatalogBackend`); seam HTTP admin (`BOT_HTTP_*`) + `require_bound_agency` em rotas agents. **Completude de produto** (orders live, runtime bots, auth owner): ver [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado**.
+**Fatia goal completude (HTTP):** `presentation/http/http_integration_tests.rs` — bearer admin, orders executors, portfolio paper, catálogo `monitor_registry` v2; smoke/meta/OpenAPI em `server.rs`. Baseline docs: linha `OK:` de `verify-backend-gates.sh`.  
+**Fatia PG:** agents/bots write-through + hydrate; orders `0004`/`0006`; boot `build_api_state_for_http_serve`. Seam HTTP admin (`BOT_HTTP_*`) — não substitui auth owner. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (auth owner + Critic AGENTS.md).
 
 ## Gates (G4)
 
