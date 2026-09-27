@@ -11,13 +11,13 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27. Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito.
+> Revisão: 2026-09-27 (atualização agents). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. O módulo `modules/agents` existe como **fundação IdentityOnly em memória**; Gate 1 (auth do owner, bootstrap, PostgreSQL) permanece pendente — ver [SDD agents](../sdd/agents-module-sdd.md).
 
 ## Resumo
 
 O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco, TUI, integrações públicas Binance, persistência básica opcional, logging e Jev consultivo. Os módulos abaixo ainda não existem como capacidade completa:
 
-1. Identidade persistente e administração de agentes.
+1. Identidade **persistente** e administração de agentes (registro em memória existe; persistência e API administrativa não).
 2. Autenticação do owner, autorização por agência e bootstrap seguro.
 3. Runtime de execução de agentes, worker, scheduler e recuperação.
 4. Gateway de ferramentas, permissões, aprovações e sandbox.
@@ -34,7 +34,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 
 | Capacidade prevista | Situação no código | Evidência | Próximo gate |
 |---|---|---|---|
-| Identidade de agentes `IdentityOnly` | Não existe módulo de identidade, schema ou API pública. | A pesquisa de agentes mantém Gate 1 bloqueado. Não há módulo correspondente em `src/`. | SDD de domínio, schema PostgreSQL, contrato público e autenticação. |
+| Identidade de agentes `IdentityOnly` | Módulo `modules/agents` em memória (registro, hierarquia, lifecycle, advisory Jev); sem schema PostgreSQL nem API HTTP admin. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, contrato HTTP admin e autenticação verificável do owner. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
 | Worker e scheduler | Não existe worker durável, agenda, heartbeat, lease ou retry de execução. | A pesquisa classifica rotinas e operação contínua como fase posterior. | SDD de execução durável, fila/outbox, recuperação e SLO. |
@@ -63,7 +63,7 @@ A primeira etapa descrita na pesquisa é `IdentityOnly`, com:
 
 ### O que existe
 
-Não há módulo `agents`, entidades de identidade, migração própria, repositório, serviço ou API. Os tipos de `domain.rs` são voltados a bot, estratégia, métricas e sinais do backend de trading; não implementam identidade administrativa de agentes.
+`modules/agents` implementa tipos de identidade (`AgentId`, `AgencyId`, papéis, supervisor), `AgentRegistry` em memória, transições de ciclo de vida, eventos de auditoria em memória e `run_advisory_step` via `core::providers::jev`. `MonitorAgentHook` permanece noop até integração futura com o supervisor. **Não há** migração PostgreSQL, repositório durável, API HTTP administrativa nem autenticação do owner. Os tipos de domínio de trading em `market`/`strategy` permanecem separados da identidade administrativa de agentes.
 
 ### Bloqueios
 
@@ -185,7 +185,7 @@ O logging atual não fecha a observabilidade necessária. Ainda precisam ser def
 2. Fechar C15 e confirmar o comportamento de backpressure do WS.
 3. Fechar C16/C17 e executar V18 em banco isolado.
 4. Definir observabilidade operacional e runbooks.
-5. Criar SDD de identidade `IdentityOnly`.
+5. Concluir revisão G1 do [SDD agents](../sdd/agents-module-sdd.md) e persistência PostgreSQL.
 6. Implementar autenticação, bootstrap e autorização do owner.
 7. Só então criar runtime, ferramentas, memória, canais e execução financeira em projetos separados.
 
@@ -208,6 +208,7 @@ Um módulo previsto só deve sair desta lista quando houver:
 - [Estado atual e planejamento](./current-state-and-roadmap.md)
 - [Plano de execução](./backend-work-plan.md)
 - [Pesquisa de capacidades de agentes](../research/agents-capability-research.md)
+- [SDD — módulo agents (IdentityOnly)](../sdd/agents-module-sdd.md)
 - [SDD T-10 — pausa e retomada](../sdd/monitor-pause-resume-sdd.md)
 - [SDD T-15 — persistência opcional](../sdd/monitor-persistence-policy-sdd.md)
 - [SDD T-05 — redirects REST](../sdd/rest-redirect-sdd.md)
