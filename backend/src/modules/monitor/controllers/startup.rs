@@ -1,27 +1,9 @@
 use std::future::Future;
 
-use thiserror::Error;
+use crate::core::database::MonitorBootstrapError;
+use crate::core::persistence::Database;
 
-use crate::core::database::DatabaseError;
-use crate::core::persistence::{Database, PersistenceError};
-
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum StartupError {
-    #[error("PERSIST_MARKET_DATA must be 0, 1, false, or true")]
-    InvalidFlag,
-    #[error("PERSIST_MARKET_DATA requires market.timeframe=1m")]
-    UnsupportedTimeframe,
-    #[error("DATABASE_URL is required when PERSIST_MARKET_DATA is enabled")]
-    MissingUrl,
-    #[error("DATABASE_URL is invalid")]
-    InvalidUrl,
-    #[error("DATABASE_URL must point to the dedicated trading_bot database")]
-    WrongDatabase,
-    #[error("PostgreSQL connection or health check failed")]
-    Connection,
-    #[error("PostgreSQL migration failed")]
-    Migration,
-}
+pub type StartupError = MonitorBootstrapError;
 
 pub trait MonitorStore: Sized {
     async fn migrate(&self) -> Result<(), StartupError>;
@@ -36,13 +18,7 @@ impl MonitorStore for Database {
 }
 
 pub fn persistence_required(value: Option<&str>) -> Result<bool, StartupError> {
-    match value {
-        None | Some("0") => Ok(false),
-        Some("1") => Ok(true),
-        Some(value) if value.eq_ignore_ascii_case("false") => Ok(false),
-        Some(value) if value.eq_ignore_ascii_case("true") => Ok(true),
-        Some(_) => Err(StartupError::InvalidFlag),
-    }
+    crate::core::database::monitor_bootstrap::persistence_required(value)
 }
 
 pub async fn bootstrap_monitor<T, FUrl, FConnect, Fut>(
@@ -73,13 +49,7 @@ where
 }
 
 pub async fn connect_database(url: String) -> Result<Database, StartupError> {
-    Database::connect_from_url(&url)
-        .await
-        .map_err(|error| match error {
-            PersistenceError::WrongDatabase => StartupError::WrongDatabase,
-            PersistenceError::InvalidUrl => StartupError::InvalidUrl,
-            _ => StartupError::Connection,
-        })
+    crate::core::database::connect_postgres_for_monitor(url).await
 }
 
 #[cfg(test)]
