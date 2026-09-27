@@ -85,7 +85,7 @@ O limite interno `run_evaluation_cycle` passa a produzir uma candidata canceláv
 
 **C15 — Envio WS sem bloqueio e documentação (Builder Backend; Critic Backend independente).** Teste red do produtor com canal capacidade 1 saturado: enviar segundo candle fechado retorna sem aguardar receiver e mantém capacidade limitada; canal fechado encerra envio; mensagens inválidas seguem ignoradas. Implementação mínima green; atualizar `backend/README.md` e logs do monitor para semântica de pausa/retomada e perda recuperável. O Critic verifica que `try_send` não converte `Full` em encerramento do WS. Cada CL executa `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings` e `cargo test`; teste integrado com servidor/clock falso verifica o caminho end-to-end sem Binance real.
 
-O teste do documento é comportamental, não código: o Crítico confronta cada regra acima com `app.rs`, `exchanges/live.rs`, `market_feed.rs` e `ui/mod.rs`, e a implementação só começa após aprovação G1 e dos seams pelo usuário. Nenhum resultado de teste de implementação é alegado aqui.
+Na revisão G1 original, o Crítico confrontou as regras de design com `app.rs`, `exchanges/live.rs`, `market_feed.rs` e `ui/mod.rs` antes de qualquer implementação. As evidências de implementação C14 foram acrescentadas após o acordo dos seams e constam acima; C15 ainda não foi executado.
 
 ## Riscos e rollout/rollback
 
