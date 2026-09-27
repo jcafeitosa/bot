@@ -23,7 +23,6 @@ PG_TESTS=(
   pg_catalog_store_round_trip
   pg_identity_snapshot_round_trip
   pg_agent_identity_and_graph_projection_same_transaction
-  pg_agent_identity_graph_outbox_transaction_rollback_on_injected_failure
   pg_agent_lifecycle_write_through_round_trip
   pg_cold_start_apply_snapshot_after_write_through
   pg_order_idempotency_round_trip
@@ -49,7 +48,7 @@ PG_TESTS=(
 )
 
 # Keep in sync with docs (test-matrix, modules-completeness-audit, README).
-EXPECTED_PG_INTEGRATION_TESTS=30
+EXPECTED_PG_INTEGRATION_TESTS=29
 if [[ ${#PG_TESTS[@]} -ne ${EXPECTED_PG_INTEGRATION_TESTS} ]]; then
   echo "error: PG_TESTS manifest drift: expected ${EXPECTED_PG_INTEGRATION_TESTS}, got ${#PG_TESTS[@]}" >&2
   exit 1

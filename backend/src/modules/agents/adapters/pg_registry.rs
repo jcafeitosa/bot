@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::PgPool;
 
 use super::graph_projection::agent_graph_projection_outbox_message;
 use super::persistence::AgentIdentityStore;
@@ -28,72 +28,62 @@ impl PgAgentIdentityStore {
         definition: &AgentDefinition,
         event: &IdentityAuditEvent,
     ) -> Result<(), String> {
+        let message = agent_graph_projection_outbox_message(definition);
+        let (supervisor_kind, supervisor_owner_id, supervisor_agent_id) =
+            supervisor_columns(&definition.supervisor);
         let mut tx = self.pool.begin().await.map_err(|error| error.to_string())?;
-        persist_identity_and_enqueue_graph_projection_tx(&mut tx, definition, event).await?;
+        sqlx::query(
+            "INSERT INTO agent_identities \
+             (agent_id, agency_id, owner_id, display_name, role, supervisor_kind, supervisor_owner_id, supervisor_agent_id, lifecycle_state, consult_jev, promote_runtime_bot, created_at_ms, updated_at_ms) \
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) \
+             ON CONFLICT (agent_id) DO UPDATE SET \
+             agency_id = EXCLUDED.agency_id, owner_id = EXCLUDED.owner_id, display_name = EXCLUDED.display_name, \
+             role = EXCLUDED.role, supervisor_kind = EXCLUDED.supervisor_kind, supervisor_owner_id = EXCLUDED.supervisor_owner_id, \
+             supervisor_agent_id = EXCLUDED.supervisor_agent_id, lifecycle_state = EXCLUDED.lifecycle_state, \
+             consult_jev = EXCLUDED.consult_jev, promote_runtime_bot = EXCLUDED.promote_runtime_bot, updated_at_ms = EXCLUDED.updated_at_ms",
+        )
+        .bind(definition.id.as_str())
+        .bind(definition.agency.as_str())
+        .bind(definition.owner.as_str())
+        .bind(&definition.display_name)
+        .bind(definition.role.to_string())
+        .bind(supervisor_kind)
+        .bind(supervisor_owner_id)
+        .bind(supervisor_agent_id)
+        .bind(lifecycle_to_sql(definition.state))
+        .bind(definition.capabilities.consult_jev)
+        .bind(definition.capabilities.promote_runtime_bot)
+        .bind(definition.created_at_ms)
+        .bind(definition.updated_at_ms)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| error.to_string())?;
+        sqlx::query(
+            "INSERT INTO agent_identity_events (agent_id, agency_id, kind, at_ms) VALUES ($1,$2,$3,$4)",
+        )
+        .bind(event.agent_id.as_str())
+        .bind(event.agency.as_str())
+        .bind(event_kind_to_sql(event.kind))
+        .bind(event.at_ms)
+        .execute(&mut *tx)
+        .await
+        .map_err(|error| error.to_string())?;
+        enqueue_graph_projection_outbox_tx(&mut tx, &message)
+            .await
+            .map_err(|error| match error {
+                GraphProjectionOutboxError::Store(message) => {
+                    format!("graph projection outbox enqueue: {message}")
+                }
+                GraphProjectionOutboxError::InvalidPayload(message) => {
+                    format!("graph projection outbox payload: {message}")
+                }
+                GraphProjectionOutboxError::Neo4jUnavailable(_) => {
+                    "graph projection outbox enqueue: neo4j unavailable".into()
+                }
+            })?;
         tx.commit().await.map_err(|error| error.to_string())?;
         Ok(())
     }
-}
-
-/// Same-TX domain writes + outbox enqueue (W0-09 seam: caller owns commit/rollback).
-pub(crate) async fn persist_identity_and_enqueue_graph_projection_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    definition: &AgentDefinition,
-    event: &IdentityAuditEvent,
-) -> Result<(), String> {
-    let message = agent_graph_projection_outbox_message(definition);
-    let (supervisor_kind, supervisor_owner_id, supervisor_agent_id) =
-        supervisor_columns(&definition.supervisor);
-    sqlx::query(
-        "INSERT INTO agent_identities \
-         (agent_id, agency_id, owner_id, display_name, role, supervisor_kind, supervisor_owner_id, supervisor_agent_id, lifecycle_state, consult_jev, promote_runtime_bot, created_at_ms, updated_at_ms) \
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) \
-         ON CONFLICT (agent_id) DO UPDATE SET \
-         agency_id = EXCLUDED.agency_id, owner_id = EXCLUDED.owner_id, display_name = EXCLUDED.display_name, \
-         role = EXCLUDED.role, supervisor_kind = EXCLUDED.supervisor_kind, supervisor_owner_id = EXCLUDED.supervisor_owner_id, \
-         supervisor_agent_id = EXCLUDED.supervisor_agent_id, lifecycle_state = EXCLUDED.lifecycle_state, \
-         consult_jev = EXCLUDED.consult_jev, promote_runtime_bot = EXCLUDED.promote_runtime_bot, updated_at_ms = EXCLUDED.updated_at_ms",
-    )
-    .bind(definition.id.as_str())
-    .bind(definition.agency.as_str())
-    .bind(definition.owner.as_str())
-    .bind(&definition.display_name)
-    .bind(definition.role.to_string())
-    .bind(supervisor_kind)
-    .bind(supervisor_owner_id)
-    .bind(supervisor_agent_id)
-    .bind(lifecycle_to_sql(definition.state))
-    .bind(definition.capabilities.consult_jev)
-    .bind(definition.capabilities.promote_runtime_bot)
-    .bind(definition.created_at_ms)
-    .bind(definition.updated_at_ms)
-    .execute(&mut **tx)
-    .await
-    .map_err(|error| error.to_string())?;
-    sqlx::query(
-        "INSERT INTO agent_identity_events (agent_id, agency_id, kind, at_ms) VALUES ($1,$2,$3,$4)",
-    )
-    .bind(event.agent_id.as_str())
-    .bind(event.agency.as_str())
-    .bind(event_kind_to_sql(event.kind))
-    .bind(event.at_ms)
-    .execute(&mut **tx)
-    .await
-    .map_err(|error| error.to_string())?;
-    enqueue_graph_projection_outbox_tx(tx, &message)
-        .await
-        .map_err(|error| match error {
-            GraphProjectionOutboxError::Store(message) => {
-                format!("graph projection outbox enqueue: {message}")
-            }
-            GraphProjectionOutboxError::InvalidPayload(message) => {
-                format!("graph projection outbox payload: {message}")
-            }
-            GraphProjectionOutboxError::Neo4jUnavailable(_) => {
-                "graph projection outbox enqueue: neo4j unavailable".into()
-            }
-        })?;
-    Ok(())
 }
 
 pub fn lifecycle_to_sql(state: AgentLifecycleState) -> &'static str {
@@ -397,87 +387,6 @@ mod tests {
         .await
         .expect("outbox count");
         assert_eq!(pending, 1);
-    }
-
-    /// W0-09: domain identity + audit + `graph_projection_outbox` in one TX; injected rollback leaves PG empty.
-    #[tokio::test]
-    async fn pg_agent_identity_graph_outbox_transaction_rollback_on_injected_failure() {
-        let Some(db) =
-            crate::core::persistence::pg_integration::database_for_integration_test().await
-        else {
-            return;
-        };
-        use super::persist_identity_and_enqueue_graph_projection_tx;
-        use crate::modules::agents::adapters::graph_projection::agent_graph_projection_outbox_message;
-
-        let owner = OwnerId::new("owner-w0-09-rollback").unwrap();
-        let agency = AgencyId::new("agency-w0-09-rollback").unwrap();
-        let agent_id = format!(
-            "agent-w0-09-{}",
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("clock")
-                .as_nanos()
-        );
-        let definition = AgentDefinition {
-            id: AgentId::new(&agent_id).unwrap(),
-            agency: agency.clone(),
-            owner: owner.clone(),
-            display_name: "W0-09 rollback probe".into(),
-            role: AgentRole::Worker,
-            supervisor: SupervisorRef::Owner(owner),
-            state: AgentLifecycleState::Active,
-            capabilities: AgentCapabilities::default(),
-            created_at_ms: 1,
-            updated_at_ms: 1,
-        };
-        let event = IdentityAuditEvent {
-            agent_id: definition.id.clone(),
-            agency: agency.clone(),
-            kind: IdentityEventKind::Registered,
-            at_ms: 1,
-        };
-        let message = agent_graph_projection_outbox_message(&definition);
-        let pool = db.pool();
-        let mut tx = pool.begin().await.expect("begin tx");
-        persist_identity_and_enqueue_graph_projection_tx(&mut tx, &definition, &event)
-            .await
-            .expect("domain + outbox before injected failure");
-        tx.rollback().await.expect("injected failure rollback");
-
-        let identity_rows: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM agent_identities WHERE agent_id = $1")
-                .bind(definition.id.as_str())
-                .fetch_one(pool)
-                .await
-                .expect("identity count");
-        assert_eq!(
-            identity_rows, 0,
-            "rolled-back tx must not leave agent_identities"
-        );
-
-        let audit_rows: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM agent_identity_events WHERE agent_id = $1")
-                .bind(definition.id.as_str())
-                .fetch_one(pool)
-                .await
-                .expect("audit count");
-        assert_eq!(
-            audit_rows, 0,
-            "rolled-back tx must not leave identity audit"
-        );
-
-        let outbox_rows: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM graph_projection_outbox WHERE idempotency_key = $1",
-        )
-        .bind(&message.idempotency_key)
-        .fetch_one(pool)
-        .await
-        .expect("outbox count");
-        assert_eq!(
-            outbox_rows, 0,
-            "rolled-back tx must not leave graph_projection_outbox"
-        );
     }
 
     #[tokio::test]

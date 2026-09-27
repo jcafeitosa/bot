@@ -96,4 +96,4 @@ O bootstrap do monitor está em `src/monitor_startup.rs`, chamado por `main.rs` 
 
 ### Evidência V18 (fatia 1 — rollback/idempotência candles)
 
-Addendum: [monitor-persistence-v18-sdd](./monitor-persistence-v18-sdd.md). Teste `pg_persist_dataset_transaction_rollback_and_idempotent_replay` (`core/persistence/v18_pg_tests.rs`); preflight `scripts/pg-v18-monitor-persistence-audit.sh` (host local + `trading_bot` apenas). W0-09 fatia agents rollback fechada (v18 SDD fatia 2); orders idempotência+outbox espelho pendente.
+Addendum: [monitor-persistence-v18-sdd](./monitor-persistence-v18-sdd.md). Teste `pg_persist_dataset_transaction_rollback_and_idempotent_replay` (`core/persistence/v18_pg_tests.rs`); preflight `scripts/pg-v18-monitor-persistence-audit.sh` (host local + `trading_bot` apenas). W0-09 amplo (falha injetada em TX domínio+outbox) permanece pendente.
