@@ -77,6 +77,25 @@ Validadas por `./scripts/check-import-direction.sh`:
 | `monitor` | Domain handle via infra | `monitor_snapshot` / `accept_monitor_command` quando `--with-monitor` |
 | `jev` + agents | Application bridge | `run_agent_advisory` (prepare + finish) |
 
+
+## ApiState — API HTTP (composition root)
+
+Métodos usados pelas rotas com estado ou config carregada no `serve`:
+
+| Método | Domínio |
+|--------|---------|
+| `require_http_admin` / `require_register_owner_id` / `require_bound_agency` | Auth seam |
+| `list_agents_in_agency`, `get_agent_in_agency`, `agents_audit_log` | Agents (leitura) |
+| `register_agent_and_persist`, `pause|resume|retire_agent_and_persist` | Agents (mutação + PG) |
+| `run_agent_advisory` | Agents + Jev |
+| `persist_agent_after_mutation` | Agents PG write-through |
+| `bot_catalog_for_config`, `persist_bot_catalog`, `bot_catalog_snapshot` | Bots |
+| `submit_order_http` | Orders (fail-closed) |
+| `monitor_snapshot`, `accept_monitor_command` | Monitor |
+| `active_config_snapshot`, `providers_status_snapshot` | Config / providers |
+
+Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking) chamam `http_bridge` diretamente com body/query.
+
 ## Lacunas conscientes
 
 - Runtime live de bots e execução exchange: ports existem; implementação live pendente.

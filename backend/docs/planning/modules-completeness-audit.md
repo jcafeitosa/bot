@@ -16,7 +16,7 @@ tags:
 
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
-| `modules/bots` | Fundação + ranking + `PgBotCatalogStore` + `BotCatalogBackend` + HTTP catalog/persist/snapshot | `modules/bots/tests.rs`, `pg_catalog.rs`, `server.rs` | Runtime live, auth, promoção executor |
+| `modules/bots` | Fundação + ranking + `PgBotCatalogStore` + `BotCatalogBackend` + HTTP catalog/persist/snapshot | `modules/bots/tests.rs`, `pg_catalog.rs`, `server.rs` | [Gate 2 runtime](../sdd/bots-runtime-live-gate2-sdd.md), auth owner |
 | `modules/orders` | Seam fail-closed + HTTP 503 após risco; `ApiState::submit_order_http` | `modules/orders/tests.rs`, `server.rs`, `state.rs` | Adapter exchange, idempotência, auth |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hook monitor | `modules/agents/tests.rs`, rotas agents | Auth owner; `require_bound_agency` em rotas agents; cold-start hydrate PG |
 | `presentation/http` | OpenAPI ~30 paths, Scalar `/docs`, `HttpAdminAuth` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
@@ -77,4 +77,4 @@ Evidência (2026-09-27): **208** testes no binário `bot`, **5** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Auth owner de produto (além de `BOT_HTTP_ADMIN_TOKEN`), adapter real de orders ([SDD orders G1](../sdd/orders-module-sdd.md) + [Gate 2 live draft](../sdd/orders-live-execution-gate2-sdd.md)), runtime bots live, revisão Critic AGENTS.md. PG scaffold: [Gate 1](../sdd/bots-catalog-persistence-gate1-sdd.md).
+Auth owner de produto (além de `BOT_HTTP_ADMIN_TOKEN`), adapter real de orders ([Gate 2 orders draft](../sdd/orders-live-execution-gate2-sdd.md)), runtime bots ([Gate 2 bots draft](../sdd/bots-runtime-live-gate2-sdd.md)), revisão Critic AGENTS.md. PG scaffold: [Gate 1](../sdd/bots-catalog-persistence-gate1-sdd.md).

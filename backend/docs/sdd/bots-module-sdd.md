@@ -70,5 +70,5 @@ modules/bots/
 ## 6. Pendências
 
 - Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
-- Runtime live, promoção executor e mapeamento formal executor versionado ↔ agentes autorizadores.
+- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): promoção executor e mapeamento formal executor versionado ↔ agentes autorizadores.
 - Auth owner verificável no transporte (fora do seam `BOT_HTTP_*`).
