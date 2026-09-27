@@ -31,6 +31,15 @@ pub enum Neo4jError {
 }
 
 impl Neo4jGraph {
+    pub(crate) fn inner_graph(&self) -> &Graph {
+        self.graph.as_ref()
+    }
+
+    pub(crate) async fn run_write(&self, q: neo4rs::Query) -> Result<(), Neo4jError> {
+        self.inner_graph().run(q).await?;
+        Ok(())
+    }
+
     pub async fn connect(config: &Neo4jConnectionConfig) -> Result<Self, Neo4jError> {
         let graph = Graph::new(
             config.uri.as_str(),
@@ -50,6 +59,37 @@ impl Neo4jGraph {
         } else {
             Err(Neo4jError::Probe("ping returned no row".into()))
         }
+    }
+
+    /// Test-only helper for F1 supervision chain assertions (modules integration tests).
+    #[cfg(test)]
+    pub async fn count_agent_supervision_paths(
+        &self,
+        agency_id: &str,
+        from_agent_id: &str,
+        to_agent_id: &str,
+    ) -> Result<i64, Neo4jError> {
+        let mut rows = self
+            .inner_graph()
+            .execute(
+                query(
+                    "MATCH (ceo:Agent {agent_id: $ceo_id, agency_id: $agency_id}) \
+                     MATCH (worker:Agent {agent_id: $worker_id, agency_id: $agency_id}) \
+                     MATCH (ceo)-[:SUPERVISES*]->(worker) RETURN count(worker) AS chains",
+                )
+                .param("ceo_id", from_agent_id)
+                .param("worker_id", to_agent_id)
+                .param("agency_id", agency_id),
+            )
+            .await?;
+        let row = rows
+            .next()
+            .await?
+            .ok_or_else(|| Neo4jError::Probe("supervision count returned no row".into()))?;
+        let chains: i64 = row
+            .get("chains")
+            .map_err(|error| Neo4jError::Probe(error.to_string()))?;
+        Ok(chains)
     }
 
     #[allow(dead_code)]
@@ -72,7 +112,7 @@ impl Neo4jGraph {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use crate::core::database::config::load_agents_stack_from_env;
+    use crate::core::database::load_agents_stack_from_env;
 
     #[tokio::test]
     async fn ping_and_node_count_against_local_graph() {

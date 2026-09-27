@@ -834,6 +834,11 @@ impl ApiState {
             .await
             .map_err(ApiError::from_agents_error)?;
         }
+        crate::modules::agents::adapters::graph_projection::best_effort_project_agent_definition(
+            self.inner.databases.neo4j(),
+            &snapshot.0,
+        )
+        .await;
         Ok(())
     }
 }

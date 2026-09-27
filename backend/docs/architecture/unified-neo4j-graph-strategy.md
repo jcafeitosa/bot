@@ -316,7 +316,7 @@ flowchart TB
 
 ## 14. Próximo passo implementável (fatia vertical recomendada)
 
-**F1 — espelho de hierarquia de agentes (write-only, best-effort):**
+**F1 — espelho de hierarquia de agentes (write-only, best-effort)** — *implemented (F1)*; ver [agents-neo4j-projection-sdd](../sdd/agents-neo4j-projection-sdd.md):
 
 1. SDD curto `agents-neo4j-projection-sdd.md` (proporcional) com Cypher MERGE e idempotência.
 2. Adapter `modules/agents/adapters/graph_projection.rs` chamado de `persist_agent_after_mutation` / hydrate (após PG OK).

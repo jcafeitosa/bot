@@ -1,3 +1,4 @@
+pub mod graph_projection;
 pub mod jev;
 pub mod persistence;
 pub mod pg_registry;
