@@ -101,7 +101,7 @@ Para uma rota protegida representativa e para cada classe/lista aprovada: sem en
 
 ## W0-01 — fail-closed de verdade (Onda 0, proposta para G1) [SEGURANÇA]
 
-- **Estado desta seção: `draft`** (G1, ciclo 3 do Builder, depois do Critic G1 ciclo 2 = REPROVADO). É o último ciclo antes de escalar ao owner. Vale só para esta seção: o `status: partial` do front-matter continua descrevendo as seções "Gate 1" em diante, que documentam o código atual. Nenhum gate aprovado. Precisa de Critic independente e de acordo do Julio sobre os seams antes do primeiro teste (AGENTS.md, G1/G3).
+- **Estado desta seção: pronta para revisão independente G1; G1 ainda não aprovado.** As decisões do owner foram registradas em 2026-09-27; Critic independente deve revisar o design atualizado antes de qualquer implementação ou teste. Vale só para esta seção: o `status: partial` do front-matter descreve as seções "Gate 1" em diante, que documentam o código atual.
 - **Plano:** W0-01, prioridade 1, em [master-plan](../planning/master-plan.md) §4.1.
 - **Fonte dos critérios de segurança:** [F-ADM-01](../security/admin-http-auth-fail-open.md) §4 (SEC-ADM-01…15). Na versão atual do TM, SEC-ADM-01…11, 13 e 15 são F1, SEC-ADM-12 é FU e SEC-ADM-14 é P1.
 - **Leitura importante:** as seções abaixo desta ("Gate 1", "Comportamento") descrevem o código **atual**, que é fail-open sem token. Esta seção descreve o alvo. Quando W0-01 for implementado, a tabela "Comportamento" e o título mudam junto (SEC-ADM-13).
@@ -128,7 +128,7 @@ Entre `b8370a75` e `d42b71a5`, `backend/src` mudou só em `core/database/postgre
 - **OpenAPI sem esquema de segurança (F-01-5):** `rg 'security|bearer|SecurityScheme|modifiers' presentation/http/openapi.rs` só acha a descrição textual da linha 171. Nenhuma rota declara `security`.
 - Contradições ainda abertas no código: `admin_auth.rs:1` diz "Optional fail-closed"; `disabled_fail_closed()` monta auth aberta. `cli-and-config.md:138` e o título deste SDD já dizem "ausente ou vazio = nenhuma autenticação".
 
-> **Nota de precedência (2026-09-27):** a decisão do owner acima substitui os textos antigos abaixo que dizem que `serve` falha sem token. A2–A6, a tabela de inventário, as classes e os critérios F1–F10 foram preservados como material de design anterior para revisão; são propostas, não decisões do owner. Onde contradizem o contrato acima (especialmente startup obrigatório, classe global/deny-by-default, classificação por tipo de resposta, opt-out dev e escopo exato das rotas), não são normativos e precisam ser reconciliados após acordo dos seams. A tabela abaixo é inventário observado no HEAD citado, não uma classificação aprovada. O frontmatter `w0_01_status: draft` permanece inalterado; G1 não está aprovado.
+> **Nota de precedência (2026-09-27):** a decisão do owner acima substitui os textos antigos abaixo que exigem token no startup ou classificam rotas de forma diferente. A lista método+path de cima é a classificação aprovada; a tabela A2.2 é inventário histórico cujo rótulo de classe não prevalece quando divergir dela. A2–A6 e F1–F10 continuam como detalhes de design e validação propostos para revisão, mas não são decisões do owner sobre middleware, tabela central, guard, Host, limitador ou OpenAPI. Os critérios antigos de startup recusado e rota desconhecida 401 estão supersedidos por listener ativo e 503 para auth ausente/fraca, e 404 para rota sem classe. O documento está pronto para revisão independente de G1; G1 não está aprovado.
 
 ### A1 — escopo obrigatório e follow-ups
 
@@ -299,26 +299,18 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
 - **Decisão:** um contador **global** em janela fixa, que conta **só** 401 da layer em rotas **`Protected` com `MatchedPath` encontrado na tabela**. Rota inexistente (sem `MatchedPath`) e par fora da tabela também recebem 401, mas **não** incrementam o contador, para que varredura de paths não infle o limitador. Acima de N falhas na janela, as respostas de falha passam a **429** com header `Retry-After` (segundos até o fim da janela). O servidor **nunca** dorme nem atrasa a resposta. Uma requisição com token válido (comparação em tempo constante, SEC-ADM-06) nunca é bloqueada nem atrasada: a layer compara o token primeiro e só consulta o limitador quando a comparação falha. Rotas `PublicRead`/`PublicCompute` não passam pelo limitador. Log de 429 agregado por janela (um evento com o contador), sem token. Sem chave por IP e sem `X-Forwarded-For`/`trusted_proxies` nesta fatia.
 - **N por janela:** decisão do owner **D-SEC-ADM-RATE** (TM); proposta padrão 20 falhas por minuto, configurável em `core/config`; não bloqueia G1.
 
-### Seams públicos (a acordar com o owner antes do TDD)
+### Seams públicos — contratos de comportamento fechados pelo owner
 
-| Seam | Proposta |
+A decisão do owner fecha os seis seams públicos de comportamento listados no início desta seção: configuração token ausente/fraco, verificação Bearer, classificação da lista existente, comportamento para rota não classificada, respostas HTTP e ausência de token nas rotas públicas. O design interno do middleware/router, Host, rate limit e anotação OpenAPI permanece recomendação técnica sujeita à revisão G1; não altera estes contratos.
+
+| Seam | Contrato aprovado / proposta interna para revisão |
 |---|---|
-| Opt-out de dev | **removido** (recomendado) ou `BOT_HTTP_ADMIN_AUTH_DISABLED_DEV` + loopback + Host allowlist + heurística F11 (alternativa); decisão do owner; bloqueia G3, não G1 |
-| Erros de boot | `admin_auth_not_configured`, `admin_auth_token_weak`, `http_allowed_hosts_required` (+ `admin_auth_dev_optout_requires_loopback` só na alternativa); exit ≠ 0; sem ecoar valores |
-| Ponto da decisão | braço `Serve` de `main.rs`, logo após `Config::load`; função pura em `core/config` que devolve `Enforced` |
-| `Enforced` | token não opcional; desce por parâmetro até `HttpApiSeams::for_serve`; sem releitura de env; construtores de auth aberta só em `#[cfg(test)]` |
-| Classes de rota | `Protected`, `PublicRead`, `PublicCompute`, `Org` (reservada: bearer P1, 503 `owner_auth_required` sem P1, sem fallback entre bearers) |
-| Tabela de rotas | tipo com método, path, handler, classe; único módulo que registra rota; fonte do router, da layer e dos testes |
-| Montagem | `apply_layers(router, state)` (sem rotas) + `build_router(state) = apply_layers(table::router(), state)` |
-| Layer de auth | `Router::layer` em `apply_layers`, lookup por `MatchedPath` + método, HEAD→GET; isenta só `PublicRead`/`PublicCompute`; evento `route_not_in_table` |
-| Fallback | 404 com código `route_not_found` (A2.3) |
-| Layer de `Host` | primeira layer; host efetivo `Host` ou authority; **421** `host_not_allowed`; `[http] allowed_hosts` + `BOT_HTTP_ALLOWED_HOSTS` |
-| Limitador | global, janela fixa, conta só 401 em `Protected` casadas; **429** + `Retry-After`; nunca dorme; N = D-SEC-ADM-RATE (padrão proposto 20/min) |
-| Allowlist `PublicCompute` | constante literal com os 6 POSTs do inventário (#28-30, 32, 37, 41) |
-| OpenAPI | esquema `admin_bearer` (http bearer) e `security` por rota `Protected` |
-| `GET /meta` | sem campo novo (recomendado); `http_admin_auth_mode` só na alternativa |
-| Comparação | digest SHA-256 dos dois lados + comparação em tempo constante (crates `sha2`/`subtle` já no `Cargo.lock` como transitivas; torná-las diretas precisa de acordo) |
-| Helper de teste | `test_request(method, uri)` com `Host: localhost` |
+| Configuração e opt-out | Não há opt-out para tornar protegidas públicas. Token ausente, vazio, fraco (menos de 32 bytes aleatórios) ou com espaços significa auth indisponível; `serve` continua ativo. |
+| Respostas da auth | 503 `admin_auth_not_configured` para auth indisponível; 401 `unauthorized` para bearer ausente/incorreto com token configurado; sem ecoar token. |
+| Ponto de leitura | Proposta: ler/validar env uma vez ao construir estado de auth para evitar TOCTOU; nunca falhar o startup por ausência/token fraco. |
+| Classes de rota | Lista método+path aprovada na seção “Classificação aprovada das rotas existentes”: mutações e leituras sensíveis protegidas; health/docs/leitura e seis cálculos públicos. |
+| Rota não classificada | 404 `route_not_found` antes de executar handler; sem herança pública ou auth por omissão. |
+| Composição router | Proposta de G1: camada de classificação aplicada antes dos handlers, incluindo endpoints de sistema/docs; nome de funções e estrutura do registro ficam para Critic revisar. |
 
 ### Critérios de aceite W0-01 (rascunho a reconciliar com a decisão do owner)
 
