@@ -72,7 +72,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 |---|---|---|
 | `agents` | Domain (registry) + infra (PG write-through) | `register_*` / `pause|resume|retire_*_and_persist`, `run_agent_advisory`; `shared_agent_registry` + `BOT_AGENCY` |
 | `bot_catalog` | Infra (`BotCatalogBackend`) | `persist_bot_catalog` / `bot_catalog_snapshot`; write-through no boot HTTP quando PG; memória ou PG |
-| `order_executor` | Presentation seam (`HttpOrderExecutor`) | `BOT_ORDERS_EXECUTION`: `disabled`, `dev_accept`, `paper` → `PaperLedgerExecutor`, `live_exchange` → `ReservedLiveExchangeExecutor` (**503** `live_exchange_not_wired`); `for_http_server` lê env |
+| `order_executor` | Presentation seam (`HttpOrderExecutor`) | `BOT_ORDERS_EXECUTION`: `disabled`, `dev_accept`, `paper` → `PaperLedgerExecutor`; `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → `ExchangeSpotExecutor` (`live_exchange_wired`); sem backend → `ReservedLiveExchangeExecutor` (**503** `live_exchange_not_wired`); `for_http_server` lê env |
 | `bot_runtime` | Infra/presentation seam (`BotRuntimePort`) | `shared_bot_runtime()` + `BOT_RUNTIME_ENABLED`; HTTP `/bots/runtime/*` (`assert_bot_promotion_allowed`: catálogo + mercado do config); monitor snapshot + `enrich_monitor_snapshot_from_shared_runtime` |
 | `http_admin_auth` | Presentation seam | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` |
 | `databases` | Infra | Postgres + Neo4j opcional para `/readyz` |
@@ -112,7 +112,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking) chamam 
 cargo test --locked --bin bot
 ```
 
-Evidência: **317** testes no bin `bot`, **6** ignorados (PG/Neo4j).
+Evidência: **319** testes no bin `bot`, **6** ignorados (PG/Neo4j).
 
 ## Documentos relacionados
 

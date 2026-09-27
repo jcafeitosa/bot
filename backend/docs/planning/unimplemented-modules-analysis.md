@@ -24,7 +24,7 @@ O backend atual implementa monitor de mercado, backtest, estratégia SMA, risco,
 5. Gateway de ferramentas, permissões, aprovações e sandbox.
 6. Memória de conhecimento, memória entre sessões e grafo.
 7. Canais de conversa, voz, aplicações e interface externa.
-8. Execução financeira live, saldos privados e ambiente de produção (seam `modules/orders` + `POST /api/v1/orders/submit` validam risco e falham fechado com 503; adapter exchange real ausente).
+8. Execução financeira live, saldos privados e ambiente de produção (seam `modules/orders` + HTTP submit com paper/recording wired; REST testnet/prod ausente).
 9. Observabilidade operacional completa.
 10. Estado de persistência e recuperação do monitor conforme C17.
 11. Round-trip PostgreSQL operacional conforme V18.
@@ -37,7 +37,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 |---|---|---|---|
 | Identidade de agentes `IdentityOnly` | Módulo `modules/agents` + rotas HTTP v1; `shared_agent_registry`; write-through PG (`PgAgentIdentityStore`) e cold-start hydrate em `serve`; **sem auth owner**. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, persistência e autenticação verificável do owner. |
 | Módulo `bots` (executores versionados) | **Fundação + seam runtime** — catálogo/PG via `MonitorStrategyRegistry` (`build_catalog_from_monitor_registry`), `BotRuntimePort`, HTTP `/bots/runtime/*`, snapshot com promoção; supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência feito; [Gate 2 runtime](../sdd/bots-runtime-live-gate2-sdd.md) parcial (SMA/EMA monitor + backtest); auth owner e promoção live completa. |
-| Seam `orders` (fail-closed) | `OrderExecutionPort` + `RecordingExecutor` (fake Gate 2); `http_bridge/orders`; POST/GET execution-status; `meta` + idempotência PG (`0004`). | [SDD orders](../sdd/orders-module-sdd.md), [Gate 2](../sdd/orders-live-execution-gate2-sdd.md). | Adapter exchange real e reconciliação — somente após gates de segurança. |
+| Seam `orders` (fail-closed + G2 parcial) | `PaperLedgerExecutor`, `ExchangeSpotExecutor` (recording), `RecordingExecutor`; HTTP submit/status/meta; idempotência PG (`0004`). | [SDD orders](../sdd/orders-module-sdd.md), [Gate 2](../sdd/orders-live-execution-gate2-sdd.md). | REST testnet Spot (ccxt) + reconciliação — após threat model e gates de segurança. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
 | Worker e scheduler | Não existe worker durável, agenda, heartbeat, lease ou retry de execução. | A pesquisa classifica rotinas e operação contínua como fase posterior. | SDD de execução durável, fila/outbox, recuperação e SLO. |
