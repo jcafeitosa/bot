@@ -46,7 +46,7 @@ flowchart LR
 ## Gaps
 
 - `exchanges` credenciais testnet em testes (`credentials_env`)
-- Admin `provider_credentials` HTTP 501 fail-closed
+- Admin `provider_credentials` HTTP CRUD (PG + admin bearer; criptografia em repouso ainda follow-up)
 - Neo4j opcional no bootstrap HTTP
 
 ## Validação

@@ -42,7 +42,7 @@ Drain com Neo4j down: `ping` falha → linhas permanecem `pending`/`retry`. MERG
 
 ## 5. Validação
 
-`./scripts/verify-backend-gates.sh` (baseline **441** bin `bot`); `./scripts/run-pg-integration-tests.sh` inclui `pg_graph_projection_outbox_*`; worker + health cobertos por testes em `graph_projection_outbox_worker.rs` e `routes/health.rs`.
+`./scripts/verify-backend-gates.sh` (baseline **450** bin `bot`); `./scripts/run-pg-integration-tests.sh` inclui `pg_graph_projection_outbox_*`; worker + health cobertos por testes em `graph_projection_outbox_worker.rs` e `routes/health.rs`.
 
 ## 6. F2.1.2 (*implemented*)
 
@@ -52,4 +52,12 @@ Drain com Neo4j down: `ping` falha → linhas permanecem `pending`/`retry`. MERG
 | Config | `neo4j.graph_projection_outbox_drain_secs` em `system.toml` (default 30; `0` desliga); env `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS`, batch `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_BATCH`. |
 | Health | `/healthz` inclui `graph_projection_outbox` (pending/retry/idade) e `status: degraded` com backlog; `/readyz` inalterado (fail-closed só em PG/Neo4j down). |
 
-**Pendente F2.1.3+:** CLI operacional manual drain; enqueue na mesma TX quando o seam de domínio permitir.
+## 7. F2.1.3 (*partial* — CLI drain)
+
+| Seam | Comportamento |
+|------|----------------|
+| `bot graph-projection drain --limit N` | Conecta PG (`DATABASE_URL` → `trading_bot`, migrações) + Neo4j agents stack; chama `drain_graph_projection_outbox`. Fail-closed com mensagem clara se PG ou Neo4j ausentes/indisponíveis. Imprime JSON `{ processed, succeeded, failed }`. Default `--limit` = batch worker (`graph_projection_outbox_drain_batch`, 32). |
+
+Implementação: `core/database/graph_projection_cli.rs`; testes `graph_projection_cli_*`.
+
+**Pendente F2.1.3+:** enqueue na mesma TX quando o seam de domínio permitir.

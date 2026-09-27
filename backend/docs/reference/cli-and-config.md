@@ -18,6 +18,7 @@ O binário tem dois caminhos principais:
 | Monitor | Executado sem subcomando; inicia a TUI e o fluxo de mercado configurado. |
 | Backtest | `cargo run -- backtest --config <arquivo>`; gera candles sintéticos e imprime um resumo JSON. |
 | HTTP API | `cargo run -- --config src/core/config/bot.toml serve --bind 127.0.0.1:8080`; OpenAPI em `/openapi.json`, UI Scalar em `/docs`. |
+| Graph projection drain | `cargo run -- graph-projection drain --limit 32` — requer `DATABASE_URL` + `BOT_AGENTS_ENABLED` + Neo4j; ver [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md) F2.1.3. |
 
 Exemplo do monitor:
 
@@ -172,7 +173,7 @@ Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live
 
 ```sh
 cd backend
-./scripts/verify-backend-gates.sh          # → 441 passed, 0 ignored (bin bot)
+./scripts/verify-backend-gates.sh          # → 447 passed, 0 ignored (bin bot)
 ./scripts/verify-backend-full.sh         # gates + PG 21/21 quando DATABASE_URL → trading_bot
 ```
 

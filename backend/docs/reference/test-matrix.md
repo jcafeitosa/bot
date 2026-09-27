@@ -81,7 +81,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**21/21** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **441** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **447** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -104,9 +104,11 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `pg_order_reconciliation_round_trip` | `modules/orders/adapters/pg_reconciliation.rs` | idem |
 | `pg_hydrate_order_reconciliation_from_pg_after_durable_write` | `presentation/http/state.rs` | boot `serve`: `hydrate_order_reconciliation_from_pg` após linhas só em PG |
 | `pg_order_reconciliation_lookup_reads_pg_when_memory_empty` | `presentation/http/state.rs` | `GET /orders/reconciliation/{id}` fallback PG sem hydrate |
-| `pg_http_boot_sequence_mirrors_serve_wiring` | `presentation/http/state.rs` | cold-start agents + `for_http_server` + hydrate orders/catálogo (espelha `server::run`) |
+| `pg_http_boot_sequence_mirrors_serve_wiring` | `presentation/http/state.rs` | cold-start + `build_api_state_for_http_serve`; carrega owner bootstrap PG (`product_owner_bootstrap_active`) |
 | `loads_credentials_from_postgres` | `core/providers/credentials/pg_integration.rs` | `run-pg-integration-tests.sh` (migração `0007`) |
 | `pg_graph_projection_outbox_enqueue_and_drain_mock` | `core/database/graph_projection_outbox.rs` | F2.1 outbox enqueue + drain mock port |
+| `graph_projection_cli_parses_drain_with_limit` | `graph_projection_cli.rs` | F2.1.3 CLI parse |
+| `graph_projection_drain_maps_neo4j_unavailable_fail_closed` | `graph_projection_cli.rs` | F2.1.3 mensagem fail-closed Neo4j |
 | `degraded_when_pending_or_retry_positive` | `graph_projection_outbox_worker.rs` | F2.1.2 health degraded signal |
 | `pg_graph_projection_outbox_drain_marks_retry_on_port_failure` | `core/database/graph_projection_outbox.rs` | F2.1 drain → `retry` quando port falha |
 | `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed` | `modules/agents/adapters/pg_owner_bootstrap.rs` | migração `0010`; idempotência + conflito fail-closed |
@@ -134,7 +136,7 @@ Conclusão documentada: G2 **não** exige que todo teste HTTP use runtime partil
 
 ## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
 
-Testes abaixo em `presentation/http/http_integration_tests.rs` (**45** passed com `cargo test --bin bot http_integration -- --test-threads=1`; salvo rotas OpenAPI/meta ainda em `server.rs`).
+Testes abaixo em `presentation/http/http_integration_tests.rs` (**47** passed com `cargo test --bin bot http_integration -- --test-threads=1`; salvo rotas OpenAPI/meta ainda em `server.rs`).
 
 | Rota | 401 sem Bearer | 2xx com Bearer (quando aplicável) |
 |------|----------------|-----------------------------------|
@@ -159,12 +161,23 @@ Fatia G1: [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sd
 |---------------|-------------------------------------------|
 | `POST /api/v1/agents` com `owner_id` ≠ owner verificado → **403** `owner_mismatch` | `agents_register_rejects_owner_mismatch_when_product_owner_verified` |
 | `POST /api/v1/bots/runtime/promote` com `promoted_by` ≠ owner verificado → **403** | `bots_runtime_promote_rejects_promoted_by_mismatch_when_product_owner_verified` |
-| `GET /meta` → `product_owner_bootstrap_active` | `meta_includes_http_seams_snapshot` (campo booleano) |
+| `GET /meta` → `product_owner_bootstrap_active` false/true | `meta_reports_product_owner_bootstrap_active_when_verified` |
 
 Não substitui IdP; combina com seam `BOT_HTTP_OWNER_ID` quando admin bearer ativo.
 
 Seam admin bearer (sem IdP); ver [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md).
 
+
+
+## Admin provider credentials (HTTP)
+
+[provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md). Incluídos nos **47** testes `http_integration`.
+
+| Comportamento | Teste |
+|---------------|-------|
+| GET sem PG → **503** `provider_credentials_store_unavailable` | `provider_credentials_admin_list_returns_503_without_postgres` |
+| POST upsert + GET lista → `secret_masked` sem secret em claro | `provider_credentials_admin_upsert_list_masked_never_returns_raw_secret` (requer `DATABASE_URL`) |
+| GET sem bearer quando admin token ativo → **401** | `provider_credentials_admin_list_requires_admin_bearer_when_enabled` |
 
 ## Lacunas explícitas
 
