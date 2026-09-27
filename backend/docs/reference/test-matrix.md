@@ -65,20 +65,16 @@ tags:
 
 ```text
 cargo fmt --check
-cargo clippy --locked --all-targets -- -D warnings
+cargo clippy --locked --bin bot -- -D warnings
 ./scripts/check-import-direction.sh
+cargo test --locked --bin bot -- --test-threads=1
+cargo test --locked
 ./scripts/verify-backend-gates.sh
+```
 
 O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
 
-cargo check --locked --all-targets
-exit 0; sem warnings
-
-cargo test --locked
-387 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
-1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
-10 testes ignorados (PG×8, Neo4j, testnet ccxt manual; ver `#[ignore]` no código)
-```
+Evidência típica (atualizar após mudanças de teste): **387** aprovados no bin `bot`, **10** ignorados; workspace integration (redirect-policy, etc.) além do bin; PG **8/8** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`.
 
 Bin `bot`: **387** aprovados, **10** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 

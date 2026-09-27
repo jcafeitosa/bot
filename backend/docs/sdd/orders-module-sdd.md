@@ -26,7 +26,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Não-objetivos
 
-- Execução live, reconciliação ou produção (idempotência HTTP parcial: memória + PG opcional; não substitui reconciliação com exchange).
+- Execução **prod** REST ou trading live fora dos seams documentados (`authorize_rest_use` bloqueado). Reconciliação G2 (memória/PG + poll HTTP + observe testnet) está em [Gate 2](./orders-live-execution-gate2-sdd.md), não nesta lista.
 - HTTP que simule sucesso de envio à exchange real (default **503** `execution_disabled`; opt-in local `BOT_ORDERS_EXECUTION=dev_accept` usa double `AcceptingExecutor`, não rede). Bearer admin quando `BOT_HTTP_ADMIN_TOKEN` — ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md).
 - Remover gates `authorize_rest_use` ou habilitar trading live.
 - Duplicar política de risco fora de `modules/risk`.
@@ -51,7 +51,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **387** testes bin `bot` (incl. reconciliação poll, `live_query_*`, supervisor `record_monitor_spot_submit_reconciliation`).
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; DTO/submit em `http_bridge/orders.rs` ([catálogo §3c](../architecture/module-catalog.md#3c-módulo-orders-srcmodulesorders)); `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **387** testes bin `bot` (incl. reconciliação poll, `live_query_*`, supervisor `record_monitor_spot_submit_reconciliation`). PG: `pg_order_*` em [test-matrix](../reference/test-matrix.md#testes-ignore-no-bin-bot-10).
 
 ## Rollback
 
