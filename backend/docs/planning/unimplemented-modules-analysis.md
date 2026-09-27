@@ -66,7 +66,7 @@ A primeira etapa descrita na pesquisa é `IdentityOnly`, com:
 
 ### O que existe
 
-`modules/agents` implementa tipos de identidade (`AgentId`, `AgencyId`, papéis, supervisor), `AgentRegistry` em memória, transições de ciclo de vida, eventos de auditoria em memória e `run_advisory_step` via `core::providers::jev`. `RegistryMonitorAgentHook` integra ao monitor quando `BOT_AGENCY` está definido e compartilha `shared_agent_registry` com a API no mesmo processo. **Não há** migração PostgreSQL, repositório durável, autenticação do owner no transporte (HTTP de registro existe sem auth). Os tipos de domínio de trading em `market`/`strategy` permanecem separados da identidade administrativa de agentes.
+`modules/agents` implementa tipos de identidade (`AgentId`, `AgencyId`, papéis, supervisor), `AgentRegistry` em memória, transições de ciclo de vida, eventos de auditoria em memória e `run_advisory_step` via `core::providers::jev`. `RegistryMonitorAgentHook` integra ao monitor quando `BOT_AGENCY` está definido e compartilha `shared_agent_registry` com a API no mesmo processo. Há espelhamento PostgreSQL opcional e bearer admin opcional (`BOT_HTTP_ADMIN_TOKEN`); **não há** autenticação verificável do owner nem bootstrap seguro. Os tipos de domínio de trading em `market`/`strategy` permanecem separados da identidade administrativa de agentes.
 
 ### Bloqueios
 
