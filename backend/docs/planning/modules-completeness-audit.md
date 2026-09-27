@@ -61,7 +61,7 @@ Evidência (2026-09-27): **334** testes no binário `bot`, **7** ignorados (`per
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor + backtest `evaluate_for_kind` (SMA/EMA) | **Parcial** (sem orders live; auth owner) |
 | Completude orders | `submit_order`, `PaperLedgerExecutor`, `exchange_order_gate`, `spot_order_submit` (`recording` + testnet ccxt buy/sell), `ExchangeSpotExecutor`, execution-status, idempotência | **Parcial** (prod/reconciliação; threat model; Critic) |
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
-| Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `config/active` + catálogo com `evaluator`/`monitor_evaluator`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` snapshot; PG hydrate | **Parcial** (auth owner, exchange REST real) |
+| Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` (`paper_fill_unit_price`); testnet ccxt opt-in; PG hydrate | **Parcial** (auth owner; reconciliação; prod) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
 | Build/testes verdes | **334** + clippy/fmt/import; PG 5/5 opcional (`verify-backend-full.sh`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |

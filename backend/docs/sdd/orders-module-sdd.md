@@ -10,7 +10,7 @@ status: draft
 
 # SDD — Módulo `modules/orders`
 
-- **Estado:** implementado (fundação G1 + G2 parcial) — `submit_order`, `FailClosedExecutor`, `HttpOrderExecutor` (default fail-closed; `dev_accept` double local); `client_order_id` com `OrderIdempotencyStore` / memória + `PgOrderIdempotencyStore` opcional em `ApiState::submit_order_http` (migração `0004_order_idempotency_keys.sql`); sem exchange live.
+- **Estado:** implementado (fundação G1 + G2 parcial) — `submit_order`, `PaperLedgerExecutor`, `HttpOrderExecutor` (`paper`/`recording`/`testnet`+credenciais); `client_order_id` memória + PG (`0004`); testnet ccxt buy/sell via `binance_spot_testnet_submit`; prod/reconciliação ausentes.
 - **Referências:** [Catálogo de módulos](../architecture/module-catalog.md), `modules/exchanges/rest` (`ExecutionDisabled`), `modules/risk` (`OrderIntent`). Gate 2: [execução live](./orders-live-execution-gate2-sdd.md) (parcial — checklist de fechamento na seção **Critérios de fechamento G2**; exchange pendente).
 
 ## Contexto
