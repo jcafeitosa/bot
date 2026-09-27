@@ -93,16 +93,17 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `persist_agent_after_mutation` | Agents PG write-through |
 | `bot_catalog_for_config`, `persist_bot_catalog`, `bot_catalog_snapshot` | Bots |
 | `bot_runtime_status`, `promote_bot_http`, `demote_bot_http` | Bots runtime seam (Gate 2 parcial) |
-| `submit_order_http` (async) | Orders: risco + `HttpOrderExecutor`; `RecordingExecutor` em testes de domínio/bridge; idempotência memória/PG |
+| `submit_order_http` (async) | Orders: risco + `HttpOrderExecutor`; reconciliação memória/PG; idempotência memória/PG |
 | `monitor_snapshot`, `accept_monitor_command` | Monitor |
 | `active_config_snapshot` (incl. `monitor_registry`), `providers_status_snapshot` | Config / providers |
 | `order_execution_mode` + `GET /orders/execution-status` | Orders seam (read-only status) |
+| `order_reconciliation_lookup` + `GET /orders/reconciliation/{client_order_id}` | Reconciliação pós-submit live |
 
 Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`portfolio/paper-snapshot`**) chamam `http_bridge` diretamente com body/query. O snapshot paper agrega fills de `PaperLedgerExecutor` (modo `paper`) via `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (saldos quote + `positions` quando `paper_fill_unit_price` no submit HTTP ou `BOT_PAPER_FILL_UNIT_PRICE`).
 
 ## Lacunas conscientes
 
-- Monitor `RunMode::Paper` grava fills no mesmo `PaperLedgerExecutor` que HTTP/portfolio; testnet/live no supervisor ainda fail-closed.
+- Monitor `RunMode::Paper` grava fills no mesmo `PaperLedgerExecutor` que HTTP/portfolio (`paper_run_mode_*` + `http_bridge::portfolio`); `RunMode::Testnet` usa `ExchangeSpotExecutor` quando `BOT_ORDERS_EXCHANGE_SUBMIT` está ativo; demais modos fail-closed.
 - Runtime live de bots e execução exchange: ports existem; implementação live pendente.
 - Auth owner verificável: seam HTTP em [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md).
 
@@ -113,7 +114,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`port
 cargo test --locked --bin bot
 ```
 
-Evidência: **345** testes no bin `bot`, **7** ignorados (PG/Neo4j + testnet manual).
+Evidência: **346** testes no bin `bot`, **8** ignorados (PG/Neo4j + testnet manual).
 
 ## Documentos relacionados
 
