@@ -773,6 +773,32 @@ async fn error_body(response: axum::response::Response) -> serde_json::Value {
 }
 
 #[tokio::test]
+async fn agents_register_accepts_matching_owner_when_bound() {
+    let app = build_router(ApiState::with_agent_registry(
+        None,
+        AppDatabases::empty(),
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::for_test_with_owner(ADMIN_TOKEN, "owner-1"),
+    ));
+    let auth = bearer_header(ADMIN_TOKEN);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/agents")
+                .header("content-type", "application/json")
+                .header(auth.0, auth.1)
+                .body(Body::from(AGENT_REGISTER_JSON))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
 async fn agents_register_rejects_owner_mismatch_when_bound() {
     let app = build_router(ApiState::with_agent_registry(
         None,

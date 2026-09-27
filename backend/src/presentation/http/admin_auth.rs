@@ -18,9 +18,20 @@ impl HttpAdminAuth {
 
     pub fn from_env() -> Self {
         let cfg = crate::core::config::HttpAdminAuthConfig::from_env();
+        Self::from_config(cfg)
+    }
+
+    /// Owner binding applies only when admin bearer is enabled (SDD: `BOT_HTTP_OWNER_ID` with token).
+    fn from_config(cfg: crate::core::config::HttpAdminAuthConfig) -> Self {
+        let token = cfg.token;
+        let bound_owner_id = if token.is_some() {
+            cfg.bound_owner_id
+        } else {
+            None
+        };
         Self {
-            token: cfg.token,
-            bound_owner_id: cfg.bound_owner_id,
+            token,
+            bound_owner_id,
             bound_agency_id: cfg.bound_agency_id,
         }
     }
@@ -175,6 +186,26 @@ mod tests {
         let auth = HttpAdminAuth::for_test_with_agency("t", "acme-only");
         assert!(auth.verify_agency_id("other").is_err());
         auth.verify_agency_id("acme-only").unwrap();
+    }
+
+    #[test]
+    fn owner_binding_requires_admin_token_from_config() {
+        let auth = HttpAdminAuth::from_config(crate::core::config::HttpAdminAuthConfig {
+            token: None,
+            bound_owner_id: Some("owner-env".into()),
+            bound_agency_id: None,
+        });
+        assert!(!auth.owner_binding_active());
+        assert!(auth.verify_register_owner_id("owner-env").is_ok());
+        assert!(auth.verify_register_owner_id("other").is_ok());
+
+        let with_token = HttpAdminAuth::from_config(crate::core::config::HttpAdminAuthConfig {
+            token: Some("secret".into()),
+            bound_owner_id: Some("owner-env".into()),
+            bound_agency_id: None,
+        });
+        assert!(with_token.owner_binding_active());
+        assert!(with_token.verify_register_owner_id("other").is_err());
     }
 
     #[test]
