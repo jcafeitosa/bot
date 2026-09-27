@@ -130,4 +130,4 @@ modules/agents/
 - Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `server.rs`).
 - `GET /api/v1/meta` → `http_seams` (bindings owner/agency booleanos; ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
 - `assert_runtime_promotion_authorized`: `promotion_requires_active_agent_with_capability`, `promotion_denied_when_capability_false` (`bot_promotion.rs`).
-- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **295** testes (**6** ignorados PG/Neo4j).
+- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **297** testes (**6** ignorados PG/Neo4j).
