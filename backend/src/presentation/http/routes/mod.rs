@@ -48,6 +48,10 @@ pub fn v1_routes() -> Router<ApiState> {
             "/admin/graph/bots-for-agent",
             get(graph_admin::graph_bots_for_agent),
         )
+        .route(
+            "/admin/graph/code-impact",
+            get(graph_admin::graph_code_impact),
+        )
         .route("/exchanges/catalog", get(exchanges::catalog))
         .route("/exchanges/routing", get(exchanges::routing_matrix))
         .route("/agents/audit", get(agents::audit_log))

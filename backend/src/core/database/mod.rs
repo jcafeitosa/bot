@@ -43,7 +43,8 @@ pub use graph_projection_outbox_worker::{
 };
 pub use graph_query::{
     GraphQueryError, GraphQueryPort, ProjectedAgentList, ProjectedAgentNode, ProjectedBotForAgent,
-    ProjectedBotsForAgent, ProjectedSupervisionChain, SupervisionChainNode,
+    ProjectedBotsForAgent, ProjectedCodeImpactEntity, ProjectedCodeImpactForModule,
+    ProjectedSupervisionChain, SupervisionChainNode,
 };
 pub use monitor_bootstrap::{
     bootstrap_monitor_postgres, connect_postgres_for_monitor, postgres_for_cli_persist,

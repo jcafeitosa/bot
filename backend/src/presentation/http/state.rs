@@ -946,6 +946,32 @@ impl ApiState {
             .map_err(ApiError::from_graph_query_error)
     }
 
+    /// Advisory read-only code impact for module from Neo4j (PG remains SoT).
+    pub async fn graph_code_impact_for_module_advisory(
+        &self,
+        module_path: &str,
+        limit: u32,
+    ) -> Result<crate::core::database::ProjectedCodeImpactForModule, ApiError> {
+        self.database().ok_or_else(|| {
+            ApiError::with_code(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "graph_query_unavailable",
+                "PostgreSQL is not configured for graph admin queries",
+            )
+        })?;
+        let neo4j = self.inner.databases.neo4j().ok_or_else(|| {
+            ApiError::with_code(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "graph_query_unavailable",
+                "Neo4j is not configured for graph admin queries",
+            )
+        })?;
+        let port = neo4j.graph_query();
+        port.code_impact_for_module(module_path, limit)
+            .await
+            .map_err(ApiError::from_graph_query_error)
+    }
+
     pub async fn list_agents_in_agency(&self, agency: &str) -> Result<AgentListResponse, ApiError> {
         self.with_agents(|registry| {
             crate::modules::http_bridge::agents::list_agents(registry, agency)

@@ -1791,6 +1791,81 @@ async fn graph_admin_bots_for_agent_requires_admin_bearer_when_enabled() {
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
+const GRAPH_CODE_IMPACT_URI: &str =
+    "/api/v1/admin/graph/code-impact?module_path=modules/orders&limit=10";
+
+#[tokio::test]
+async fn graph_admin_code_impact_returns_503_without_postgres() {
+    let app = router_with_admin(HttpAdminAuth::for_test(ADMIN_TOKEN));
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(GRAPH_CODE_IMPACT_URI)
+                .header("authorization", format!("Bearer {}", ADMIN_TOKEN))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["code"], "graph_query_unavailable");
+}
+
+#[tokio::test]
+async fn graph_admin_code_impact_returns_503_without_neo4j_when_postgres_wired() {
+    let Some(db) = crate::core::persistence::pg_integration::database_for_integration_test().await
+    else {
+        return;
+    };
+    let state = ApiState::with_agent_registry(
+        None,
+        AppDatabases {
+            postgres: Some(db),
+            neo4j: None,
+        },
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::for_test(ADMIN_TOKEN),
+    );
+    let app = build_router(state);
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(GRAPH_CODE_IMPACT_URI)
+                .header(bearer_header(ADMIN_TOKEN).0, bearer_header(ADMIN_TOKEN).1)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["code"], "graph_query_unavailable");
+}
+
+#[tokio::test]
+async fn graph_admin_code_impact_requires_admin_bearer_when_enabled() {
+    let app = router_with_admin(HttpAdminAuth::for_test(ADMIN_TOKEN));
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(GRAPH_CODE_IMPACT_URI)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
 #[tokio::test]
 async fn provider_credentials_admin_list_requires_admin_bearer_when_enabled() {
     let app = router_with_admin(HttpAdminAuth::for_test(ADMIN_TOKEN));

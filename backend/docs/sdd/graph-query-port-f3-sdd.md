@@ -41,7 +41,7 @@ Implementação: `Neo4jGraphQuery` em `graph_query.rs`. CLI: `bot graph query ag
 | Port + Neo4j impl + testes unitários | **Sim** |
 | CLI agents + supervision-chain + bots-for-agent | **Sim** |
 | `bots_for_agent` port + Neo4j | **Sim** |
-| Leitura HTTP admin read-only (agents, supervision-chain, bots-for-agent) | **Sim** (advisory; PG+Neo4j gated) |
+| Leitura HTTP admin read-only (agents, supervision-chain, bots-for-agent, code-impact) | **Sim** (advisory; PG+Neo4j gated) |
 | Leitura autorizativa no runtime HTTP (decisões de domínio) | **Não** (roadmap) |
 | `code_impact_for_module` port + Neo4j + CLI | **Sim** |
 
@@ -67,4 +67,12 @@ Implementação adicional: `ApiState::graph_supervision_chain_advisory` / `graph
 | HTTP integration | `graph_admin_supervision_chain_returns_503_without_postgres`, `graph_admin_supervision_chain_returns_503_without_neo4j_when_postgres_wired`, `graph_admin_supervision_chain_requires_admin_bearer_when_enabled`, `graph_admin_bots_for_agent_returns_503_without_postgres`, `graph_admin_bots_for_agent_returns_503_without_neo4j_when_postgres_wired`, `graph_admin_bots_for_agent_requires_admin_bearer_when_enabled` |
 
 | Neo4j E2E HTTP **200** | skip sem stack (mesmo critério que `neo4j_list_agents_after_local_graph`) |
+
+| GET | `/api/v1/admin/graph/code-impact` | `BOT_HTTP_ADMIN_TOKEN` (Bearer) | **200** `ProjectedCodeImpactForModule`; query `module_path`, `limit` (1–500, default 32); **400** `invalid_graph_query`; **503** `graph_query_unavailable` sem PG/Neo4j |
+
+Implementação: `ApiState::graph_code_impact_for_module_advisory` → `Neo4jGraph::graph_query().code_impact_for_module`.
+
+| Tipo | Evidência (code-impact) |
+|------|-----------|
+| HTTP integration | `graph_admin_code_impact_returns_503_without_postgres`, `graph_admin_code_impact_returns_503_without_neo4j_when_postgres_wired`, `graph_admin_code_impact_requires_admin_bearer_when_enabled` |
 

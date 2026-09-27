@@ -81,7 +81,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**25/25** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **484** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **25/25** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **487** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **25/25** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -153,7 +153,7 @@ Conclusão documentada: G2 **não** exige que todo teste HTTP use runtime partil
 
 ## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
 
-Testes abaixo em `presentation/http/http_integration_tests.rs` (**57** passed com `cargo test --bin bot http_integration -- --test-threads=1`; salvo rotas OpenAPI/meta ainda em `server.rs`).
+Testes abaixo em `presentation/http/http_integration_tests.rs` (**60** passed com `cargo test --bin bot http_integration -- --test-threads=1`; salvo rotas OpenAPI/meta ainda em `server.rs`).
 
 | Rota | 401 sem Bearer | 2xx com Bearer (quando aplicável) |
 |------|----------------|-----------------------------------|
@@ -198,8 +198,11 @@ Seam admin bearer (sem IdP); ver [http-admin-auth-seam-sdd.md](../sdd/http-admin
 | `graph_admin_bots_for_agent_returns_503_without_postgres` | `http_integration_tests.rs` | F3 HTTP admin bots-for-agent fail-closed sem PG |
 | `graph_admin_bots_for_agent_returns_503_without_neo4j_when_postgres_wired` | `http_integration_tests.rs` | F3 HTTP admin bots-for-agent fail-closed sem Neo4j |
 | `graph_admin_bots_for_agent_requires_admin_bearer_when_enabled` | `http_integration_tests.rs` | Bearer admin em `/admin/graph/bots-for-agent` |
+| `graph_admin_code_impact_returns_503_without_postgres` | `http_integration_tests.rs` | F3 HTTP admin code-impact fail-closed sem PG |
+| `graph_admin_code_impact_returns_503_without_neo4j_when_postgres_wired` | `http_integration_tests.rs` | F3 HTTP admin code-impact fail-closed sem Neo4j |
+| `graph_admin_code_impact_requires_admin_bearer_when_enabled` | `http_integration_tests.rs` | Bearer admin em `/admin/graph/code-impact` |
 
-[provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md). Incluídos nos **57** testes `http_integration`.
+[provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md). Incluídos nos **60** testes `http_integration`.
 
 | Comportamento | Teste |
 |---------------|-------|

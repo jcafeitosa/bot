@@ -153,7 +153,7 @@ pub struct ProjectedBotsForAgent {
     pub bots: Vec<ProjectedBotForAgent>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectedCodeImpactEntity {
     pub source_id: String,
     pub source_file: String,
@@ -161,7 +161,7 @@ pub struct ProjectedCodeImpactEntity {
     pub link_kind: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectedCodeImpactForModule {
     pub module_path: String,
     pub module_id: String,
