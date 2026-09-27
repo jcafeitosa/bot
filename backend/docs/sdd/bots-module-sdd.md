@@ -70,5 +70,6 @@ modules/bots/
 ## 6. Pendências
 
 - Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
-- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): acoplamento supervisor ↔ `BotRuntimePort`; mapeamento formal executor versionado ↔ agentes autorizadores.
+- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): parâmetros por `strategy@version` além de SMA global; mapeamento formal executor versionado ↔ agentes autorizadores.
+- Baseline: `./scripts/verify-backend-gates.sh` verde; bin `bot` com **248** testes bin `bot` (incl. `state_tests` idempotência HTTP).
 - Auth owner verificável no transporte (fora do seam `BOT_HTTP_*`).

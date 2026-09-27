@@ -72,7 +72,7 @@ modules/agents/
 |---------|---------------------|----------|
 | `AgentId`, `AgencyId`, `OwnerId` | Admin futuro, testes | Strings normalizadas, não vazias, tamanho máximo 64. |
 | `AgentRole`, `SupervisorRef` | Registro | CEO → `SupervisorRef::Owner`; demais → agente supervisor com papel compatível. |
-| `AgentDefinition`, `AgentCapabilities` | Registro | `IdentityOnly` por padrão; `consult_jev` explícito para advisory; `promote_runtime_bot` para autorizar `promoted_by` em `POST /bots/runtime/promote` quando `BOT_HTTP_AGENCY_ID` está definido (`assert_runtime_promotion_authorized`). |
+| `AgentDefinition`, `AgentCapabilities` | Registro | `IdentityOnly` por padrão; `consult_jev` explícito para advisory; `promote_runtime_bot` para autorizar `promoted_by` em `POST /bots/runtime/promote` quando `BOT_HTTP_AGENCY_ID` está definido (`assert_runtime_promotion_authorized`); coluna `promote_runtime_bot` em `agent_identities` (migração `0005`) para cold-start via `PgAgentIdentityStore`. |
 | `AgentRegistry` | Composition root / API futura | `register`, `get`, `list_agency`, eventos append-only em memória. |
 | `transition_pause/resume/retire` | Owner futuro | Idempotente onde aplicável; aposentado é terminal. |
 | `run_advisory_step` | Monitor (futuro), testes | Falha se agente inexistente, agência errada, inativo/aposentado ou sem `consult_jev`; delega a `JevAdvisor::review`. |
