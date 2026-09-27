@@ -2,7 +2,7 @@ use utoipa::OpenApi;
 
 use super::routes::{
     agents, application, backtest, bots, config, exchanges, health, meta, monitor, orders,
-    portfolio, providers, strategy,
+    portfolio, provider_credentials_admin, providers, strategy,
 };
 use crate::modules::application_contracts::Signal;
 use crate::modules::config_api::{OperationMode, RiskProfile, RunMode};
@@ -26,6 +26,10 @@ use crate::presentation::http::error::ApiErrorBody;
         config::config_active,
         config::config_snapshot,
         providers::provider_status,
+        provider_credentials_admin::list_provider_credentials,
+        provider_credentials_admin::upsert_provider_credential,
+        provider_credentials_admin::replace_provider_credential,
+        provider_credentials_admin::delete_provider_credential,
         exchanges::catalog,
         exchanges::routing_matrix,
         bots::bot_catalog,
@@ -129,6 +133,7 @@ use crate::presentation::http::error::ApiErrorBody;
         (name = "application", description = "Shared application contracts"),
         (name = "config", description = "Read-only configuration snapshots"),
         (name = "providers", description = "External provider configuration flags"),
+        (name = "admin", description = "Administrative seams (mutating; may require BOT_HTTP_ADMIN_TOKEN)"),
         (name = "agents", description = "Identity-only agent registry and lifecycle"),
         (name = "exchanges", description = "Exchange catalog and routing"),
         (name = "risk", description = "Risk limits and validation"),

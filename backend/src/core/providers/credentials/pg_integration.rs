@@ -1,5 +1,5 @@
 #[cfg(test)]
-mod pg_integration {
+mod tests {
     use super::super::cache::{lookup_secret, reload_from_pool, KEY_API_KEY, PROVIDER_TYPESAFE};
 
     #[tokio::test]

@@ -1267,3 +1267,34 @@ async fn agents_audit_lists_lifecycle_events_after_register_and_pause() {
     assert!(kinds.iter().any(|k| k.contains("Registered")));
     assert!(kinds.iter().any(|k| k.contains("Paused")));
 }
+
+#[tokio::test]
+async fn provider_credentials_admin_list_returns_501_with_admin_bearer() {
+    let app = router_with_admin(HttpAdminAuth::for_test(ADMIN_TOKEN));
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/admin/provider-credentials")
+                .header("authorization", format!("Bearer {}", ADMIN_TOKEN))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+}
+
+#[tokio::test]
+async fn provider_credentials_admin_list_requires_admin_bearer_when_enabled() {
+    let app = router_with_admin(HttpAdminAuth::for_test(ADMIN_TOKEN));
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/admin/provider-credentials")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}

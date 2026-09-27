@@ -18,7 +18,7 @@ pub async fn run(
     app_config: Config,
     monitor: Option<crate::modules::monitor::MonitorHandle>,
 ) -> anyhow::Result<()> {
-    let databases = crate::core::database::AppDatabases::bootstrap_http_api().await;
+    let databases = crate::core::database::AppDatabases::bootstrap_runtime().await;
     let agents = shared_agent_registry();
     let state =
         ApiState::build_api_state_for_http_serve(monitor, databases, app_config, agents).await;
@@ -544,6 +544,7 @@ mod tests {
             "/api/v1/risk/gate-signal",
             "/api/v1/orders/submit",
             "/api/v1/orders/reconciliation/{client_order_id}",
+            "/api/v1/admin/provider-credentials",
         ] {
             assert!(paths.contains_key(key), "missing openapi path {key}");
         }

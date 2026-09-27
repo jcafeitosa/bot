@@ -1,0 +1,2 @@
+-- Dev seed for provider_credentials is manual only (no secrets in migrations).
+-- See backend/scripts/seed-provider-credentials.example.sql after migrate.

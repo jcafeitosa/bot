@@ -9,12 +9,13 @@ pub mod meta;
 pub mod monitor;
 pub mod orders;
 pub mod portfolio;
+pub mod provider_credentials_admin;
 pub mod providers;
 pub mod risk;
 pub mod strategy;
 
 use axum::{
-    routing::{get, post},
+    routing::{get, post, put},
     Router,
 };
 
@@ -27,6 +28,16 @@ pub fn v1_routes() -> Router<ApiState> {
         .route("/config/active", get(config::config_active))
         .route("/config/snapshot", get(config::config_snapshot))
         .route("/providers/status", get(providers::provider_status))
+        .route(
+            "/admin/provider-credentials",
+            get(provider_credentials_admin::list_provider_credentials)
+                .post(provider_credentials_admin::upsert_provider_credential),
+        )
+        .route(
+            "/admin/provider-credentials/{provider_id}/{key_name}",
+            put(provider_credentials_admin::replace_provider_credential)
+                .delete(provider_credentials_admin::delete_provider_credential),
+        )
         .route("/exchanges/catalog", get(exchanges::catalog))
         .route("/exchanges/routing", get(exchanges::routing_matrix))
         .route("/agents/audit", get(agents::audit_log))

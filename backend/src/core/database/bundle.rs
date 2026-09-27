@@ -33,6 +33,10 @@ impl AppDatabases {
         self.neo4j.as_ref()
     }
 
+    pub async fn bootstrap_runtime() -> Self {
+        Self::bootstrap_http_api().await
+    }
+
     pub async fn bootstrap_http_api() -> Self {
         let postgres = match postgres_url_from_env() {
             Ok(Some(url)) => match Database::connect_from_url(&url).await {
