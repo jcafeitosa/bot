@@ -15,33 +15,61 @@ w0_01_status: draft
 
 ### Decisão do owner — comportamento sem credencial (2026-09-27)
 
-Owner aprovou este contrato público nesta data: o comando `serve` continua ativo sem `BOT_HTTP_ADMIN_TOKEN`; rotas administrativas e mutáveis respondem **503** quando a autenticação admin não está configurada; quando configurada, essas rotas exigem `Authorization: Bearer <token>` válido; rotas públicas seguem acessíveis sem token. Esta decisão substitui a decisão incompatível anterior deste SDD de falhar todo o startup/recusar abrir socket sem token (A1/A3). Não aprova a tabela exata de rotas, um roteador/tabela central, uma classificação global por tipo de resposta, allowlist de Host, limitador, esquema OpenAPI ou qualquer outro seam listado como pendente.
+Owner aprovou este contrato em 2026-09-27: `serve` permanece ativo sem `BOT_HTTP_ADMIN_TOKEN`; mutações e GETs sensíveis são protegidos; rotas de health/docs/leitura e os seis POSTs de cálculo sem efeito colateral são públicos; token ausente ou fraco deixa o servidor ativo e faz rotas protegidas responderem **503**; token configurado válido exige Bearer válido; bearer incorreto retorna **401**; rota sem classificação retorna **404** antes de executar handler. Isso substitui a proposta incompatível de falhar todo o startup sem token (A1/A3). A decisão sobre comportamento e classes não escolhe a arquitetura interna do router nem aprova Host allowlist, rate limit ou detalhes do OpenAPI.
 
-Contrato de resposta para uma rota administrativa/mutável:
+#### Contrato observável aprovado
 
-| Configuração e credencial | Resposta observável |
-|---|---|
-| `BOT_HTTP_ADMIN_TOKEN` ausente ou vazio | **503** com código estável `admin_auth_not_configured`; handler não executa |
-| Token configurado; bearer ausente, malformado ou inválido | **401** com código estável `unauthorized`; handler não executa |
-| Token configurado; bearer válido | requisição prossegue ao handler e a resposta normal da operação é preservada |
+| Estado da configuração/credencial | Rotas protegidas | Rotas públicas |
+|---|---|---|
+| Token ausente, vazio ou fraco | **503** `admin_auth_not_configured`; handler não executa; servidor/listener continuam ativos | resposta normal, sem bearer |
+| Token configurado conforme política, bearer ausente ou incorreto | **401** `unauthorized`; handler não executa | resposta normal, sem bearer |
+| Token configurado conforme política, bearer válido | requisição prossegue e preserva a resposta normal da operação | resposta normal, sem bearer |
+| Rota sem classificação | **404** `route_not_found`; handler não executa | — |
 
-A resposta de configuração ausente não impede `serve` de inicializar ou abrir o listener. Falha de startup por token ausente é removida da proposta. Validação de token configurado (incluindo força mínima e resposta para valor inválido) continua pendente de seam e acordo; não converter valor inválido em auth desabilitada.
+Token válido tem no mínimo 32 bytes aleatórios e não contém espaços. Token ausente, vazio ou que não satisfaz esses requisitos é configuração não utilizável para autenticar; não desabilita nem torna públicas as rotas protegidas. A implementação pode validar uma vez ao carregar configuração, mas não deve interromper `serve` por token ausente/fraco. O tratamento exato de outras formas inválidas, além de ausente/vazio/fraco/espaços, deve seguir a mesma regra fail-closed de 503 e nunca ecoar o valor.
 
-#### Delimitação proposta para W0-01 (lista sujeita a acordo de seam)
+#### Classificação aprovada das rotas existentes
 
-Obrigatoriamente protegidos pelo contrato aprovado: todos os endpoints mutáveis/admin já inventariados neste SDD, incluindo:
+Os paths abaixo são relativos ao prefixo `/api/v1`, salvo os quatro endpoints de sistema/docs explicitamente fora dele.
 
-- todos os métodos em `/api/v1/admin/*` (credenciais de provider e consultas administrativas de grafo);
-- mutações de agentes: `POST /agents`, `POST /agents/{agent_id}/pause`, `POST /agents/{agent_id}/resume`, `POST /agents/{agent_id}/retire`, `POST /agents/{agent_id}/advisory`;
-- mutações de catálogo/runtime de bots: `POST /bots/catalog/persist`, `POST /bots/runtime/promote`, `POST /bots/runtime/demote`;
-- mutações de ordens/reconciliação: `POST /orders/reconciliation/poll`, `POST /orders/submit`;
-- comandos de monitor: `POST /monitor/commands`.
+**Protegidas — todas as mutações/admin:**
 
-Estas entradas são delimitadores de escopo propostos com base no inventário abaixo; a decisão do owner ainda não ratificou sua classificação individual nem a política para todas as rotas não listadas. GETs com dados administrativos/sensíveis já marcados `Protected` na tabela — por exemplo `/agents*`, `/orders/execution-status`, `/orders/reconciliation/{client_order_id}`, `/config/snapshot`, `/config/active`, `/meta` e `/monitor/snapshot` — continuam propostas que requerem acordo explícito. Rotas públicas continuam sem token, incluindo os endpoints públicos listados no inventário; POST de cálculo sem efeito colateral não é classificado como mutável só pelo método HTTP, mas a lista exata de exceções também precisa de acordo.
+- todos os métodos em `/api/v1/admin/*`;
+- `POST /agents`, `POST /agents/{agent_id}/pause`, `POST /agents/{agent_id}/resume`, `POST /agents/{agent_id}/retire`, `POST /agents/{agent_id}/advisory`;
+- `POST /bots/catalog/persist`, `POST /bots/runtime/promote`, `POST /bots/runtime/demote`;
+- `POST /orders/reconciliation/poll`, `POST /orders/submit`;
+- `POST /monitor/commands`.
 
-#### Rotas futuras e mecanismo de classificação (proposta pendente)
+**Protegidas — leituras sensíveis:**
 
-Toda nova rota precisa de classificação explícita antes de ser publicada. A proposta é um registro explícito de rota/classe com comportamento seguro para rota não classificada (negação antes do handler), sem herdar auth aberta por omissão. A forma pública exata — tabela central, middleware, guard estático, classificação local ou composição — não foi escolhida nem aprovada. Não aplicar ainda os testes/invariantes da tabela única descritos em A2.1/A2.3 como decisões do owner.
+- `GET /meta`, `GET /config/active`, `GET /config/snapshot`;
+- `GET /agents/audit`, `GET /agents`, `GET /agents/{agent_id}`;
+- `GET /orders/execution-status`, `GET /orders/reconciliation/{client_order_id}`;
+- `GET /monitor/snapshot`, `GET /bots/runtime/status`;
+- todos os métodos em `/api/v1/admin/*`, conforme acima.
+
+**Públicas — health/docs e leituras não sensíveis:**
+
+- fora de v1: `GET /healthz`, `GET /readyz`, `GET /openapi.json`, `GET /docs`;
+- em `/api/v1`: `GET /application/signals`, `GET /providers/status`, `GET /exchanges/catalog`, `GET /exchanges/routing`, `GET /strategy/periods`, `GET /portfolio/paper-snapshot`, `GET /bots/catalog`, `GET /bots/catalog/snapshot`.
+
+**Públicas — seis POSTs de cálculo sem efeito colateral:**
+
+- `POST /risk/profile-limits`, `POST /risk/validate-intent`, `POST /risk/gate-signal`;
+- `POST /strategy/evaluate-sma`, `POST /bots/ranking`, `POST /backtest/sma-crossover`.
+
+Esta classificação é decisão do owner e substitui qualquer classe diferente na tabela histórica A2.2. Toda rota existente deve constar de uma das listas; futura rota exige classe explícita. Para rota sem classificação o comportamento aprovado é 404 `route_not_found`, sem chamar handler. Não usar a proposta anterior de 401 deny-by-default para rota desconhecida.
+
+#### Seams de implementação — decisões de comportamento fechadas
+
+1. **Configuração:** ler `BOT_HTTP_ADMIN_TOKEN`; considerar utilizável somente valor com pelo menos 32 bytes aleatórios, sem espaços; ausente/vazio/fraco é estado `NotConfigured`, não erro fatal de startup.
+2. **Verificação:** Bearer válido compara com o token configurado sem expor o segredo; ausente/incorreto resulta em 401 nas rotas protegidas; auth sem token nunca equivale a sucesso.
+3. **Classificação:** a lista método+path acima é a classificação aprovada: mutações e GETs sensíveis protegidos; leituras/health/docs e exatamente seis cálculos públicos.
+4. **Rota futura desconhecida:** 404 `route_not_found` antes do handler; não herda auth pública nem protegida por omissão.
+5. **Fluxo do router:** precisa aplicar a classificação antes do handler e incluir rotas de sistema/docs; nome e composição internos de função/middleware ficam como decisão de implementação revisável em G1, sem mudar os contratos observáveis.
+6. **Respostas:** 503 para auth ausente/vazia/fraca, 401 para bearer ausente/incorreto quando token utilizável está configurado, 404 para rota não classificada; Bearer válido prossegue. Os códigos acima são estáveis e segredos nunca aparecem em respostas/logs.
+
+
 
 #### Alternativas e trade-offs
 
