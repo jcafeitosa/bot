@@ -122,6 +122,8 @@ Conclusão documentada: G2 **não** exige que todo teste HTTP use runtime partil
 
 ## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
 
+Testes abaixo em `presentation/http/http_integration_tests.rs` (salvo rotas OpenAPI/meta ainda em `server.rs`).
+
 | Rota | 401 sem Bearer | 2xx com Bearer (quando aplicável) |
 |------|----------------|-----------------------------------|
 | `POST /api/v1/agents` | `agents_register_requires_admin_bearer_when_enabled` | mesmo teste (201) |
