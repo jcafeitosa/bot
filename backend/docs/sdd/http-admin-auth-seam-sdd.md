@@ -38,7 +38,7 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 ## Validação
 
 - Testes unitários `admin_auth.rs` (`binding_active_flags_reflect_env_bindings_without_leaking_ids`).
-- Testes HTTP `server.rs`: `meta_*`, `meta_and_*`, agency/owner mismatch, bots runtime capability, monitor commands, OpenAPI smoke.
+- Testes HTTP `server.rs`: `meta_*`, `meta_and_*`, `router_after_build_api_state_meta_agrees_with_http_seam_endpoints` (boot `build_api_state_for_http_serve`: `http_seams` ↔ runtime + orders execution-status), agency/owner mismatch, bots runtime capability, monitor commands, OpenAPI smoke.
 - Testes HTTP `http_integration_tests.rs`: bearer obrigatório (agents register/pause, bots catalog persist, bots runtime promote, orders submit paper/admin, `orders_reconciliation_poll`); ver [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token).
 - `state.rs` `state_tests`: `for_http_server_wires_process_wide_bot_runtime_like_serve` (mesmo `Arc` que `shared_bot_runtime()` / `HttpApiSeams::from_env`).
 - `./scripts/verify-backend-gates.sh`.
