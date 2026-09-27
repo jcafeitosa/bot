@@ -93,5 +93,6 @@ Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-executi
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
-| Adapter exchange orders | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | Threat model + Critic |
+| Reconciliação pós-submit | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | Estado durável + threat model |
+| Threat model G2 fechado | orders G2 SDD | Critic |
 | Auth owner verificável | [agents-capability-research.md](../research/agents-capability-research.md) | Bootstrap + segurança |
