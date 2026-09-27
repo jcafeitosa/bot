@@ -58,7 +58,7 @@ Evidência (2026-09-27): **292** testes no binário `bot`, **6** ignorados (`per
 | Requisito | Evidência | Status |
 |-----------|-----------|--------|
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor binding | **Parcial** (evaluators não-SMA; sem orders live) |
-| Completude orders | `submit_order`, execution-status, `live_exchange_not_wired`, idempotência | **Parcial** (adapter exchange ausente) |
+| Completude orders | `submit_order`, `RecordingExecutor` (fake port), execution-status, `live_exchange_not_wired`, idempotência | **Parcial** (adapter exchange ausente) |
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth`, `promote_runtime_bot` + `assert_runtime_promotion_authorized` quando `BOT_HTTP_AGENCY_ID` | **Parcial** (seam admin; não substitui auth owner completo) |
 | Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta` (`http_seams`) + testes `meta_and_*_agree_on_*`; `http_bridge` → domain; orders/bots/agents v1; PG boot hydrate | **Parcial** (auth owner, exchange adapter; evaluators não-SMA) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
