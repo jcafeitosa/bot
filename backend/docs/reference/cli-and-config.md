@@ -49,7 +49,7 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 | Grupo | Rotas | Notas |
 |---|---|---|
 | `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |
-| `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `strategy_evaluation_binding` + `BotSignal.bot_id` (SMA do config global). |
+| `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `MonitorStrategyRegistry` + `strategy_evaluation_binding` + `BotSignal.bot_id`. Catálogo HTTP inclui `monitor_fast_period` / `monitor_slow_period` por bot. |
 | `orders` | `POST /orders/submit` | Default fail-closed (**503** após risco OK); `BOT_ORDERS_EXECUTION=dev_accept` aceita via double local (sem exchange); **422** se risco rejeita. Campo opcional `client_order_id` (1..=128 bytes): replay retorna `accepted: true` sem reexecutar o port (memória; com `DATABASE_URL` também em `order_idempotency_keys`). |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
