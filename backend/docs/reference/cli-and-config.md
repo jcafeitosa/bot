@@ -49,7 +49,7 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 | Grupo | Rotas | Notas |
 |---|---|---|
 | `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |
-| `bots` | `GET /bots/catalog`, `POST /bots/catalog/persist`, `GET /bots/catalog/snapshot`, `POST /bots/ranking` | Snapshot usa store em memória do processo. |
+| `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` usa promoção em memória (sem executor live). |
 | `orders` | `POST /orders/submit` | Default fail-closed (**503** após risco OK); `BOT_ORDERS_EXECUTION=dev_accept` aceita via double local (sem exchange); **422** se risco rejeita. |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
@@ -95,6 +95,7 @@ A validação de período SMA e timeframe é feita junto com a configuração. C
 | `BOT_HTTP_OWNER_ID` | Com `BOT_HTTP_ADMIN_TOKEN`, restringe `owner_id` no registro de agentes ao valor configurado. |
 | `BOT_HTTP_AGENCY_ID` | Restringe rotas `/api/v1/agents*` ao `agency` configurado (query ou body); falha **403** `http_agency_mismatch`. |
 | `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes exigem `Authorization: Bearer <token>` (fail-closed; não substitui auth do owner). |
+| `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**503** em promote). |
 | `BOT_ORDERS_EXECUTION` | Modo do executor HTTP: vazio/`disabled` (fail-closed); `dev_accept` (double local após risco, sem exchange). Valores desconhecidos voltam a `disabled`. |
 | `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; ver `docs/operations/postgres-and-graph-dev.md`. |
 | `NVIDIA_NIM_BASE_URL` | Raiz da integrate API (default `https://integrate.api.nvidia.com`); opcional em TOML como `providers.nim_base_url`. |

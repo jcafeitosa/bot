@@ -60,7 +60,7 @@ O caminho de monitor não envia ordens. A autorização atual permite apenas bac
 | `modules` | `orders` | `submit_order`, `FailClosedExecutor` | Valida risco e bloqueia execução (`ExecutionDisabled`); HTTP `POST /api/v1/orders/submit` retorna 503 após risco OK. | [SDD orders](../sdd/orders-module-sdd.md) |
 | `modules` | `http_bridge` | facades por domínio | Camada entre `presentation::http` e módulos de domínio. | `src/modules/http_bridge/` |
 | `presentation` | `terminal` | TUI Ratatui | Renderização e teclado; contrato com monitor via `presentation_contract`. | `src/presentation/terminal/mod.rs`, `modules/monitor/views/` |
-| `presentation` | `http` | Axum, OpenAPI, Scalar | Superfície REST (`serve`); 30 paths; `HttpAdminAuth` em rotas mutantes; monitor exige handle no processo. | `src/presentation/http/`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) |
+| `presentation` | `http` | Axum, OpenAPI, Scalar | Superfície REST (`serve`); 33 paths; `HttpAdminAuth` em rotas mutantes; monitor exige handle no processo. | `src/presentation/http/`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) |
 
 ## Submódulos de exchanges (`src/modules/exchanges/`)
 

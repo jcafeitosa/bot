@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: runtime bots (executor live)
 
-- **Estado:** **não implementado** — G1 entregue (catálogo, ranking, `BotCatalogBackend`, HTTP `/api/v1/bots/*`, `PgBotCatalogStore` opcional). Monitor e estratégia operam sinais sem promover/executar bot versionado como runtime dedicado.
+- **Estado:** **parcial** — G1 + seam `BotRuntimePort` (`FailClosedBotRuntime` default; `InMemoryBotRuntime` com `BOT_RUNTIME_ENABLED=true`), HTTP `GET /bots/runtime/status`, `POST .../promote|demote` (admin). Monitor ainda não consome promoção ativa.
 - **Referências:** [SDD bots G1](./bots-module-sdd.md), [Gate 1 PG](./bots-catalog-persistence-gate1-sdd.md), [auditoria](../planning/modules-completeness-audit.md), `modules/monitor`, `modules/agents` (governança).
 
 ## Contexto
@@ -45,7 +45,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **218** testes bin `bot`, **5** ignorados; `modules/bots/tests.rs`, HTTP bots catalog/persist, `PgBotCatalogStore` teste `#[ignore]`.
+Evidência G1 (2026-09-27): **223** testes bin `bot`, **5** ignorados; `modules/bots/tests.rs`, HTTP bots catalog/persist, `PgBotCatalogStore` teste `#[ignore]`.
 
 ## Validação Gate 2 (quando implementado)
 

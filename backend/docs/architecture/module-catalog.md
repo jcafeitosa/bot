@@ -19,7 +19,7 @@ O binário tem três pontos de entrada funcionais:
 
 - **Monitor (TUI):** `main → core::config → modules::monitor::startup → supervisor → … → presentation::terminal`.
 - **Backtest (CLI):** `main → modules::backtest::cli → fixture 1m → modules::backtest → JSON`.
-- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (30 paths utoipa).
+- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (33 paths utoipa).
 
 O backend não envia ordens. O uso REST autorizado hoje é o backfill público de candles Spot da conta `dev`; observe e paper são os modos operacionais disponíveis.
 
@@ -102,7 +102,7 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 | `adapters` | `BotCatalogStore`; `NoopBotCatalogStore`, `InMemoryBotCatalogStore`, `PgBotCatalogStore`; `BotCatalogBackend` (memória ou PG via `AppDatabases`). |
 | `controllers` | `persist_catalog_snapshot` grava catálogo derivado da config no store. |
 
-**HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking` via `presentation/http/routes/bots.rs` (store compartilhado em `ApiState`).
+**HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking`, `GET /api/v1/bots/runtime/status`, `POST /api/v1/bots/runtime/promote|demote` via `presentation/http/routes/bots.rs` (catálogo em `ApiState`; runtime via `BotRuntimePort`, default fail-closed, `BOT_RUNTIME_ENABLED=true` para promoção em memória).
 
 ## 3c. Módulo `orders` (`src/modules/orders/`)
 
