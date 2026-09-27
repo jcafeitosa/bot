@@ -94,7 +94,7 @@ Bots especializados como **artefatos versionados**, com limites de autoridade, m
 
 ### O que existe hoje
 
-`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, `ApiState` com `InMemoryBotCatalogStore`; rotas `GET /catalog`, `POST /ranking`, `POST /catalog/persist`, `GET /catalog/snapshot`. `backtest` delega tipos e ranking ao módulo `bots`. **Há** `PgBotCatalogStore` + tabela `bot_catalog_entries`; **ainda não há** auth owner, promoção automática nem executor live no monitor (seam HTTP `BotRuntimePort` + snapshot enriquecido; loop do supervisor ainda não consome promoção).
+`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, `ApiState` com `InMemoryBotCatalogStore`; rotas `GET /catalog`, `POST /ranking`, `POST /catalog/persist`, `GET /catalog/snapshot`. `backtest` delega tipos e ranking ao módulo `bots`. **Há** `PgBotCatalogStore` + tabela `bot_catalog_entries`; **ainda não há** auth owner, promoção automática nem executor live no monitor (seam HTTP `BotRuntimePort` + snapshot enriquecido + publicação headless; loop de estratégia do supervisor ainda não usa `BotId` promovido).
 
 ### Decisão
 
