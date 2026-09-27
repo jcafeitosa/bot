@@ -21,7 +21,8 @@ status: draft
 - `backend/src/presentation/http/state.rs:512-571` (`submit_order_http`): com PG, faz `try_claim(key)` (`:545`) e, em **qualquer** `Err` do executor, chama `pg.release_claim(key)` (`:566-571`).
 - `backend/src/modules/orders/adapters/pg_idempotency.rs:60-67`: `release_claim` apaga a linha de `order_idempotency_keys`. O retry do cliente com a mesma key executa de novo.
 - `backend/src/modules/exchanges/adapters/binance_spot_testnet_submit.rs:158-173`: o envio à exchange é o `block_on(create_order…)`; qualquer erro (inclusive timeout/rede depois do envio) vira `OrdersError::InvalidRequest` via `map_bot_error` (`:35-37`). Não há distinção entre "não enviado" e "enviado, resposta perdida".
-- `pg_idempotency.rs:23-32`: `is_completed` = "linha existe"; um claim em voo parece concluído e o replay responde `accepted: true` (tema de AB-O5, fora do escopo aqui).
+- `pg_idempotency.rs:23-32`: `is_completed` = "linha existe"; um claim em voo parece concluído (`state.rs:541-543`).
+- `state.rs:545-548`: quando `try_claim` falha porque outra requisição está com a key em voo, o código chama `record_completed` na memória e responde `accepted: true` — sem ordem garantida. Se a primeira falhar antes do envio e liberar o claim, a memória deste processo já marcou a key como concluída e o retry nunca executa.
 - Sem PG não há claim durável (`state.rs:536-549`; `http_bridge/orders.rs:144-171`): erro não grava nada e o retry reexecuta (AB-O4 / F-ORD-04).
 - Migração `0004_order_idempotency_keys.sql`: só `client_order_id` e `recorded_at`; sem estado.
 - Teste existente `pg_submit_order_idempotency_releases_claim_when_submit_fails` (`state.rs:1885`) cobre rejeição por risco (pré-envio). Esse comportamento continua correto e deve continuar passando.
@@ -35,7 +36,16 @@ status: draft
 
 1. Separar o erro do executor em duas classes: **pré-envio** (validação, risco, modo desligado, não wired, credencial/registro ausente, erro ao montar cliente) e **pós-envio/ambíguo** (qualquer erro a partir da chamada `create_order`, inclusive timeout).
 2. Só erro pré-envio libera o claim. Erro ambíguo **nunca** libera: a key fica em estado `unknown` e o ledger de reconciliação recebe `pending` para essa key.
-3. Retry com key em `unknown` (ou em `claimed` sem conclusão) → **409** `order_outcome_unknown`; o executor não é chamado.
+3. Estados da key e resposta a uma nova requisição com a mesma key:
+
+   | Estado | Significado | Resposta | Marca concluído? |
+   |---|---|---|---|
+   | `claimed` | outra requisição em voo | **409** `idempotency_in_flight` | não |
+   | `unknown` | envio feito, resultado não confirmado | **409** `order_outcome_unknown` | não |
+   | `completed` | ordem confirmada | replay `accepted: true` | já está |
+   | (sem linha) | nunca usada ou liberada por erro pré-envio | executa | — |
+
+   O executor nunca é chamado nos três primeiros casos. `record_completed` em memória só depois de `completed` no PG.
 4. Saída de `unknown` só por reconciliação contra a exchange (poll existente usa `observe_testnet_spot_order_by_client_id`): ordem encontrada → `completed` + `reconciled`. Ordem não encontrada → continua `unknown` nesta fatia (sem liberação automática); liberação manual/automática fica como decisão do owner com o bot Segurança.
 5. Estado explícito em `order_idempotency_keys` (coluna de estado `claimed | completed | unknown`) via migração na **próxima sequência livre no momento da implementação**.
 
@@ -46,7 +56,7 @@ status: draft
 | Seam | Proposta |
 |---|---|
 | Erro de domínio | nova variante `OrdersError::OutcomeUnknown` (sem texto da exchange) produzida só pelo adapter após o envio |
-| HTTP | **409** `order_outcome_unknown` no retry; corpo sem detalhe da exchange (alinha SEC-ORD-15) |
+| HTTP | **409** `idempotency_in_flight` (claim ocupado) e **409** `order_outcome_unknown` (resultado ambíguo); corpo sem detalhe da exchange (alinha SEC-ORD-15) |
 | Store | `PgOrderIdempotencyStore`: `mark_unknown(key)`, `mark_completed(key)`, `state(key)`; `release_claim` só chamado para erro pré-envio |
 | Schema | coluna de estado com `CHECK` em `order_idempotency_keys`; linhas existentes migram como `completed` |
 | Política sem PG | `live_exchange` sem PG recusa boot (parte de SEC-ORD-06) — **precisa de decisão** (ver perguntas) |
@@ -54,6 +64,7 @@ status: draft
 ## Critérios de aceite
 
 - **SEC-ORD-08** de [orders-g2-threat-model](../security/orders-g2-threat-model.md): exchange fake que aceita e depois devolve timeout; após N retries com a mesma key, a fake registra **exatamente 1** ordem; retry durante `unknown` → **409** `order_outcome_unknown`.
+- A0. Claim ocupado: com a primeira requisição em voo, a segunda com a mesma key recebe **409** `idempotency_in_flight` e nada é marcado como concluído (nem memória nem PG). Teste com duas requisições concorrentes e executor fake com latência: a primeira falha antes do envio (libera o claim); o retry depois disso executa **exatamente 1** vez.
 - A1. Rejeição por risco ou modo desligado continua liberando o claim (teste `pg_submit_order_idempotency_releases_claim_when_submit_fails` segue verde).
 - A2. Falha depois do ack (ex.: erro em `confirm_exchange_order` ou `upsert_state`) não deixa a key reexecutável: retry → 409, nunca nova chamada ao executor.
 - A3. Reconciliação que encontra a ordem move a key para `completed` e o ledger para `reconciled`; teste PG isolado.
@@ -69,6 +80,7 @@ status: draft
 
 ## Riscos
 
+- Claim `claimed` órfão (processo caiu ou pânico, ver W0-13) fica em 409 `idempotency_in_flight` até reconciliação ou ação manual; seguro, mas precisa de runbook.
 - Classificação errada de um erro pré-envio como ambíguo: trava a key (seguro, mas exige ação manual). O inverso é o perigo; por isso tudo a partir do `create_order` é ambíguo.
 - `fetch_order` por `client_order_id` no ccxt não é verificável estaticamente (crate não vendorizado); se não consultar por `origClientOrderId`, a key fica `unknown` para sempre. Teste com transporte fake e verificação manual em testnet.
 - O ack global `LAST_SUBMIT_ACK` (F-ORD-05) continua; não piora com esta fatia.

@@ -11,6 +11,7 @@ status: draft
 
 # Plano mestre do backend
 
+- **Escopo:** Ondas 0 e 1 revisadas contra os achados do Critic G2 ciclo 1 (M1–M5, L1–L5). **Ondas 2–4: roadmap, pendente de G2.**
 - **Estado:** draft. Não aprova nada, não marca gates, não substitui threat model (bot Segurança) nem Critic independente (`AGENTS.md`).
 - **Base verificada:** código em `backend/` no `main` local em 2026-09-27 ~16:15 COT (commit `2d1e3863`; `acb7a97e` adicionou `0011`); W0-12 e futures reconferidos em `b003a9b7` (~16:20 COT). Outra sessão faz commits a cada poucos minutos; números podem mudar.
 - **Regra de leitura:** toda afirmação sobre "existe" foi conferida em `backend/src`, `Cargo.toml`, `backend/tests`, `backend/scripts`, `.github/workflows` e `backend/src/core/database/migrations/`. Onde docs e código divergem, está escrito **[DOC×CÓDIGO]**. Itens com impacto de segurança: **[SEGURANÇA]**.
@@ -153,7 +154,7 @@ Formato: **Objetivo** · **Estado** · **Mais simples que funciona?** · **Alter
 - **Mais simples?** Não quanto a SoT: memória como verdade + PG como espelho cria divergência (§2 item 14).
 - **Alternativa:** com PG ligado, PG é SoT: transação PG (identidade + outbox) antes de atualizar memória; memória vira cache.
 - **Gaps:** hook monitor; hidratação na TUI; auth; enum sem Level C (pendente D-HIER).
-- **Depende de:** database, P1. **Falta:** W0-06, W2-04, P1. **SDD:** agents, pg-registry, owner-bootstrap existem; delta W2-04.
+- **Depende de:** database, P1. **Falta:** W0-06 (remover hook morto), W2-04, W2-05 (hook + hidratação), P1. **SDD:** agents, pg-registry, owner-bootstrap existem; delta W2-04.
 
 ### 3.13 presentation/http + http_bridge
 - **Objetivo:** API v1 com OpenAPI; composição.
@@ -184,10 +185,10 @@ Formato: **Objetivo** · **Estado** · **Mais simples que funciona?** · **Alter
 
 ### 3.17 org
 - **Objetivo:** estrutura organizacional, posições, assignments, policies e governança de autonomia; PG schema `org` SoT; Neo4j derivado.
-- **Estado:** zero código. SDD e plano draft em revisão após rejeição do Critic. Plano atual: fatias S01–S18; gates P1 (auth humano/IdP + D-OWNER-BIND), P2 (roles/migrations/PG isolado), P3 (runtime/tool gateway, catálogo de capabilities, **auth de principal agente**); decisões D-HIER, D-SEAM-AGENTS, D-OUTBOX, D-OWNER-BIND, D-OWNER-POSITION. S01–S03 (tipos e invariantes puros) não dependem de DB/auth/runtime; aprovações de agente só contam com auth de principal agente de P3 (S10, S14 dependem disso). Threat model do bot Segurança: [org-module-threat-model](../security/org-module-threat-model.md).
-- **Mais simples?** O escopo completo (policies, epoch, delegação, cutover) é grande. A ordem S01–S08 sem grants é proporcional. Recomendação: não iniciar S09+ antes de existir o runtime que consumiria grants (sem consumidor, grants são código sem uso).
+- **Estado:** zero código. SDD e plano `draft`; o SDD voltou a **REJECTED** no Critic por F-ORG-01 (matriz de autorização estrutural, [org-module-threat-model](../security/org-module-threat-model.md)) e está em revisão agora, o que bloqueia S04+ além de P1/P2. Plano atual: fatias S01–S18; gates P1 (auth humano/IdP + D-OWNER-BIND), P2 (roles/migrations/PG isolado), P3 (runtime/tool gateway, catálogo de capabilities, **auth de principal agente**); decisões D-HIER, D-SEAM-AGENTS, D-OUTBOX, D-OWNER-BIND, D-OWNER-POSITION. S01–S03 (tipos e invariantes puros) não dependem de DB/auth/runtime; aprovações de agente só contam com auth de principal agente de P3 (S10, S14 dependem disso). Threat model do bot Segurança: [org-module-threat-model](../security/org-module-threat-model.md).
+- **Mais simples?** O escopo completo (policies, epoch, delegação, cutover) é grande. A ordem S01–S08 sem grants é proporcional. Recomendação: S09–S11 entram na Onda 3 imediatamente antes de P3-c2/P3-b (que leem grants/epoch), com aprovação só humana; S14/S17 só depois de P3-a (§4.4).
 - **Alternativas relevantes:** D-OUTBOX → reutilizar `graph_projection_outbox` (menos código); D-SEAM-AGENTS → importar reexports públicos de `modules::agents` (já puros).
-- **Depende de:** P1, P2, P3; D-HIER para S09+. **Falta:** tudo. **SDD:** existe (draft).
+- **Depende de:** SDD org aprovado (F-ORG-01), P1, P2; S09 depende de P3-cat e D-HIER; S14/S17 de P3-a/b/c2. **Falta:** tudo. **SDD:** existe (draft).
 
 ### 3.18 auth humano (P1) — transversal
 - **Objetivo:** provar o owner humano (`HumanPrincipal{issuer,subject}`) em cada request.
@@ -198,19 +199,19 @@ Formato: **Objetivo** · **Estado** · **Mais simples que funciona?** · **Alter
 ### 3.19 auth de principal agente — transversal
 - **Objetivo:** atribuir de forma verificável ações e aprovações a um `AgentId` (hoje o CEO é agente).
 - **Estado:** ausente; o SDD org atribui a P3 e rejeita aprovações de agente até lá.
-- **Avaliação:** P3 já cobre runtime, gateway e catálogo; colocar credencial de agente no mesmo documento o torna grande demais. Recomendação: SDD separado dentro do pacote P3 (P3-c), com regra interina "só humanos aprovam". Ver D3.
+- **Avaliação:** P3 já cobre runtime, gateway e catálogo; colocar credencial de agente no mesmo documento o torna grande demais. Recomendação: SDD separado dentro do pacote P3, dividido em **P3-c1** (credencial básica: `AgentId` + lifecycle, depois de P1) e **P3-c2** (vínculo com assignment e `revocation_epoch`, depois de org S11), com regra interina "só humanos aprovam" até P3-c2. A divisão quebra o ciclo S11 ↔ P3-c (§4.4). Ver D3.
 
 ### 3.20 runtime / scheduler / worker
 - **Objetivo:** tarefas duráveis, lease, retry, cancelamento, revalidação por ação.
 - **Estado:** ausente (tasks do monitor não são runtime de agentes).
 - **Mais simples:** fila em PG (`SELECT … FOR UPDATE SKIP LOCKED`) com lease e heartbeat no mesmo processo; sem broker externo.
-- **Depende de:** P1, P3-c, org S05+. **SDD:** falta (P3-a).
+- **Depende de:** P3-c2, P3-b (e, por elas, P1, org S05/S11). **SDD:** falta (P3-a).
 
 ### 3.21 tool gateway
 - **Objetivo:** checagem de policy/epoch imediatamente antes de cada efeito, auditoria, aprovação humana para alto impacto.
 - **Estado:** ausente. Jev não chama ferramentas.
 - **Mais simples:** uma função de gateway síncrona in-process (`authorize(actor, action, resource) -> Decision`) com allowlist fechada; MCP só depois.
-- **Depende de:** P3-c, org S11. **SDD:** falta (P3-b).
+- **Depende de:** P3-c2, org S05/S11, P3-cat. **SDD:** falta (P3-b).
 
 ### 3.22 memória / conhecimento
 - **Objetivo:** memória entre sessões com proveniência e revisão.
@@ -233,13 +234,13 @@ Formato: **Objetivo** · **Estado** · **Mais simples que funciona?** · **Alter
 flowchart TD
   subgraph O0[Onda 0 — correções]
     W001[W0-01 admin fail-closed]
+    W003[W0-03 opt-out não abre PG]
     W012[W0-12 claim de ordem em resultado ambíguo]
     W013[W0-13 block_on em contexto async]
     W002[W0-02 CI + PG fail-loud + DB de teste isolado]
-    W003[W0-03 opt-out não abre PG]
     W004[W0-04 persistência x timeframe]
     W005[W0-05 promoções e portfolio persistidos]
-    W006[W0-06 hook agents + hidratação TUI]
+    W006[W0-06 hook agents morto]
     W007[W0-07 criptografia de credenciais]
     W008[W0-08 código morto]
     W009[W0-09 V18 rollback/cleanup]
@@ -251,20 +252,25 @@ flowchart TD
     W102[W1-02 instrumentação]
     W103[W1-03 runbook credenciais e rotação]
     W104[W1-04 backup/restore DB]
+    W105[W1-05 runbook de degradação]
   end
-  subgraph O2[Onda 2 — identidade e composição]
+  subgraph O2[Onda 2 — identidade e composição, roadmap pendente de G2]
     W203[W2-03 composição sem singletons]
     P1[P1 auth humano]
     P2[P2 roles DB]
     W204[W2-04 agents PG SoT]
+    W205[W2-05 hook agents no monitor + hidratação TUI]
     ORG1[org S01-S03]
     ORG2[org S04-S08, S12-S13]
   end
-  subgraph O3[Onda 3 — autonomia governada]
+  subgraph O3[Onda 3 — autonomia governada, roadmap pendente de G2]
+    CAT[P3-cat catálogo de capabilities]
+    P3C1[P3-c1 credencial básica de agente]
+    ORG3A[org S09-S11, aprovação só humana]
+    P3C2[P3-c2 credencial vinculada a assignment/epoch]
+    P3B[P3-b tool gateway]
     P3A[P3-a runtime]
-    P3B[P3-b tool gateway + catálogo]
-    P3C[P3-c auth de agente]
-    ORG3[org S09-S11, S14, S17]
+    ORG3B[org S14, S17 + aprovação por agente]
   end
   subgraph O4[Onda 4 — sob demanda]
     MEM[memória]
@@ -274,34 +280,51 @@ flowchart TD
   end
   W002 --> W009 --> W010
   W002 --> W012
-  W012 --> W203
-  W013 --> W203
   W002 --> W005
   W002 --> W007
-  W003 --> W004
   W001 --> W007
+  W003 --> W004
+  W005 --> W011
   W010 --> W101
   W101 --> W102
+  W102 --> W105
+  W007 --> W103
   W002 --> W104
+  W012 --> W203
+  W013 --> W203
   W005 --> W203
-  W005 --> W011
   W203 --> P1
   W002 --> P2
   P1 --> W204
+  P2 --> W204
+  W204 --> W205
+  W003 --> W205
   P2 --> ORG2
   P1 --> ORG2
   ORG1 --> ORG2
-  P1 --> P3C
-  P3C --> P3A
-  P3C --> P3B
-  ORG2 --> ORG3
-  P3B --> ORG3
-  P3A --> ORG3
-  ORG3 --> MEM
-  ORG3 --> FIN
-  ORG2 --> CUT
+  P1 --> P3C1
+  ORG2 --> ORG3A
+  CAT --> ORG3A
+  P3C1 --> P3C2
+  ORG2 --> P3C2
+  ORG3A --> P3C2
+  ORG2 --> P3B
+  ORG3A --> P3B
+  CAT --> P3B
+  P3C2 --> P3B
+  P3C2 --> P3A
+  P3B --> P3A
+  P3A --> ORG3B
+  P3B --> ORG3B
+  P3C2 --> ORG3B
+  ORG3A --> ORG3B
+  ORG3B --> MEM
+  ORG3B --> FIN
   W102 --> FIN
+  ORG2 --> CUT
 ```
+
+Ordem topológica da Onda 3 (sem ciclos; conferida por script sobre as arestas acima): **P3-cat → P3-c1 → org S09–S11 (aprovação só humana) → P3-c2 → P3-b → P3-a → org S14, S17 + habilitar aprovação por agente**. P3-cat e P3-c1 são independentes entre si e podem correr em paralelo.
 
 Paralelismo permitido: org S01–S03 podem rodar em qualquer onda após acordo dos seams (não tocam DB/auth). SDDs (documentos) de P1/P2/P3 podem ser escritos durante a Onda 1. Nenhuma feature nova antes de W0-01 e W0-02 terminarem.
 
@@ -311,21 +334,21 @@ SDDs mínimos destas fatias estão sendo escritos em paralelo em `backend/docs/s
 
 | Ordem | Fatia | Risco | Depende de | Critérios de aceite (resumo) | Seams públicos a acordar |
 |---|---|---|---|---|---|
-| 1 | **W0-01 Admin auth fail-closed** (item 1) **[SEGURANÇA]** | Alto: rotas mutantes e CRUD de segredos abertos sem token | — (critérios do bot Segurança) | Sem token, toda rota mutante e todo `/admin/*` responde 401/503 fail-closed, ou o boot falha; `--bind` não-loopback sem token recusa iniciar; modo dev aberto só com flag explícita e visível em `/meta`; teste HTTP para cada operação mutante do OpenAPI; critérios de aceite **SEC-ADM-01..14** de [admin-http-auth-fail-open](../security/admin-http-auth-fail-open.md). SDD: o existente [http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md), com escopo SEC-ADM-01, 02, 03, 04, 06, 07, 08, 09, 13; SEC-ADM-05, 10, 11, 12 ficam como follow-up; SEC-ADM-14 bloqueado por P1 | Nome/semântica da flag dev; código de erro; lista de rotas protegidas; comportamento de `/meta` |
-| 2 | **W0-12 Claim de ordem em resultado ambíguo** (F-ORD-03, Alto) **[SEGURANÇA]** | Alto: timeout/erro depois do dispatch libera o claim (`state.rs:566-571`) e o retry com a mesma key reenvia → ordem duplicada (hoje limitado a testnet/recording; bloqueia fechamento G2 e qualquer mainnet) | — para o SDD; W0-02 para a evidência PG | Claim só é liberado em falha **pré-dispatch** comprovada; erro pós-dispatch ou ambíguo grava estado `unknown` durável; retry com a mesma key durante `unknown` → 409 `order_outcome_unknown` sem novo envio; saída de `unknown` só por reconciliação; teste com exchange fake que aceita e devolve timeout: após N retries, exatamente 1 ordem registrada; critério SEC-ORD-08 de [orders-g2-threat-model](../security/orders-g2-threat-model.md); SDD [wave0-12-order-ambiguous-claim-sdd](../sdd/wave0-12-order-ambiguous-claim-sdd.md) | Classificação de erro do executor (pré × pós-dispatch) no port de orders; estado `unknown` na tabela de idempotência (migration na próxima sequência livre, se necessária); código/corpo do 409; quem move `unknown` → `completed`/`released` |
-| 3 | **W0-13 `block_on` de runtime próprio em contexto async** (F-ORD-11) | Alto no caminho testnet: `ccxt_runtime().block_on` em `exchanges/adapters/binance_spot_testnet_submit.rs:167` e `binance_spot_testnet_reconcile.rs:64` é chamado a partir do handler async de `serve` (`state.rs` → `submit_order_http` síncrono); tokio entra em pânico com `block_on` dentro de contexto de runtime ("Cannot start a runtime from within a runtime") → submit/reconcile testnet quebrados; não verificado dinamicamente. Mesmo padrão em `orders/adapters/live_reconciliation_pg_mirror.rs:37` (`MIRROR_RUNTIME.block_on`) | — | Submit e reconcile testnet executados a partir de handler async sem pânico e sem bloquear worker (port async ou `spawn_blocking`); teste `#[tokio::test]` que chama o caminho real pelo `ApiState` com exchange fake; mirror PG de reconciliação coberto ou registrado como follow-up; critério SEC-ORD-17 de [orders-g2-threat-model](../security/orders-g2-threat-model.md); SDD [wave0-13-orders-block-on-sdd](../sdd/wave0-13-orders-block-on-sdd.md) | Port de submit/reconcile async × síncrono com `spawn_blocking`; onde vive o runtime ccxt (injetado no boot, alinhado com W2-03) |
-| 4 | **W0-02 CI verde + PG fail-loud + DB de teste isolado** (item 8, T-CI-01/02) | Alto: evidência atual pode ser vazia | — | `rust-toolchain.toml` fixado; clippy limpo; job PG com imagem PG18+Timescale+pgvector; em modo integração, ausência de PG ou erro de migração **falha** o teste; guard recusa rodar testes contra DB de runtime (marcador no DB, não só nome); CI verde nos dois jobs com 28 testes PG executados | Variável de modo (`…_PG_INTEGRATION_REQUIRED` ou equivalente); convenção de nome/marcador do DB de teste; comportamento do runtime ao ver marcador de teste |
-| 5 | **W0-03 Opt-out não abre nem migra PG** (regressão de `0011`) **[SEGURANÇA]** | Alto: migração implícita em banco não pretendido | — | Com `PERSIST_MARKET_DATA` desligado, monitor não conecta nem migra, mesmo com `DATABASE_URL`; snapshot do supervisor só com opt-in explícito; teste com URL de banco inexistente prova zero conexão; [monitor-persistence-c17-sdd](../sdd/monitor-persistence-c17-sdd.md) revisado; renomear a fatia para não colidir com C17 do T-15 | Flag do snapshot (reuso de `PERSIST_MARKET_DATA` ou nova) |
+| 1 | **W0-01 Admin auth fail-closed** (item 1) **[SEGURANÇA]** | Alto: rotas mutantes e CRUD de segredos abertos sem token | — (critérios do bot Segurança) | Fora de dev+loopback, `serve` sem configuração de auth válida **não sobe** (exit ≠ 0, socket não aberto); com o servidor no ar, toda rota `Protected` sem credencial válida → 401 na layer; modo dev aberto só com flag explícita e visível em `/meta`; teste HTTP para cada operação mutante do OpenAPI; critérios de aceite **SEC-ADM-01..14** de [admin-http-auth-fail-open](../security/admin-http-auth-fail-open.md). **SDD único:** [http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md), com escopo SEC-ADM-01, 02, 03, 04, 06, 07, 08, 09, 13; SEC-ADM-05, 10, 11, 12 ficam como follow-up; SEC-ADM-14 bloqueado por P1. Pontos abertos do threat model que o SDD precisa fechar: (1) enumeração de rotas — o `Router` do axum não lista rotas; o SDD adota uma tabela declarativa única de rotas consumida pelo router e pelo teste de cobertura; (2) "401/503 ou boot falha" — o SDD decide que o boot falha sem config de auth fora de dev+loopback | Nome/semântica da flag dev; códigos de erro de boot; tabela declarativa de rotas (classe de acesso por entrada); comportamento de `/meta` |
+| 2 | **W0-03 Opt-out não abre nem migra PG** (regressão de `0011`) **[SEGURANÇA]** | Alto: migração implícita em banco não pretendido | — | Com `PERSIST_MARKET_DATA` desligado, monitor não conecta nem migra, mesmo com `DATABASE_URL`; snapshot do supervisor só com opt-in explícito; teste com URL de banco inexistente prova zero conexão; [monitor-persistence-c17-sdd](../sdd/monitor-persistence-c17-sdd.md) revisado; renomear a fatia para não colidir com C17 do T-15; SDD [wave0-03-monitor-opt-out-sem-pg-sdd](../sdd/wave0-03-monitor-opt-out-sem-pg-sdd.md) | Flag do snapshot (reuso de `PERSIST_MARKET_DATA` ou nova) |
+| 3 | **W0-12 Claim de ordem em resultado ambíguo** (F-ORD-03, Alto) **[SEGURANÇA]** | Alto: timeout/erro depois do dispatch libera o claim (`state.rs:566-571`) e o retry com a mesma key reenvia → ordem duplicada (hoje limitado a testnet/recording; bloqueia fechamento G2 e qualquer mainnet) | — para o SDD; W0-02 para a evidência PG | Claim só é liberado em falha **pré-dispatch** comprovada; erro pós-dispatch ou ambíguo grava estado `unknown` durável; retry com a mesma key durante `unknown` → 409 `order_outcome_unknown` sem novo envio; saída de `unknown` só por reconciliação; claim ocupado (`try_claim` falso porque outra request está em voo; hoje `state.rs:545-547` faz `record_completed` em memória e devolve `accepted:true`) → 409 `idempotency_in_flight`, **nunca** marca completed; teste com duas requests concorrentes em que a primeira falha antes do dispatch e o retry executa exatamente uma vez; teste com exchange fake que aceita e devolve timeout: após N retries, exatamente 1 ordem registrada; critério SEC-ORD-08 de [orders-g2-threat-model](../security/orders-g2-threat-model.md); SDD [wave0-12-order-ambiguous-claim-sdd](../sdd/wave0-12-order-ambiguous-claim-sdd.md) | Classificação de erro do executor (pré × pós-dispatch) no port de orders; estado `unknown` na tabela de idempotência (migration na próxima sequência livre, se necessária); códigos/corpos dos 409 (`order_outcome_unknown`, `idempotency_in_flight`); quem move `unknown` → `completed`/`released` |
+| 4 | **W0-13 `block_on` de runtime próprio em contexto async** (F-ORD-11) | Alto **se reproduzido** (não verificado dinamicamente): `submit_order_http` do `http_bridge` é síncrono e chamado direto dentro de `async fn` (`state.rs:560`), sem `spawn_blocking`; ele chega a `ccxt_runtime().block_on` (`exchanges/adapters/binance_spot_testnet_submit.rs:167`). `reconcile_pending_orders_once` (async) chama `run_reconciliation_poll_once` síncrono (`state.rs:738`), que chega a `binance_spot_testnet_reconcile.rs:64`. Tokio proíbe `block_on` dentro de contexto de runtime → possível pânico no caminho testnet | — | 1) **Primeiro um teste RED** que reproduz o pânico pelo `ApiState` (submit e reconcile, `#[tokio::test]`, exchange fake), registrado no G3; se não reproduzir, a fatia desce na ordem de risco e o achado é reclassificado; 2) submit e reconcile testnet sem pânico e sem bloquear worker (port async ou `spawn_blocking`); 3) `MIRROR_RUNTIME.block_on` (`orders/adapters/live_reconciliation_pg_mirror.rs:37`): conferido — o único chamador é `monitor/controllers/supervisor.rs:84` (ramo de ordens do monitor, inalcançável, W0-11) e o mirror só é registrado no boot HTTP (`state.rs:324`); a reconciliação disparada por `state.rs` usa `pg.upsert_state(...).await` direto. Portanto fica fora do caminho async de `state.rs` e sai junto com o ramo em W0-11; se W0-11 mantiver o ramo, entra como escopo obrigatório aqui; critério SEC-ORD-17 de [orders-g2-threat-model](../security/orders-g2-threat-model.md); SDD [wave0-13-orders-block-on-sdd](../sdd/wave0-13-orders-block-on-sdd.md) | Port de submit/reconcile async × síncrono com `spawn_blocking`; onde vive o runtime ccxt (injetado no boot, alinhado com W2-03) |
+| 5 | **W0-02 CI verde + PG fail-loud + DB de teste isolado** (item 8, T-CI-01/02) | Alto: evidência atual pode ser vazia | — | `rust-toolchain.toml` fixado; clippy limpo; job PG com imagem PG18+Timescale+pgvector; em modo integração, ausência de PG ou erro de migração **falha** o teste; guard recusa rodar testes contra DB de runtime (marcador no DB, não só nome); CI verde nos dois jobs; cada teste do manifesto PG roda exatamente uma vez e o script falha caso contrário (critério T-CI-02) | Variável de modo (`…_PG_INTEGRATION_REQUIRED` ou equivalente); convenção de nome/marcador do DB de teste; comportamento do runtime ao ver marcador de teste |
 | 6 | **W0-04 Persistência com timeframe padrão** (item 2) | Médio: boot falha com config padrão | W0-03 | Ou persistência funciona com `15m` (agregando WS `1m`/REST), ou `Config::validate` falha no carregamento com mensagem clara antes do monitor; teste pelo binário com `bot.toml` padrão | Escolha: suportar `15m` × validar cedo (recomendado: validar cedo agora; suportar depois se houver demanda) |
-| 7 | **W0-05 Promoções de bots e portfolio persistidos** (item 5) | Médio: controle de promoção e posições perdidos no restart | W0-02 | Migration na **próxima sequência livre** (0011 já usada): tabela de promoções (bot, autor, estado, timestamps, append-only) e fills/posições paper; restart preserva promoção ativa e posições; falha PG → 503 fail-closed, memória não muda; valores em `Decimal`; `0011` continua só advisory | `BotPromotionStore` e `PaperLedgerStore` (métodos, erros); DTO de posições; política sem PG (memória explícita × recusa) |
-| 8 | **W0-06 Hook de agentes no monitor + hidratação PG na TUI** (item 4) | Médio-baixo: funcionalidade prometida inexistente | W0-03 | Monitor chama `MonitorAgentHook::on_evaluation_cycle` por ciclo; hook não altera sinal/risco/ordem (teste de não interferência); TUI hidrata registry do PG quando opt-in; mesma regra de SoT de W2-04 documentada | Assinatura do hook; o que o hook pode fazer (só log/advisory Jev com `consult_jev`); flag de hidratação |
+| 7 | **W0-05 Promoções de bots e portfolio persistidos** (item 5) | Médio: controle de promoção e posições perdidos no restart | W0-02 | Migration na **próxima sequência livre** (0011 já usada): tabela de promoções (bot, autor, estado, timestamps, append-only; autor registrado como **declarado, não autenticado**, porque `promoted_by` vem do body até P1 e o fechamento de bots G2) e fills/posições paper; restart preserva promoção ativa e posições; falha PG → 503 fail-closed, memória não muda; valores em `Decimal`; `0011` continua só advisory | `BotPromotionStore` e `PaperLedgerStore` (métodos, erros); DTO de posições; política sem PG (memória explícita × recusa) |
+| 8 | **W0-06 Hook de agentes morto** (item 4, só a parte de correção) | Baixo: código morto (`supervisor_hook.rs` com `#![allow(dead_code)]`) e doc que diz "integrado ao monitor" | — | Escolher uma: remover o hook morto (recomendado) ou manter o arquivo e corrigir os docs para "não ligado"; gates verdes. Ligar o hook ao monitor e hidratar a TUI do PG **não** são correção: são feature e dependem de PG como SoT (§2 item 14); vão para W2-05, depois de W2-04 | Nenhum |
 | 9 | **W0-07 Criptografia de `provider_credentials`** (item 7) **[SEGURANÇA]** | Alto em impacto, depende de gestão de chave | W0-01, W0-02 | ADR de origem da chave (env/arquivo/KMS) e algoritmo AEAD; migração das linhas existentes; `PROVIDER_CREDENTIALS_ENCRYPTION_MODE` ≠ `none` só com leitura e escrita cifradas; teste prova ciphertext no PG e falha fechada com chave ausente/errada; rotação de chave documentada; critérios de aceite **SEC-CRED-01..12** de [provider-credentials-plaintext](../security/provider-credentials-plaintext.md). SDD: o existente [provider-credentials-db-sdd](../sdd/provider-credentials-db-sdd.md) + ADR `Proposed` da escolha da KEK (decisão do Julio, D5); nenhum ADR existe ainda | Formato do blob (versão+nonce); origem da chave; comportamento sem chave |
 | 10 | **W0-08 Código morto** (item 6) | Baixo | — | NIM: remover (recomendado) ou ligar a um chamador real com teste; `StubChannelNotifier` removido; futures: remover as capacidades Futures declaradas em `capabilities.rs:41-44` e o `_futures_registered` descartado (`preflight.rs:98`), mantendo `MarketType::Futures`/parsing de conta só se houver fatia futures planejada (senão remover também `[accounts.futures]`); `0003`: manter e marcar como reservado para memória (drop exige migration nova e memória provavelmente usará pgvector); gates verdes | Nenhum público (remoções); decisão sobre `0003` |
 | 11 | **W0-09 V18 formal** | Médio: rollback nunca provado | W0-02 | Teste PG em DB descartável: erro injetado no meio de TX de domínio (identidade+outbox, idempotência+outbox) → nada persiste, outbox vazia; limpeza verificada (DB dropado ou schema vazio); evidência registrada com host/versão | Ponto de injeção de falha (seam de teste) |
 | 12 | **W0-10 G4 de T-05/T-07/T-10/T-15 + docs de status** | Baixo | W0-02, W0-09 | Critic consolida G4 de C9/C10/C12–C17 com evidência de CI; docs de planning deixam de dizer "C17 pendente"; contagens vêm de uma fonte gerada (linha `OK:` + manifesto), não copiadas à mão | Nenhum |
 | 13 | **W0-11 Ramo testnet do monitor** (item 3) | Baixo hoje (inalcançável), alto se ligado sem gate | W0-05 | Recomendado: remover o ramo inalcançável; ordens testnet continuam pelo `serve` com gates atuais; reintroduzir no monitor só na Onda 2/3 com promoção persistida e ator autenticado. Alternativa: gate explícito + testes | Se mantido: flag e pré-condições |
 
-Fora da lista do owner, incluídas por risco: W0-02 (skip silencioso e DB compartilhado), W0-03 (regressão), W0-09, W0-10, W0-12 e W0-13 (achados F-ORD-03 e F-ORD-11 do bot Segurança). IDs são estáveis; a coluna Ordem é a ordem de risco. Também recomendado junto de W0-02: endurecer `check-import-direction.sh` (caminhos qualificados `crate::modules::` em `core`) e mover `MonitorEvaluatorKind` para fora de `modules::bots`.
+Fora da lista do owner, incluídas por risco: W0-02 (skip silencioso e DB compartilhado), W0-03 (regressão), W0-09, W0-10, W0-12 e W0-13 (achados F-ORD-03 e F-ORD-11 do bot Segurança). IDs são estáveis; a coluna Ordem é a ordem de risco (W0-03 subiu para 2º: pequena, isolada, de segurança e regressão de hoje). Também recomendado junto de W0-02: endurecer `check-import-direction.sh` (caminhos qualificados `crate::modules::` em `core`) e mover `MonitorEvaluatorKind` para fora de `modules::bots`.
 
 ### 4.2 Onda 1 — operabilidade mínima
 
@@ -347,16 +370,22 @@ Fora da lista do owner, incluídas por risco: W0-02 (skip silencioso e DB compar
 | W2-04 Agents com PG como SoT | P1, P2 | Com PG ligado, mutação = TX PG (identidade+evento+outbox) e só então memória; falha PG não altera memória (teste com falha injetada); TUI e `serve` hidratam igual | `AgentIdentityStore` (trait) |
 | Bots G2 fechamento (promoção só por ator autenticado) | P1, W0-05 | `promoted_by` vem do ator autenticado, nunca do body; auditoria durável | Contrato de promote |
 | org S01–S03 | acordo D-SEAM-AGENTS | Conforme plano org | Conforme plano org |
-| org S04–S08, S12–S13 | P1, P2, S01–S03, D-OUTBOX, D-OWNER-BIND | Conforme plano org; migrations na próxima sequência livre | Conforme plano org |
+| W2-05 Hook de agentes no monitor + hidratação PG na TUI (feature que saiu de W0-06) | W2-04, W0-03 | Monitor chama `MonitorAgentHook::on_evaluation_cycle` por ciclo; hook não altera sinal/risco/ordem (teste de não interferência); TUI hidrata do PG já como SoT (W2-04) quando opt-in | Assinatura do hook; o que o hook pode fazer (só log/advisory Jev com `consult_jev`); flag de hidratação |
+| org S04–S08, S12–S13 | P1, P2, S01–S03, D-OUTBOX, D-OWNER-BIND, **SDD org aprovado** | Conforme plano org; migrations na próxima sequência livre. Bloqueado também pelo SDD org, que voltou a REJECTED no Critic por F-ORG-01 (matriz de autorização estrutural) e está em revisão | Conforme plano org |
 
 ### 4.4 Onda 3 — autonomia governada (pacote P3)
 
 | Fatia | Depende de | Aceite | Seams |
 |---|---|---|---|
-| P3-c Auth de principal agente **[SEGURANÇA]** | P1, D3 | Credencial de curta duração emitida pelo servidor, vinculada a `AgentId` + assignment + lifecycle + epoch; revogação imediata; agente não se autentica como humano; até aprovado, aprovações de agente negadas | Formato da credencial; emissão/rotação/revogação |
-| P3-b Tool gateway + catálogo de capabilities **[SEGURANÇA]** | P3-c, org S05 | `authorize(actor, action, resource)` lê grant/epoch no PG `org` antes de cada efeito; PG indisponível → nega; allowlist fechada; alto impacto negado | Tipo `Decision`; catálogo tipado |
-| P3-a Runtime/scheduler | P3-c, P3-b | Fila PG com lease/heartbeat/retry limitado/idempotência; `task.start` ≠ `tool.invoke`; cancelamento em mudança de policy/assignment | `TaskStore`, estados de task |
-| org S09–S11, S14, S17 | P3-a/b/c, D-HIER | Conforme plano org | Conforme plano org |
+| P3-cat Catálogo de capabilities (tipos, sem enforcement) | P1 (documento pode sair antes) | Catálogo tipado e fechado de ações/recursos; sem efeito em runtime; usado por S09 e P3-b | Tipos do catálogo |
+| P3-c1 Credencial básica de agente **[SEGURANÇA]** | P1, D3 | Credencial de curta duração emitida pelo servidor, vinculada a `AgentId` + lifecycle; revogação imediata; agente não se autentica como humano; ainda sem efeito em aprovações | Formato da credencial; emissão/rotação/revogação |
+| org S09–S11 com regra interina "só humanos aprovam" **[SEGURANÇA]** | org S04–S08/S12 (S05, S12), P3-cat, D-HIER, D-OWNER-POSITION | Policies, aprovações e grants/`revocation_epoch` no PG `org`; toda aprovação exige principal humano (P1); aprovação por agente negada com erro estável até ORG3B | Conforme plano org |
+| P3-c2 Credencial vinculada a assignment e epoch **[SEGURANÇA]** | P3-c1, org S05/S06, S11 | Credencial carrega assignment + `revocation_epoch`; mudança de assignment/epoch invalida a credencial na próxima checagem; teste de revogação por epoch | Claims de assignment/epoch; checagem de epoch |
+| P3-b Tool gateway **[SEGURANÇA]** | P3-c2, org S05, S11, P3-cat | `authorize(actor, action, resource)` lê grant/epoch no PG `org` antes de cada efeito; PG indisponível → nega; allowlist fechada; alto impacto negado | Tipo `Decision` |
+| P3-a Runtime/scheduler | P3-c2, P3-b | Fila PG com lease/heartbeat/retry limitado/idempotência; `task.start` ≠ `tool.invoke`; cancelamento em mudança de policy/assignment | `TaskStore`, estados de task |
+| org S14, S17 + habilitar aprovação por agente em S10 | P3-a, P3-b, P3-c2, S10, S11 | Conforme plano org; aprovação por agente só com credencial P3-c2 válida | Conforme plano org |
+
+Divergência a reconciliar no plano org (não editado aqui): hoje ele lista "P3" inteiro como dependência de S09–S11; este plano propõe S09 depender só do catálogo (P3-cat) e S10–S11 rodarem com aprovação só humana antes de P3-b/P3-c2.
 
 ### 4.5 Onda 4 — sob demanda (cada item exige SDD e, quando aplicável, threat model do bot Segurança)
 
@@ -371,15 +400,16 @@ Fora da lista do owner, incluídas por risco: W0-02 (skip silencioso e DB compar
 
 1. **Onda 0 de correções antes de qualquer feature.** O plano atual (`unimplemented-modules-analysis.md` §"Ordem recomendada") ia de C10/C15/C17/V18 direto para agents/auth; não tratava admin opcional, skip silencioso de PG, DB compartilhado, regressão de `0011` nem código morto.
 2. **C10/C15/C16/C17 (T-15) saem de "pendente" para "G3 aprovado com follow-up; falta G4".** O código e os SDDs T-05/T-10/T-15 mostram isso; os docs de planning estão desatualizados. O que resta é W0-09 (V18) e W0-10 (G4).
-3. **Evidência antes de contagem.** "512 passed / 0 ignored" deixa de ser critério; o critério passa a ser CI verde com PG18 executando os 28 testes e falhando quando o PG não está lá (W0-02).
+3. **Evidência antes de contagem.** "512 passed / 0 ignored" deixa de ser critério; o critério passa a ser CI verde com PG18, cada teste do manifesto PG executado exatamente uma vez e falha quando o PG não está lá (W0-02).
 4. **Isolamento do DB de teste entra na Onda 0**, antecipando a parte de isolamento do P2 do org; roles DML×migration ficam no P2 (Onda 2).
 5. **Neo4j congelado** (sem novas projeções) até consumidor real; o plano atual listava F3 HTTP e graphify unificado como próximos passos.
 6. **Refatoração de composição (W2-03) antes de P1**, porque o middleware de auth entra no `ApiState` e o estado global força testes seriais. O plano atual não previa isso.
 7. **Auth de principal agente vira fatia própria (P3-c)** dentro do pacote P3, com regra interina "só humanos aprovam"; o plano atual não tinha dono para isso.
 8. **Agents: PG como SoT quando ligado** (W2-04) em vez de memória SoT + espelho best-effort.
-9. **org S09+ (policies/grants) só junto do runtime/gateway**, para não construir autorização sem consumidor.
+9. **org S09–S11 imediatamente antes de P3-c2/P3-b**, com aprovação só humana; S14/S17 depois de P3-a. Quebra o ciclo S11 ↔ P3-b/P3-c do plano anterior.
 10. **Migrations novas sempre "próxima sequência livre"** (0011 já existe); nenhum plano deve fixar número.
-11. **Idempotência de ordens com estado `unknown` (W0-12) e remoção do `block_on` em contexto async (W0-13) entram na Onda 0**, logo após W0-01; o plano atual tratava idempotência de orders (`0004`) e o submit testnet como entregues.
+11. **Idempotência de ordens com estado `unknown` e claim ocupado → 409 (W0-12) e remoção do `block_on` em contexto async (W0-13, condicionada a teste RED) entram na Onda 0**, logo após W0-01 e W0-03; o plano atual tratava idempotência de orders (`0004`) e o submit testnet como entregues.
+12. **Hook de agentes:** Onda 0 só remove o código morto (W0-06); ligar ao monitor e hidratar a TUI vira W2-05, depois de W2-04.
 
 ## 6. Decisões do Julio
 
@@ -387,7 +417,7 @@ Fora da lista do owner, incluídas por risco: W0-02 (skip silencioso e DB compar
 |---|---|---|---|
 | D1 | Hierarquia (D-HIER do SDD org): Level C | A) adotar Level C (ADR, atualizar `AGENTS.md`, migrar enum/dados — org S15); B) sem Level C, "líder de departamento" = Level B; C) nível como dado de `org` (cargo), sem mudar `AgentRole` | **C para estrutura + B no enum**, mantendo `AGENTS.md` como está; A só se houver necessidade concreta de um quarto nível aprovador, via ADR. |
 | D2 | Provedor de auth humano (P1) e owner por organização (D-OWNER-BIND) | A) OIDC com provedor gerenciado (JWKS); B) OIDC self-hosted (ex.: Keycloak); C) par de chaves local do operador (token assinado ed25519) | **A**, mapeando `issuer+subject` para `HumanPrincipal`; owner por organização, com o singleton `0010` migrado para o owner da organização legada vinculado ao principal. C só se o backend continuar estritamente local e mono-usuário. |
-| D3 | Auth de principal agente | A) dentro do SDD P3 de runtime; B) SDD separado P3-c no pacote P3; C) adiar e manter só humanos aprovando indefinidamente | **B** com regra interina de C (aprovações de agente negadas até P3-c aprovado e implementado). |
+| D3 | Auth de principal agente | A) dentro do SDD P3 de runtime; B) SDD separado P3-c no pacote P3; C) adiar e manter só humanos aprovando indefinidamente | **B**, dividido em P3-c1/P3-c2, com regra interina de C (aprovações de agente negadas até P3-c2 aprovado e implementado). |
 | D4 | Escopo do Neo4j | A) congelar (código mantido, stack opcional, sem novas projeções); B) continuar expandindo (org S08, F3 HTTP); C) remover e usar CTE recursiva no PG | **A**; reavaliar em org S08. C reduz ~2,6k linhas, mas descarta trabalho que pode servir a org/memória. |
 | D5 | Criptografia de `provider_credentials` (W0-07): origem da chave | A) chave em variável de ambiente/arquivo protegido do host; B) KMS/secret manager externo; C) não guardar segredos no PG (voltar a env/arquivo) | **A** agora (menor dependência), com formato de blob versionado para migrar para B depois. |
 
@@ -399,13 +429,13 @@ Existentes relevantes: agents (+pg-registry, owner-bootstrap, neo4j), bots (+cat
 
 Faltantes, na ordem em que devem ser escritos:
 
-1. Onda 0 — um SDD mínimo por fatia W0-01…W0-13, na ordem de risco: W0-01 (existente [http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md)), W0-12 ([wave0-12-order-ambiguous-claim-sdd](../sdd/wave0-12-order-ambiguous-claim-sdd.md)), W0-13 ([wave0-13-orders-block-on-sdd](../sdd/wave0-13-orders-block-on-sdd.md)), W0-02, W0-03, W0-07 (existente [provider-credentials-db-sdd](../sdd/provider-credentials-db-sdd.md) + ADR `Proposed` da KEK), W0-05, W0-04, W0-09, W0-06, W0-08, W0-11; W0-10 pode ser só registro de G4. Os novos são redigidos em paralelo como `wave0-*`.
+1. Onda 0 — um SDD mínimo por fatia W0-01…W0-13, na ordem de risco: W0-01 ([http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md), SDD único), W0-03 ([wave0-03-monitor-opt-out-sem-pg-sdd](../sdd/wave0-03-monitor-opt-out-sem-pg-sdd.md)), W0-12 ([wave0-12-order-ambiguous-claim-sdd](../sdd/wave0-12-order-ambiguous-claim-sdd.md)), W0-13 ([wave0-13-orders-block-on-sdd](../sdd/wave0-13-orders-block-on-sdd.md)), W0-02, W0-04, W0-05, W0-06, W0-07 ([provider-credentials-db-sdd](../sdd/provider-credentials-db-sdd.md) + ADR `Proposed` da KEK), W0-08, W0-09, W0-11; W0-10 pode ser só registro de G4. Os demais são redigidos em paralelo como `wave0-*`.
 2. `observability-metrics-sdd` (W1-01), com os runbooks W1-03/W1-04/W1-05 como anexos validados por drill.
 3. SDD de composição/DI (W2-03).
 4. SDD P1 auth humano/IdP + D-OWNER-BIND.
 5. SDD P2 roles de DB/migrations embutidas (a parte de isolamento de teste já estará em W0-02).
-6. Delta de [agents-pg-registry-sdd](../sdd/agents-pg-registry-sdd.md) para PG SoT (W2-04).
-7. Pacote P3: P3-c auth de agente → P3-b tool gateway + catálogo → P3-a runtime/scheduler.
+6. Delta de [agents-pg-registry-sdd](../sdd/agents-pg-registry-sdd.md) para PG SoT (W2-04) e hook/hidratação (W2-05).
+7. Pacote P3: P3-cat catálogo e P3-c1 credencial básica → (org S09–S11) → P3-c2 vínculo assignment/epoch → P3-b tool gateway → P3-a runtime/scheduler.
 8. Onda 4: memória, canais, finanças/produção (cada um com threat model do bot Segurança).
 
 ## 8. Critérios para declarar um módulo completo
@@ -414,12 +444,12 @@ Código integrado ao fluxo correto; contrato público acordado com o Julio; test
 
 ## 9. Estado dos documentos referenciados no fechamento
 
-Conferido em 2026-09-27 ~16:25 COT e reconferido ~16:30 COT (HEAD `b2001a7c`), depois de reler os documentos org:
+Conferido em 2026-09-27 ~16:25 COT e reconferido ~16:35 COT (HEAD `fcaf14f8`), depois de reler os documentos org:
 
-- [org-module-sdd](../sdd/org-module-sdd.md): `draft`; D-HIER `Proposed`; P1 = só principais humanos; P2 = roles/migrations/PG isolado (PG 18 × CI pg16, tarefa T-CI-02); P3 = runtime/tool gateway, catálogo de capabilities **e** auth de principal agente; migrations na próxima sequência livre (`0011` já é `0011_monitor_supervisor_snapshot.sql`).
+- [org-module-sdd](../sdd/org-module-sdd.md): frontmatter `draft`; voltou a REJECTED no Critic por F-ORG-01 e está em revisão; D-HIER `Proposed`; P1 = só principais humanos; P2 = roles/migrations/PG isolado (PG 18 × CI pg16, tarefa T-CI-02); P3 = runtime/tool gateway, catálogo de capabilities **e** auth de principal agente; migrations na próxima sequência livre (`0011` já é `0011_monitor_supervisor_snapshot.sql`).
 - [org-complete-implementation-plan](./org-complete-implementation-plan.md): `draft`; fatias S01–S18; S01–S03 sem dependência de DB/auth/runtime (só acordo D-SEAM-AGENTS); S04 usa "next free sequence number"; decisões D-HIER, D-SEAM-AGENTS, D-OUTBOX, D-OWNER-BIND, D-OWNER-POSITION; S10/S14 exigem auth de principal agente (P3).
 - [org-plan-authority-errata](./org-plan-authority-errata.md): `incorporated`.
 - ADR: nenhum encontrado em `backend/docs` (nem de org, nem da KEK de W0-07).
 - `backend/docs/security/`: existem `admin-http-auth-fail-open.md` (SEC-ADM-01..14 → W0-01), `provider-credentials-plaintext.md` (SEC-CRED-01..12 → W0-07), `orders-g2-threat-model.md` (F-ORD-03/SEC-ORD-08 → W0-12), `org-module-threat-model.md` (bot Segurança, `draft`).
-- `backend/docs/sdd/wave0-*` (~16:30 COT): existem `wave0-01-admin-auth-fail-closed-sdd.md` e `wave0-12-order-ambiguous-claim-sdd.md` (não editados aqui); `wave0-13-orders-block-on-sdd.md` ainda **não existe** (link em W0-13 quebrado até chegar). Para W0-01 este plano aponta para `http-admin-auth-seam-sdd.md` como SDD; a relação com `wave0-01-admin-auth-fail-closed-sdd.md` precisa ser definida pelo autor dos SDDs de onda 0.
+- `backend/docs/sdd/wave0-*` (~16:35 COT): existem `wave0-03-monitor-opt-out-sem-pg-sdd.md`, `wave0-12-order-ambiguous-claim-sdd.md` e `wave0-13-orders-block-on-sdd.md` (não editados aqui). Não existe arquivo `wave0-01-*`; o SDD de W0-01 é só `http-admin-auth-seam-sdd.md` (`status: partial`).
 - Grafo Graphify: `backend/graphify-out/` (15:39 COT) e `backend/docs/graphify-out/` (15:09 COT) são anteriores a `0011` e a este plano; rodar `graphify update .` depois do commit.

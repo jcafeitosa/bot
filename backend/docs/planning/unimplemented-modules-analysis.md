@@ -48,7 +48,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Execução financeira live | `modules/orders` + `authorize_rest_use` para `OrderSubmit` (recording/testnet+ credenciais); market buy/sell testnet ccxt; sem prod. | `exchanges/rest`, `binance_spot_testnet_submit.rs`. | Saldo privado, reconciliação, prod bloqueado; Critic G2. |
 | Observabilidade | Há logging estruturado, mas não há catálogo completo de métricas, SLI/SLO, alertas ou runbook de incidentes. | Roadmap lista WS/REST, persistência, idade de candle, Jev e credenciais como pendências. | Definir métricas, cardinalidade, alertas, dashboards e runbooks. |
 | Persistência de runtime | **C17 fatia 1** (snapshot PG `0011`) + **fatia 2** (`PersistenceStatus::Gap`, REST `persistence_status`) entregues; runtime `PersistenceHealth` + TUI conforme [monitor-persistence-policy](../sdd/monitor-persistence-policy-sdd.md); **V18** PG isolado e G4 pendentes. | [monitor-persistence-c17-sdd](../sdd/monitor-persistence-c17-sdd.md); SDD T-15. | V18 em `trading_bot` descartável; revisão G4 Orquestrador. |
-| Integração PostgreSQL | Conexão, migrações, adapters agents/bots/orders/market; `pg_integration` + `./scripts/run-pg-integration-tests.sh` (**28** testes no manifesto); job CI `postgres-integration` com Timescale `pg16` — nunca executou com sucesso e diverge do mínimo PG 18 do código. | Default `cargo test` skip PG sem `DATABASE_URL`; exercício real exige `DATABASE_URL` → `trading_bot` (ver [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)). | Neo4j skip em CI sem stack; rollback operacional V18 ainda em roadmap. |
+| Integração PostgreSQL | Conexão, migrações, adapters agents/bots/orders/market; `pg_integration` + `./scripts/run-pg-integration-tests.sh` (**29** testes no manifesto); job CI `postgres-integration` com Timescale `pg16` — nunca executou com sucesso e diverge do mínimo PG 18 do código. | Default `cargo test` skip PG sem `DATABASE_URL`; exercício real exige `DATABASE_URL` → `trading_bot` (ver [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)). | Neo4j skip em CI sem stack; rollback operacional V18 ainda em roadmap. |
 
 ## 1. Identidade persistente de agentes
 
@@ -183,7 +183,7 @@ C14/C15/C16 fechados; **C17 fatias 1–2** entregues; **V18** (migração/commit
 
 ### V18 — PostgreSQL
 
-A persistência base existe; round-trips PG estão no manifesto de **28** testes (`run-pg-integration-tests.sh`; execução não registrada). V18 formal ainda exige banco `trading_bot` descartável para evidência auditada de rollback após erro e limpeza operacional além dos testes automatizados.
+A persistência base existe; round-trips PG estão no manifesto de **29** testes (`run-pg-integration-tests.sh`; execução não registrada). V18 formal ainda exige banco `trading_bot` descartável para evidência auditada de rollback após erro e limpeza operacional além dos testes automatizados.
 
 ## 8. Observabilidade operacional
 

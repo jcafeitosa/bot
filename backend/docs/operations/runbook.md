@@ -127,4 +127,4 @@ HTTP mutante/bearer (paridade local):
 cargo test --locked --bin bot http_integration -- --test-threads=1
 ```
 
-Baseline esperada (2026-09-27): linha `OK:` do gate → **518** passed, **0** ignored no bin `bot`; `http_integration` → **62** passed; com PG (18+) → `run-pg-integration-tests.sh` executa o manifesto de **28** testes (nenhuma execução registrada em evidência até 27/09). Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.
+Baseline esperada (2026-09-27): linha `OK:` do gate → **519** passed, **0** ignored no bin `bot`; `http_integration` → **62** passed; com PG (18+) → `run-pg-integration-tests.sh` executa o manifesto de **29** testes (nenhuma execução registrada em evidência até 27/09). Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.

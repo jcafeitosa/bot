@@ -62,4 +62,4 @@ Corpo POST: `{ "provider_id", "key_name", "secret" }` (`provider_id` ∈ `typesa
 - Scaffold: migration SQL contains table name.
 - Unit: `provider_credentials_encryption_mode_is_explicit_none_fail_closed` em `credentials/mod.rs`.
 - HTTP: `meta_exposes_provider_credentials_encryption_none` e `healthz_exposes_provider_credentials_encryption_none` em `http_integration_tests.rs`.
-- Integration: `loads_credentials_from_postgres` em `core/providers/credentials/pg_integration.rs` (skip sem `DATABASE_URL`); incluído em `./scripts/run-pg-integration-tests.sh` (manifesto de **28** testes; requer `DATABASE_URL` → `trading_bot`).
+- Integration: `loads_credentials_from_postgres` em `core/providers/credentials/pg_integration.rs` (skip sem `DATABASE_URL`); incluído em `./scripts/run-pg-integration-tests.sh` (manifesto de **29** testes; requer `DATABASE_URL` → `trading_bot`).
