@@ -65,7 +65,7 @@ flowchart LR
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly`; registry em memória compartilhado; rotas HTTP `/api/v1/agents/*`; write-through e cold-start via `PgAgentIdentityStore` + `load_agent_identity_snapshot` no `serve`. **Não** é o módulo `bots`. | `modules/agents/tests.rs`, `http_bridge/agents.rs`. |
-| `modules` | `bots` | `BotIdentity`, `full_ranking`, `build_catalog_from_config` | Executores strategy×timeframe versionados; catálogo/ranking; `BotCatalogBackend` (memória ou `PgBotCatalogStore`); HTTP catalog/persist/snapshot. Runtime live e promoção executor pendentes. | `modules/bots/tests.rs`, `pg_catalog.rs`. |
+| `modules` | `bots` | `BotIdentity`, `full_ranking`, `build_catalog_from_config` | Executores strategy×timeframe versionados; catálogo/ranking; `BotCatalogBackend` (memória ou `PgBotCatalogStore`); HTTP catalog/persist/snapshot. Seam `BotRuntimePort` + `shared_bot_runtime`; HTTP runtime + snapshot monitor; executor live no supervisor pendente. | `modules/bots/tests.rs`, `pg_catalog.rs`. |
 | `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor`, `HttpOrderExecutor` | Valida `OrderIntent` via `risk`; HTTP fail-closed por default (`BOT_ORDERS_EXECUTION`); opt-in `dev_accept` (double, sem exchange). | `modules/orders/tests.rs`, `presentation/http/order_execution.rs`, `server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
@@ -102,7 +102,7 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 | `adapters` | `BotCatalogStore`; `BotRuntimePort` (`FailClosedBotRuntime`, `InMemoryBotRuntime`); `BotCatalogBackend` (memória ou PG via `AppDatabases`). |
 | `controllers` | `persist_catalog_snapshot` grava catálogo derivado da config no store. |
 
-**HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking`, `GET /api/v1/bots/runtime/status`, `POST /api/v1/bots/runtime/promote|demote` via `presentation/http/routes/bots.rs` (catálogo em `ApiState`; runtime via `BotRuntimePort`, default fail-closed, `BOT_RUNTIME_ENABLED=true` para promoção em memória).
+**HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking`, `GET /api/v1/bots/runtime/status`, `POST /api/v1/bots/runtime/promote|demote` via `presentation/http/routes/bots.rs` (catálogo em `ApiState`; runtime via `BotRuntimePort`, default fail-closed, `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime` no processo `serve`; snapshot monitor enriquecido).
 
 ## 3c. Módulo `orders` (`src/modules/orders/`)
 
