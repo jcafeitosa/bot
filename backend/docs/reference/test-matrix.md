@@ -129,9 +129,8 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `neo4j_bot_promoted_by_after_catalog_and_promotion_projection` | `modules/bots/adapters/graph_projection.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | `BINANCE_TESTNET_*` + rede; `cargo test integration_submits` |
 | `pg_order_idempotency_try_claim_and_release` | `modules/orders/adapters/pg_idempotency.rs` | `DATABASE_URL` |
-| `pg_agent_identity_and_graph_projection_same_transaction`
+| `pg_agent_identity_and_graph_projection_same_transaction` | `modules/agents/adapters/pg_registry.rs` | F2.1.3+ TX identity + outbox |
 | `pg_bot_catalog_and_graph_projection_same_transaction` | `modules/bots/adapters/pg_catalog.rs` | F2.1.3+ TX catalog + outbox |
- | `modules/agents/adapters/pg_registry.rs` | F2.1.3+ TX identity + outbox |
 | `pg_monitor_supervisor_graph_projection_outbox_same_transaction` | `modules/orders/adapters/pg_idempotency.rs` | F2.1.3+ monitor supervisor outbox TX |
 | `pg_order_idempotency_and_graph_projection_same_transaction` | `modules/orders/adapters/pg_idempotency.rs` | `DATABASE_URL`; claim idempotência + enqueue outbox na mesma transação PG |
 | `pg_submit_order_idempotency_releases_claim_when_submit_fails` | `presentation/http/state.rs` | `DATABASE_URL`; falha de risco libera claim PG |
@@ -172,7 +171,7 @@ Testes abaixo em `presentation/http/http_integration_tests.rs` (**48** passed co
 
 ## Product owner bootstrap (`VerifiedProductOwner`)
 
-Fatia G1: [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md). PG: `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed` (script **22/22**).
+Fatia G1: [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md). PG: `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed` (script **25/25**).
 
 | Comportamento | Teste HTTP (`http_integration_tests.rs`) |
 |---------------|-------------------------------------------|

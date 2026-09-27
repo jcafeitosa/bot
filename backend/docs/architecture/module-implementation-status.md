@@ -9,10 +9,10 @@ tags:
 
 # Status de implementação — MVC mínimo real
 
-**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-gates.sh` → **470** passed, **0** ignored; PG **22/22** com `DATABASE_URL` via `run-pg-integration-tests.sh`). Orders PG indisponível → `OrdersError::StoreUnavailable` / HTTP **503** `order_store_unavailable`.  
+**Data da verificação:** 2026-09-27 (`./scripts/verify-backend-gates.sh` → **474** passed, **0** ignored; PG **25/25** com `DATABASE_URL` via `run-pg-integration-tests.sh`). Orders PG indisponível → `OrdersError::StoreUnavailable` / HTTP **503** `order_store_unavailable`.  
 **Escopo:** árvore alvo do objetivo literal (com PG opcional em runtime (fail-closed), sem live trading, sem `technical_analysis`).  
 **Fatia goal completude (HTTP):** `presentation/http/http_integration_tests.rs` — bearer admin, owner bind verificável no seam (`BOT_HTTP_OWNER_ID` + token), orders executors, portfolio paper, catálogo `monitor_registry` v2; smoke/meta/OpenAPI em `server.rs`. Baseline docs: linha `OK:` de `verify-backend-gates.sh`.  
-**Fatia PG / grafo:** agents/bots write-through + hydrate; orders `0004`/`0006`; `provider_credentials` `0007`; **F2.1** outbox Neo4j `0009` (`5061a14f`); boot `build_api_state_for_http_serve` (**22/22** script). **Gate 1 HTTP (parcial):** [http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md) — seam `BOT_HTTP_*` fechado; bootstrap PG `0010` parcial ([owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)); IdP pendente. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (IdP + Critic AGENTS.md).
+**Fatia PG / grafo:** agents/bots write-through + hydrate; orders `0004`/`0006`; `provider_credentials` `0007`; **F2.1** outbox Neo4j `0009`; **F2.1.3+** enqueue outbox na mesma TX de domínio **fechado** nos caminhos principais (orders idempotency, agents identity, bots catalog, monitor supervisor); boot `build_api_state_for_http_serve` (**25/25** script). **F3** leitura `GraphQueryPort` + CLI `graph query` completa; HTTP graph read-only em roadmap. **Gate 1 HTTP (parcial):** [http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md) — seam `BOT_HTTP_*` fechado; bootstrap PG `0010` parcial ([owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)); IdP pendente. **Completude de produto:** [auditoria de completude](../planning/modules-completeness-audit.md) — goal amplo **não fechado** (IdP + Critic AGENTS.md).
 
 ## Gates (G4)
 
@@ -20,9 +20,9 @@ tags:
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
 | `cargo clippy --locked --bin bot -- -D warnings` | PASS | mesmo escopo que `verify-backend-gates.sh` |
-| `cargo test --locked` | PASS | **470** testes (bin `bot`), **0** ignorados; integração PG/Neo4j/testnet via `pg_integration` (skip sem env; PG **22/22** no script com `DATABASE_URL`) |
+| `cargo test --locked` | PASS | **474** testes (bin `bot`), **0** ignorados; integração PG/Neo4j/testnet via `pg_integration` (skip sem env; PG **25/25** no script com `DATABASE_URL`) |
 | `./scripts/verify-backend-gates.sh` | PASS | fmt + clippy `--bin bot` + import-direction + `assert-pg-integration-manifest.sh` + `cargo test --bin bot -- --test-threads=1` + 5 suítes `tests/*`; linha `OK:` com resumo `test result:` |
-| `./scripts/verify-backend-full.sh` | PASS (com `DATABASE_URL` → `trading_bot`) | gates + PG **22/22**; mensagem `OK: backend full verification passed` |
+| `./scripts/verify-backend-full.sh` | PASS (com `DATABASE_URL` → `trading_bot`) | gates + PG **25/25**; mensagem `OK: backend full verification passed` |
 
 ## Critério de linha
 
@@ -83,8 +83,8 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 
 ## Veredito
 
-**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**470** testes bin `bot`, **0** ignorados).
+**MVC_MINIMO_LITERAL_MET=yes** — árvore `core` / `modules` / `presentation` com seams e testes conforme tabelas acima; `./scripts/verify-backend-gates.sh` verde (**474** testes bin `bot`, **0** ignorados).
 
-**COMPLETUDE_MODULOS_GOAL=parcial** — veredito e [ENTREGA G4 Builder](../planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) na [auditoria de completude](../planning/modules-completeness-audit.md). Fundação bots/orders/agents/HTTP documentada e testada (**470** testes, **0** ignorados; PG **22/22** via `verify-backend-full.sh`); **Gate 1 HTTP** (admin bearer + owner bind no seam) fechado; bots runtime parcial (`MonitorEvaluatorKind`, catálogo `monitor_evaluator`); orders G2 parcial (idempotência PG `try_claim`/`release_claim`); **bloqueadores:** IdP (bootstrap PG `0010` parcial) e revisão Critic independente ([fechamento do goal](../planning/modules-completeness-audit.md#fechamento-do-goal-pendente)).
+**COMPLETUDE_MODULOS_GOAL=parcial** — veredito e [ENTREGA G4 Builder](../planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) na [auditoria de completude](../planning/modules-completeness-audit.md). Fundação bots/orders/agents/HTTP documentada e testada (**474** testes, **0** ignorados; PG **25/25** via `verify-backend-full.sh`); outbox **F2.1.3+** TX fechada nos caminhos principais; **Gate 1 HTTP** (admin bearer + owner bind no seam) fechado; bots runtime parcial (`MonitorEvaluatorKind`, catálogo `monitor_evaluator`); orders G2 parcial (idempotência PG `try_claim`/`release_claim`); **bloqueadores:** IdP (bootstrap PG `0010` parcial) e revisão Critic independente ([fechamento do goal](../planning/modules-completeness-audit.md#fechamento-do-goal-pendente)).
 
 **Raciocínio:** Todos os nós da árvore alvo existem em `src/`. Domínios expõem models + controllers/adapters com testes ou HTTP/main. Não há live trading nem `technical_analysis`. O veredito MVC **não** substitui o fechamento do goal de completude de módulos.
