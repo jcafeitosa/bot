@@ -53,7 +53,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **331** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_paper_executor_returns_200` (+ snapshot portfolio **995**), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência G1 (2026-09-27): **333** testes bin `bot`, **6** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_paper_executor_returns_200` (+ snapshot portfolio **995**), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
@@ -82,10 +82,10 @@ Evidência G1 (2026-09-27): **331** testes bin `bot`, **6** ignorados; `orders_s
 | `live_exchange_not_wired` até adapter real | `ReservedLiveExchangeExecutor`, meta + execution-status | Sim (seam) |
 | `RecordingExecutor` / test double sem rede | `orders/tests.rs`, `http_bridge/orders.rs` | Sim |
 | `PaperLedgerExecutor` (modo `paper`) | `paper_ledger_executor.rs`, `orders_submit_paper_executor_returns_200` | Sim |
-| Adapter `OrderExecutionPort` com exchange/testnet REST | `binance_spot_testnet_submit.rs` (buy market); sell/prod pendente; CI sem credenciais | **Parcial** |
+| Adapter `OrderExecutionPort` com exchange/testnet REST | `binance_spot_testnet_submit.rs` (buy/sell market por quote); prod/reconciliação pendente; CI sem credenciais | **Parcial** |
 | `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording determinístico; testnet exige credenciais/rede) |
 | Threat model + revisão Critic | seção rascunho neste SDD; Critic instância separada | **Parcial** |
-| `./scripts/verify-backend-gates.sh` verde | **331** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **333** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
 
 ## Threat model (rascunho)
 

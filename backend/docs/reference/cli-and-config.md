@@ -52,7 +52,7 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 | `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |
 | `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `MonitorStrategyRegistry` + `strategy_evaluation_binding` + `BotSignal.bot_id`. Catálogo HTTP inclui `monitor_fast_period` / `monitor_slow_period` / `monitor_evaluator` (`sma_cross` ou `ema_cross` via `[[strategy.monitor_registry]]`). |
 | `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit` | Status expõe `mode` (`disabled` / `dev_accept` / `paper` / `live_exchange` / `live_exchange_reserved`) e `live_exchange_wired` (`true` com `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording`; senão `false`). Submit: fail-closed **503**; `live_exchange_not_wired` só em `live_exchange`; `paper` e `dev_accept` **200** após risco; **422** se risco rejeita; `client_order_id` opcional com dedupe memória/PG. |
-| `portfolio` | `GET /portfolio/paper-snapshot?quote=…` | Saldo paper derivado de `PaperLedgerExecutor::recorded_fills()` (baseline 1000 na quote); útil após `BOT_ORDERS_EXECUTION=paper` + submit. |
+| `portfolio` | `GET /portfolio/paper-snapshot?quote=…` | Saldo paper + `positions[]` quando fills têm preço (`BOT_PAPER_FILL_UNIT_PRICE` no modo paper); baseline 1000 na quote. |
 
 Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
 
@@ -117,6 +117,7 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**503** em promote). |
 | `BOT_ORDERS_EXCHANGE_SUBMIT` | Com `BOT_ORDERS_EXECUTION=live_exchange`, `recording` liga executor sem rede; `testnet` + `BINANCE_TESTNET_*` liga `ExchangeSpotExecutor` + submit ccxt (market **buy** por `quote_amount`; rede real). Sem credenciais → `live_exchange_reserved`. |
 | `BOT_ORDERS_EXECUTION` | vazio/`disabled` (fail-closed); `dev_accept` (double local); `paper` (`PaperLedgerExecutor`, ledger in-process); `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → **200** após risco; `live_exchange` sem submit backend — **503** `live_exchange_not_wired`). Outros valores → `disabled`. |
+| `BOT_PAPER_FILL_UNIT_PRICE` | Opcional com `paper`: preço quote/base usado no ledger para calcular `positions` no snapshot HTTP (ex.: `50000` para BTC/USDT). |
 | `client_order_id` (body HTTP) | Campo opcional em `POST /api/v1/orders/submit`; replays retornam `accepted: true` sem reexecutar (memória; PG quando `DATABASE_URL` + migração `0004`). |
 | `BOT_AGENTS_ENABLED` / `BOT_NEO4J_*` | Grafo Neo4j opcional para agentes; ver `docs/operations/postgres-and-graph-dev.md`. |
 | `NVIDIA_NIM_BASE_URL` | Raiz da integrate API (default `https://integrate.api.nvidia.com`); opcional em TOML como `providers.nim_base_url`. |

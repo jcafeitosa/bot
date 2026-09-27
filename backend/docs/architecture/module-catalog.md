@@ -134,7 +134,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 | `exchanges/mod.rs` | Define `ExchangeId`, `MarketType`, `ExchangeAccountId`, `Transport` e `ExchangeError`. A chave de conta inclui exchange, tipo e rótulo. |
 | `account_file` | Lê TOML de contas, normaliza credenciais e verifica URLs REST/WS permitidas por ambiente. Não imprime segredos. |
 | `binance` | `MarketDataSource` (OHLCV Spot testnet) + `build_dev_spot_binance` compartilhado com submit. |
-| `binance_spot_testnet_submit` | Gate 2: market buy por `quote_amount` (`quoteOrderQty` ccxt); requer `BINANCE_TESTNET_*`. |
+| `binance_spot_testnet_submit` | Gate 2: market buy/sell por `quote_amount` (buy `quoteOrderQty`; sell base via ticker); requer `BINANCE_TESTNET_*`. |
 | `credentials_env` | Probes de env (`binance_testnet_credentials_configured`, seam testnet) sem logar segredos. |
 | `bootstrap` | Lê o arquivo de exchanges, monta `ExchangeRegistry`, seleciona contas Spot e expõe contas de mercado registradas. |
 | `capabilities` | Catálogo declarativo de capacidades. Declarar Futures ou ordens não as habilita. |
