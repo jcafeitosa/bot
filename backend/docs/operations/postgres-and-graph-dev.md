@@ -23,6 +23,14 @@ Nome de banco exigido pelo código: **`trading_bot`**.
 DATABASE_URL=postgresql://USER:PASSWORD@127.0.0.1:5432/trading_bot
 ```
 
+O compose local (`docker-compose.bot.yml`) usa por padrão o banco `bot_agents` na porta **55433**. Para migrações de mercado/agents/bots/orders, crie `trading_bot` no mesmo cluster:
+
+```sql
+CREATE DATABASE trading_bot OWNER bot_agents;
+```
+
+Testes `#[ignore]` de PG: `cd backend && ./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` apontando para `trading_bot`.
+
 ## Neo4j (opcional)
 
 ```text
