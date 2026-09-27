@@ -13,8 +13,9 @@ pub struct Neo4jConnectionConfig {
 
 /// Runtime toggle + Neo4j credentials loaded by [`load_agents_stack_from_env`].
 ///
-/// `enabled` follows env `BOT_AGENTS_ENABLED` (TOML fallback `[agents].enabled`). The name
-/// reflects legacy wiring (“agents stack”); it means **graph stack enabled**, not HTTP agents.
+/// `enabled` follows `BOT_GRAPH_ENABLED` (preferred) or legacy `BOT_AGENTS_ENABLED`
+/// (TOML fallback `[agents].enabled`). With **both** env vars set: stack on if **either** is true.
+/// The name reflects legacy wiring (“agents stack”); it means **graph stack enabled**, not HTTP agents.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AgentsStackConfig {
     pub enabled: bool,
@@ -34,7 +35,10 @@ impl std::fmt::Display for DatabaseConfigError {
             Self::MissingVariable(name) => write!(f, "missing environment variable {name}"),
             Self::EmptyVariable(name) => write!(f, "empty environment variable {name}"),
             Self::InvalidEnabledValue(raw) => {
-                write!(f, "invalid BOT_AGENTS_ENABLED value: {raw}")
+                write!(
+                    f,
+                    "invalid BOT_GRAPH_ENABLED or BOT_AGENTS_ENABLED value: {raw}"
+                )
             }
         }
     }
@@ -54,7 +58,7 @@ pub fn postgres_url_from_env() -> Result<Option<String>, DatabaseConfigError> {
     }
 }
 
-/// Loads optional Neo4j graph runtime config (`BOT_AGENTS_ENABLED` + `BOT_NEO4J_*`).
+/// Loads optional Neo4j graph runtime config (`BOT_GRAPH_ENABLED` / `BOT_AGENTS_ENABLED` + `BOT_NEO4J_*`).
 pub fn load_agents_stack_from_env() -> Result<AgentsStackConfig, DatabaseConfigError> {
     let defaults = SystemConfig::active();
     let enabled = parse_agents_enabled_flag(defaults.agents.enabled)?;
@@ -85,9 +89,30 @@ pub fn load_agents_stack_from_env() -> Result<AgentsStackConfig, DatabaseConfigE
 }
 
 fn parse_agents_enabled_flag(toml_default: bool) -> Result<bool, DatabaseConfigError> {
-    env_parse::parse_bool_flag("BOT_AGENTS_ENABLED", toml_default).map_err(|msg| {
+    let graph_set = env::var("BOT_GRAPH_ENABLED").is_ok();
+    let agents_set = env::var("BOT_AGENTS_ENABLED").is_ok();
+
+    if graph_set && agents_set {
+        let graph = parse_bool_env("BOT_GRAPH_ENABLED", toml_default)?;
+        let agents = parse_bool_env("BOT_AGENTS_ENABLED", toml_default)?;
+        return Ok(graph || agents);
+    }
+
+    if graph_set {
+        return parse_bool_env("BOT_GRAPH_ENABLED", toml_default);
+    }
+
+    if agents_set {
+        return parse_bool_env("BOT_AGENTS_ENABLED", toml_default);
+    }
+
+    Ok(toml_default)
+}
+
+fn parse_bool_env(name: &'static str, default: bool) -> Result<bool, DatabaseConfigError> {
+    env_parse::parse_bool_flag(name, default).map_err(|msg| {
         DatabaseConfigError::InvalidEnabledValue(
-            msg.replace("invalid BOT_AGENTS_ENABLED value: ", ""),
+            msg.replace(&format!("invalid {name} value: "), ""),
         )
     })
 }
@@ -144,8 +169,67 @@ mod tests {
     fn agents_stack_disabled_by_default() {
         crate::core::test_env_lock::with_env_test_lock(|| {
             std::env::remove_var("BOT_AGENTS_ENABLED");
+            std::env::remove_var("BOT_GRAPH_ENABLED");
             let config = load_agents_stack_from_env().expect("load");
             assert!(!config.enabled);
+        });
+    }
+
+    fn with_graph_stack_password<F: FnOnce()>(f: F) {
+        std::env::set_var("BOT_NEO4J_PASSWORD", "test-only");
+        f();
+        std::env::remove_var("BOT_NEO4J_PASSWORD");
+    }
+
+    #[test]
+    fn graph_enabled_alias_turns_stack_on() {
+        crate::core::test_env_lock::with_env_test_lock(|| {
+            std::env::remove_var("BOT_AGENTS_ENABLED");
+            std::env::set_var("BOT_GRAPH_ENABLED", "true");
+            with_graph_stack_password(|| {
+                let config = load_agents_stack_from_env().expect("load");
+                assert!(config.enabled);
+            });
+            std::env::remove_var("BOT_GRAPH_ENABLED");
+        });
+    }
+
+    #[test]
+    fn legacy_agents_enabled_still_turns_stack_on() {
+        crate::core::test_env_lock::with_env_test_lock(|| {
+            std::env::remove_var("BOT_GRAPH_ENABLED");
+            std::env::set_var("BOT_AGENTS_ENABLED", "true");
+            with_graph_stack_password(|| {
+                let config = load_agents_stack_from_env().expect("load");
+                assert!(config.enabled);
+            });
+            std::env::remove_var("BOT_AGENTS_ENABLED");
+        });
+    }
+
+    #[test]
+    fn either_true_when_both_set_stack_on() {
+        crate::core::test_env_lock::with_env_test_lock(|| {
+            std::env::set_var("BOT_GRAPH_ENABLED", "false");
+            std::env::set_var("BOT_AGENTS_ENABLED", "true");
+            with_graph_stack_password(|| {
+                let config = load_agents_stack_from_env().expect("load");
+                assert!(config.enabled);
+            });
+            std::env::remove_var("BOT_GRAPH_ENABLED");
+            std::env::remove_var("BOT_AGENTS_ENABLED");
+        });
+    }
+
+    #[test]
+    fn both_false_when_both_set_stack_off() {
+        crate::core::test_env_lock::with_env_test_lock(|| {
+            std::env::set_var("BOT_GRAPH_ENABLED", "false");
+            std::env::set_var("BOT_AGENTS_ENABLED", "false");
+            let config = load_agents_stack_from_env().expect("load");
+            assert!(!config.enabled);
+            std::env::remove_var("BOT_GRAPH_ENABLED");
+            std::env::remove_var("BOT_AGENTS_ENABLED");
         });
     }
 }

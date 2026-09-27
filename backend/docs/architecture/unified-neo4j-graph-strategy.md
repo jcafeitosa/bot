@@ -59,7 +59,7 @@ PostgreSQL **não será substituído**. Neo4j **não** é opcional “nice to ha
 
 ### 4.1 Contrato em `AppDatabases`
 
-- **Hoje (F0):** `bootstrap_runtime` / `bootstrap_http_api` conecta PG se `DATABASE_URL` e Neo4j se `BOT_AGENTS_ENABLED` + `BOT_NEO4J_*` (`core/database/bundle.rs`).
+- **Hoje (F0):** `bootstrap_runtime` / `bootstrap_http_api` conecta PG se `DATABASE_URL` e Neo4j se graph stack habilitado (`BOT_GRAPH_ENABLED` preferido, ou legado `BOT_AGENTS_ENABLED`; ver `load_agents_stack_from_env`) + `BOT_NEO4J_*` (`core/database/bundle.rs`).
 - **Alvo produção:** **postgres + neo4j sempre pareados** no mesmo composition root; `readiness_databases` reporta **ambos** (`postgres`, `postgres_extensions`, `neo4j`).
 - Módulos de domínio **não** importam `neo4rs`; projeção e leitura passam por seams em `core::database` (evolução: `GraphProjectionPort`, `GraphQueryPort` — §7).
 
@@ -137,7 +137,7 @@ flowchart LR
 | Área | Uso do grafo hoje | SoT / evidência |
 |------|-------------------|-----------------|
 | `core::database::Neo4jGraph` | `connect`, `ping`, `node_count` | `src/core/database/neo4j.rs` |
-| `AppDatabases::bootstrap_runtime` | Conecta Neo4j se `BOT_AGENTS_ENABLED=true` + credenciais | `bundle.rs`; config `load_agents_stack_from_env` |
+| `AppDatabases::bootstrap_runtime` | Conecta Neo4j se graph stack enabled + credenciais | `bundle.rs`; config `load_agents_stack_from_env` (`BOT_GRAPH_ENABLED` / `BOT_AGENTS_ENABLED`) |
 | `core::health::readiness_databases` | Probe `neo4j` quando wired | `health/mod.rs` |
 | `presentation/http` `/readyz` | Campo `neo4j: "ok"` se handle presente | `routes/health.rs` |
 | `modules/agents` | Projeção **F1** best-effort (`best_effort_project_agent_definition` → `SUPERVISES`); SoT = registry + `PgAgentIdentityStore` | PG + teste `neo4j_agent_supervision_chain_after_projection` |
@@ -153,7 +153,7 @@ flowchart LR
 
 ### Nota sobre `agents_stack`
 
-`AgentsStackConfig` / `load_agents_stack_from_env` **não é código morto**: acopla `BOT_AGENTS_ENABLED` à conexão Neo4j ([core-database-sdd](../sdd/core-database-sdd.md)). O nome sugere “stack de agentes”, mas hoje significa **“grafo habilitado para o processo”**; identidades **vivem** em memória + PG, com espelho best-effort no grafo quando wired. Risco operacional: tratar Neo4j como SoT ou assumir leitura de hierarquia só pelo grafo.
+`AgentsStackConfig` / `load_agents_stack_from_env` **não é código morto**: acopla flags `BOT_GRAPH_ENABLED` (preferido) / `BOT_AGENTS_ENABLED` (legado) à conexão Neo4j ([core-database-sdd](../sdd/core-database-sdd.md)). O nome sugere “stack de agentes”, mas hoje significa **“grafo habilitado para o processo”**; identidades **vivem** em memória + PG, com espelho best-effort no grafo quando wired. Risco operacional: tratar Neo4j como SoT ou assumir leitura de hierarquia só pelo grafo.
 
 ## 6. Visão — um grafo, namespaces canônicos
 
@@ -231,7 +231,7 @@ Evitar que cada módulo importe `neo4rs`. Concentrar em `core::database` ou subm
 | Seam | Responsabilidade | Consumidores |
 |------|------------------|--------------|
 | `Neo4jGraph` (existente) | Conexão, `ping`, execução parametrizada interna | health, adapters graph |
-| `GraphRuntimeConfig` | Renomear/evoluir `AgentsStackConfig`: `enabled`, URI, database; **desacoplar** semântica “agents” do flag de grafo (alias de migração: `load_graph_runtime_from_env`) | `AppDatabases` (ver §4.1) |
+| `GraphRuntimeConfig` | Renomear/evoluir `AgentsStackConfig`: `enabled`, URI, database; **desacoplar** semântica “agents” do flag de grafo. **Feito (env):** `BOT_GRAPH_ENABLED`; backlog loader `load_graph_runtime_from_env` | `AppDatabases` (ver §4.1) |
 | `GraphProjectionPort` | `upsert_agent_subgraph`, `upsert_bot_subgraph`, `mark_order_intent` — idempotente MERGE | adapters em `modules/*/adapters/graph_*` |
 | `GraphQueryPort` (read) | Travessias limitadas: `supervision_chain`, `bots_for_agent`, `code_impact_for_module` | advisory futuro, ops, HTTP read-only gated |
 | `GraphSyncJob` (offline) | Invoca graphify push ou import Cypher; não no hot path HTTP | scripts, CI |
@@ -312,7 +312,7 @@ flowchart TB
 ## 13. Integração com operações existentes
 
 - Compose: serviço `graph` em `docker-compose.bot.yml` (Bolt `7688`, Browser `7475`).
-- Env: [postgres-and-graph-dev.md](../operations/postgres-and-graph-dev.md) — `BOT_AGENTS_ENABLED`, `BOT_NEO4J_*`.
+- Env: [postgres-and-graph-dev.md](../operations/postgres-and-graph-dev.md) — `BOT_GRAPH_ENABLED` (preferido) / `BOT_AGENTS_ENABLED` (legado), `BOT_NEO4J_*`.
 - SDDs relacionados: [core-database-sdd](../sdd/core-database-sdd.md), [database-module-integration-sdd](../sdd/database-module-integration-sdd.md), [agents-module-sdd](../sdd/agents-module-sdd.md), [agents-pg-registry-sdd](../sdd/agents-pg-registry-sdd.md).
 
 ## 14. Próximo passo implementável (fatia vertical recomendada)

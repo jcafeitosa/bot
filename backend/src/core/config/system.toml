@@ -5,15 +5,16 @@
 [postgres]
 # Runtime: DATABASE_URL in .env only (never commit credentials here).
 
-# Legacy section name: `[agents].enabled` is the TOML fallback for env `BOT_AGENTS_ENABLED`.
-# Semantics: optional Neo4j graph stack for the process (readiness, CLI graph query, PG→Neo4j
-# projection outbox F2.1+) — NOT a removed HTTP "agents module" toggle. Future rename backlog:
-# `BOT_GRAPH_ENABLED` / `load_graph_runtime_from_env` (see unified-neo4j-graph-strategy.md).
+# Legacy section name: `[agents].enabled` is the TOML fallback when neither `BOT_GRAPH_ENABLED`
+# nor `BOT_AGENTS_ENABLED` is set. Semantics: optional Neo4j graph stack (readiness, CLI graph
+# query, PG→Neo4j projection outbox F2.1+) — NOT an HTTP "agents module" toggle. Env preferred
+# name: `BOT_GRAPH_ENABLED`; `BOT_AGENTS_ENABLED` remains supported (deprecated). Both set → on if
+# either is true. Loader rename backlog: `load_graph_runtime_from_env` (unified-neo4j-graph-strategy.md).
 [agents]
 enabled = false
 monitor_agency = ""
 
-# Connection defaults when `BOT_AGENTS_ENABLED=true` (env `BOT_NEO4J_*` overrides each field).
+# Connection defaults when graph stack enabled (env `BOT_NEO4J_*` overrides each field).
 [neo4j]
 uri = "bolt://127.0.0.1:7688"
 user = "neo4j"
