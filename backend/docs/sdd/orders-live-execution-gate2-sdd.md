@@ -45,7 +45,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **208** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `submit_order_fail_closed_via_state_returns_execution_disabled`.
+Evidência G1 (2026-09-27): **210** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `submit_order_fail_closed_via_state_returns_execution_disabled`.
 
 ## Validação Gate 2 (quando implementado)
 

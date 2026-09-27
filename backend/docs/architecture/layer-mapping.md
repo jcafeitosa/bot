@@ -63,6 +63,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 
 - `core/` não importa `modules/`.
 - `presentation/http/routes` importa apenas `http_bridge` (não `strategy`/`risk` direto).
+- `presentation/http/routes` não usa `with_agents`, `modules::agents::` nem `state.app_config()` (composition root via `ApiState`).
 - `modules/` não importa `presentation/` (exceto spawn da TUI no supervisor do monitor).
 
 ## Composition root (`ApiState`)
@@ -108,7 +109,7 @@ Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking) chamam 
 cargo test --locked --bin bot
 ```
 
-Evidência: **208** testes no bin `bot`, **5** ignorados (PG/Neo4j).
+Evidência: **210** testes no bin `bot`, **5** ignorados (PG/Neo4j).
 
 ## Documentos relacionados
 
