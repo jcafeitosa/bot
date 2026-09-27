@@ -2090,12 +2090,25 @@ mod state_tests {
         use crate::modules::orders::OrderSide;
         use std::sync::{Arc, Mutex};
 
+        use crate::core::config::ProductOwnerBootstrapConfig;
+        use crate::modules::agents::adapters::ensure_product_owner_bootstrapped;
+
         let _ledger_guard = lock_shared_live_order_reconciliation_ledger_for_test();
         let Some(db) =
             crate::core::persistence::pg_integration::database_for_integration_test().await
         else {
             return;
         };
+        ensure_product_owner_bootstrapped(
+            db.pool(),
+            &ProductOwnerBootstrapConfig {
+                bootstrap_owner_id: Some("owner-boot".into()),
+                bootstrap_ack: true,
+            },
+            1,
+        )
+        .await
+        .expect("product owner bootstrap for serve wiring test");
         let suffix = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")
@@ -2155,6 +2168,10 @@ mod state_tests {
             cold_agents,
         )
         .await;
+        assert!(
+            cold.product_owner_bootstrap_active(),
+            "serve-like boot must load bootstrapped owner from PG"
+        );
 
         let listed = cold
             .list_agents_in_agency(&agency)

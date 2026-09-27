@@ -19,3 +19,27 @@ impl ProductOwnerBootstrapConfig {
         self.bootstrap_owner_id.is_some() && self.bootstrap_ack
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ProductOwnerBootstrapConfig;
+
+    #[test]
+    fn explicit_bootstrap_requested_requires_owner_id_and_ack() {
+        assert!(!ProductOwnerBootstrapConfig {
+            bootstrap_owner_id: None,
+            bootstrap_ack: true,
+        }
+        .explicit_bootstrap_requested());
+        assert!(!ProductOwnerBootstrapConfig {
+            bootstrap_owner_id: Some("owner-1".into()),
+            bootstrap_ack: false,
+        }
+        .explicit_bootstrap_requested());
+        assert!(ProductOwnerBootstrapConfig {
+            bootstrap_owner_id: Some("owner-1".into()),
+            bootstrap_ack: true,
+        }
+        .explicit_bootstrap_requested());
+    }
+}
