@@ -20,16 +20,17 @@ Projeção **write-only** F1–F3.1 alimenta o Neo4j a partir de PG/domínio ([u
 |-----|-------|-------------|
 | `GraphQueryPort::list_agents(limit)` | `{ agents[] }` com `agent_id`, `agency_id`, `role`, `lifecycle` | Sem `BOT_AGENTS_ENABLED` + Neo4j → CLI/erro driver |
 | `GraphQueryPort::supervision_chain(agency_id, agent_id)` | `{ agency_id, agent_id, chain[] }` com `depth`, `kind`, `id` | IDs vazios → `Invalid`; agente ausente no grafo → `Invalid` |
+| `GraphQueryPort::bots_for_agent(agency_id, agent_id, limit)` | `{ agency_id, agent_id, bots[] }` com `bot_id`, `strategy_id`, `promotion_state`, `operation_mode` | IDs vazios → `Invalid`; agente ausente → `Invalid`; lista vazia se sem `PROMOTED_BY` |
 
-Implementação: `Neo4jGraphQuery` em `graph_query.rs`. CLI: `bot graph query agents --limit N` e `bot graph query supervision-chain --agency-id … --agent-id …` ([cli-and-config](../reference/cli-and-config.md)).
+Implementação: `Neo4jGraphQuery` em `graph_query.rs`. CLI: `bot graph query agents --limit N`, `supervision-chain` e `bots-for-agent` ([cli-and-config](../reference/cli-and-config.md)).
 
 ## Validação
 
 | Tipo | Evidência |
 |------|-----------|
-| Unit | `graph_query_port_list_agents_returns_projected_nodes`, `graph_query_port_supervision_chain_returns_ordered_nodes`, `supervision_chain_rejects_empty_ids` |
-| CLI | `graph_cli_parses_query_agents_with_limit`, `graph_cli_parses_query_supervision_chain` |
-| Neo4j (skip sem stack) | `neo4j_list_agents_after_local_graph`; `neo4j_agent_supervision_chain_after_projection` chama `graph_query().supervision_chain` |
+| Unit | `graph_query_port_list_agents_returns_projected_nodes`, `graph_query_port_supervision_chain_returns_ordered_nodes`, `graph_query_port_bots_for_agent_returns_projected_bots`, `supervision_chain_rejects_empty_ids` |
+| CLI | `graph_cli_parses_query_agents_with_limit`, `graph_cli_parses_query_supervision_chain`, `graph_cli_parses_query_bots_for_agent` |
+| Neo4j (skip sem stack) | `neo4j_list_agents_after_local_graph`; `neo4j_supervision_chain_query_after_projection`; `neo4j_bots_for_agent_after_catalog_and_promotion_projection` |
 | Gate | `./scripts/verify-backend-gates.sh` |
 
 ## Critérios de fechamento (fatia F3 parcial)
@@ -37,5 +38,7 @@ Implementação: `Neo4jGraphQuery` em `graph_query.rs`. CLI: `bot graph query ag
 | Item | Status |
 |------|--------|
 | Port + Neo4j impl + testes unitários | **Sim** |
-| CLI agents + supervision-chain | **Sim** |
+| CLI agents + supervision-chain + bots-for-agent | **Sim** |
+| `bots_for_agent` port + Neo4j | **Sim** |
 | Leitura autorizativa no runtime HTTP | **Não** (roadmap) |
+| `code_impact_for_module` | **Não** (roadmap) |

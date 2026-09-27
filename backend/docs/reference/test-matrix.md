@@ -81,7 +81,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**21/21** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **461** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **464** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -118,6 +118,9 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `pg_graph_projection_outbox_drain_marks_retry_on_port_failure` | `core/database/graph_projection_outbox.rs` | F2.1 drain → `retry` quando port falha |
 | `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed` | `modules/agents/adapters/pg_owner_bootstrap.rs` | migração `0010`; idempotência + conflito fail-closed |
 | `ping_and_node_count_against_local_graph` | `core/database/neo4j.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
+| `graph_query_port_bots_for_agent_returns_projected_bots` | `core/database/graph_query.rs` | F3 port stub |
+| `graph_cli_parses_query_bots_for_agent` | `core/database/graph_cli.rs` | F3 CLI parse |
+| `neo4j_bots_for_agent_after_catalog_and_promotion_projection` | `core/database/graph_query.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `neo4j_agent_supervision_chain_after_projection` | `modules/agents/adapters/graph_projection.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `neo4j_bot_promoted_by_after_catalog_and_promotion_projection` | `modules/bots/adapters/graph_projection.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | `BINANCE_TESTNET_*` + rede; `cargo test integration_submits` |

@@ -32,6 +32,8 @@ pub enum GraphQueryCommand {
     Agents(GraphQueryAgentsCli),
     /// Supervision path from graph root to the target agent (F3 fatia 2).
     SupervisionChain(GraphQuerySupervisionChainCli),
+    /// Bots promoted by the agent (`PROMOTED_BY` in the bots subgraph).
+    BotsForAgent(GraphQueryBotsForAgentCli),
 }
 
 #[derive(Debug, Parser)]
@@ -49,6 +51,17 @@ pub struct GraphQuerySupervisionChainCli {
     pub agent_id: String,
 }
 
+#[derive(Debug, Parser)]
+pub struct GraphQueryBotsForAgentCli {
+    #[arg(long)]
+    pub agency_id: String,
+    #[arg(long)]
+    pub agent_id: String,
+    /// Maximum bot rows to return (1–500).
+    #[arg(long, default_value_t = 32)]
+    pub limit: u32,
+}
+
 pub async fn run(cli: &GraphCli) -> Result<()> {
     match &cli.command {
         GraphCommand::Query(args) => run_query(args).await,
@@ -59,6 +72,7 @@ async fn run_query(cli: &GraphQueryCli) -> Result<()> {
     match &cli.command {
         GraphQueryCommand::Agents(args) => run_query_agents(args).await,
         GraphQueryCommand::SupervisionChain(args) => run_query_supervision_chain(args).await,
+        GraphQueryCommand::BotsForAgent(args) => run_query_bots_for_agent(args).await,
     }
 }
 
@@ -85,6 +99,26 @@ async fn run_query_supervision_chain(args: &GraphQuerySupervisionChainCli) -> Re
         .await
         .map_err(map_query_error)?;
     println!("{}", json!(chain));
+    Ok(())
+}
+
+async fn run_query_bots_for_agent(args: &GraphQueryBotsForAgentCli) -> Result<()> {
+    let neo4j = connect_neo4j_for_query().await?;
+    let port = Neo4jGraphQuery::new(neo4j);
+    let limit = args.limit.clamp(1, 500);
+    let bots = port
+        .bots_for_agent(&args.agency_id, &args.agent_id, limit)
+        .await
+        .map_err(map_query_error)?;
+    println!(
+        "{}",
+        json!({
+            "agency_id": bots.agency_id,
+            "agent_id": bots.agent_id,
+            "bots": bots.bots,
+            "limit": limit,
+        })
+    );
     Ok(())
 }
 
@@ -153,6 +187,32 @@ mod tests {
                 assert_eq!(args.agent_id, "worker-1");
             }
             _ => panic!("expected supervision-chain"),
+        }
+    }
+
+    #[test]
+    fn graph_cli_parses_query_bots_for_agent() {
+        let cli = GraphCli::try_parse_from([
+            "graph",
+            "query",
+            "bots-for-agent",
+            "--agency-id",
+            "agency-a",
+            "--agent-id",
+            "agent-promoter",
+            "--limit",
+            "5",
+        ])
+        .expect("parse");
+        match cli.command {
+            GraphCommand::Query(GraphQueryCli {
+                command: GraphQueryCommand::BotsForAgent(args),
+            }) => {
+                assert_eq!(args.agency_id, "agency-a");
+                assert_eq!(args.agent_id, "agent-promoter");
+                assert_eq!(args.limit, 5);
+            }
+            _ => panic!("expected bots-for-agent"),
         }
     }
 

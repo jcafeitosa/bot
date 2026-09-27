@@ -42,7 +42,7 @@ Drain com Neo4j down: `ping` falha → linhas permanecem `pending`/`retry`. MERG
 
 ## 5. Validação
 
-`./scripts/verify-backend-gates.sh` (baseline **461** bin `bot`); `./scripts/run-pg-integration-tests.sh` inclui `pg_graph_projection_outbox_*`; worker + health cobertos por testes em `graph_projection_outbox_worker.rs` e `routes/health.rs`.
+`./scripts/verify-backend-gates.sh` (baseline **464** bin `bot`); `./scripts/run-pg-integration-tests.sh` inclui `pg_graph_projection_outbox_*`; worker + health cobertos por testes em `graph_projection_outbox_worker.rs` e `routes/health.rs`.
 
 ## 6. F2.1.2 (*implemented*)
 
