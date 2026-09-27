@@ -32,7 +32,8 @@ tags:
 | `risk` | Limite conservador/agressivo, tamanho, stop/take profit e incompatibilidade de modo. |
 | `agents` | Registry, hierarquia, lifecycle, advisory, `restore_from_snapshot`, `PgAgentIdentityStore` SQL mapping. |
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
-| `orders` | `submit_order` rejeita acima do cap de risco; após risco OK retorna `ExecutionDisabled`. |
+| `http_bridge/orders` | `submit_order_http` com `FailClosedExecutor` → `ExecutionDisabled`; com `AcceptingExecutor` → `accepted: true` (double de teste; `ApiState` HTTP permanece fail-closed). |
+| `orders` | `submit_order` rejeita acima do cap de risco; após risco OK retorna `ExecutionDisabled`; `AcceptingExecutor` cobre caminho aceito no port. |
 | `bots` | Identidade, ranking, catálogo por modo e métricas coerentes com `BotId`. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
 | `backtest` | Fees, next-open, slippage na venda, stop/take-profit, histórico insuficiente e ausência de lookahead. |
