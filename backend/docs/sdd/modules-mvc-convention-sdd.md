@@ -35,7 +35,7 @@ Inspeção de `backend/src/`:
 
 ## 1. Contexto e objetivo
 
-O backend é um binário CLI/TUI sem servidor HTTP. O padrão MVC aqui é **arquitetural e de dependência**, não um framework web:
+O backend é um binário CLI/TUI com subcomando HTTP opcional (`serve`). O padrão MVC aqui é **arquitetural e de dependência**, não um framework web:
 
 - **Model:** tipos, invariantes e transformações puras do domínio do módulo.
 - **Controller:** casos de uso e orquestração — aceita comandos da aplicação (`MonitorCommand`, jobs de backtest, bootstrap de exchange), coordena Model e adapters, publica resultados/eventos.
@@ -273,26 +273,21 @@ modules/monitor/
 
 **Não entra:** cálculo SMA (`strategy`), regras de risco, adapters Binance (delega a `market`/`exchanges`).
 
-### 3.8 `modules/jev`
+### 3.8 `core::providers::jev` (não é `modules/*`)
 
-**Origem:** `jev/mod.rs`.
+**Origem:** integração advisory migrada de `jev/` raiz para `core/providers/jev/`.
 
 ```text
-modules/jev/
+core/providers/jev/
   mod.rs
   models/
-    mod.rs
-    advisory.rs
-    request.rs
   controllers/
-    mod.rs
     review.rs
   adapters/
-    mod.rs
     http_client.rs
 ```
 
-**Não entra:** autoridade sobre sinais, UI, persistência.
+**Não entra:** autoridade sobre sinais, UI, persistência. Módulos de domínio (`agents`, monitor) delegam via `JevAdvisor` reexportado em `core::providers`.
 
 ### 3.9 `modules/config` (opcional fatia 2)
 
@@ -374,7 +369,7 @@ Durante migração, `pub use crate::market_feed::*` no `modules/market/mod.rs` �
 | **F2** | Contratos e matriz de imports | `application_contracts.rs`; script CI de direção (fixture) | Extrair `Signal`; decidir `OperationMode` (`core` vs `modules/config`); inventário imports |
 | **F3** | Market + saúde operacional | `modules/market/{models,controllers,adapters}` com código real | `market_feed` + `market.rs` → market; `persistence_health` → monitor |
 | **F4** | Monitor + apresentação | `modules/monitor` completo + `presentation/terminal` View | `app` → monitor controllers; `ui` → terminal; contrato presentation (SDD) |
-| **F5** | Demais domínios | Pastas MVC **somente** ao migrar cada crate raiz | `strategy`, `risk`, `portfolio`, `backtest`, `exchanges`, `jev` |
+| **F5** | Demais domínios | Pastas MVC **somente** ao migrar cada crate raiz | `strategy`, `risk`, `portfolio`, `backtest`, `exchanges`; Jev em `core::providers::jev` (F1 providers) |
 | **F6** | Limpeza e gates | Remover reexports ponte | Apagar módulos raiz legados; `cargo test/clippy`; script imports + `cargo deny` |
 
 **Ordem recomendada dentro de F5:** `exchanges` → `strategy` + contratos → `risk` → `portfolio` → `backtest` → `jev`.

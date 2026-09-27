@@ -60,10 +60,10 @@ flowchart LR
 | `modules` | `portfolio` | snapshots paper | Carteira paper; sem ordens. | Testes de consistência. |
 | `modules` | `backtest` | `run_sma_crossover`, CLI | Simulação e fixture sintética. | `tests/backtest_fixture.rs`. |
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
-| `modules` | `jev` | `JevAdvisor::review` | Advisory TypeSafe. | Endpoint/config. |
+| `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly` em memória; lifecycle e advisory Jev sem worker nem API HTTP. **Não** é o módulo `bots`. | `modules/agents/tests.rs`. |
 | `modules` | `bots` | `BotIdentity`, `full_ranking`, `build_catalog_from_config` | Executores strategy×timeframe versionados; catálogo e ranking em memória; HTTP `GET /api/v1/bots/catalog`, `POST /api/v1/bots/ranking`. Sem runtime live nem PostgreSQL (Gate 1). | `modules/bots/tests.rs`. |
-| `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor` | Valida `OrderIntent` via `risk`; port fail-closed (`ExecutionDisabled`). Sem HTTP nem exchange live. | `modules/orders/tests.rs`. |
+| `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor` | Valida `OrderIntent` via `risk`; port fail-closed (`ExecutionDisabled`). HTTP `POST /api/v1/orders/submit` (422 risco / 503 execução). Sem exchange live. | `modules/orders/tests.rs`, `presentation/http/server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
 | `presentation` | `http` | API Axum | OpenAPI (`/openapi.json`), Scalar (`/docs`), subcomando `serve`; monitor HTTP exige `MonitorHandle` no processo. | Testes em `presentation/http/server.rs`. |
@@ -146,7 +146,7 @@ Seam fail-closed ([SDD orders](../sdd/orders-module-sdd.md)).
 3. O supervisor seleciona a conta Spot e cria o adapter Binance.
 4. REST faz backfill; WS entrega somente candle fechado.
 5. `HybridCandleFeed` combina as fontes e libera avaliação quando há histórico contíguo.
-6. `strategy` produz snapshot; `risk` aplica o gate; `jev` pode adicionar nota.
+6. `strategy` produz snapshot; `risk` aplica o gate; `core::providers::jev` pode adicionar nota consultiva.
 7. `presentation::terminal` e views do monitor publicam estado e `persistence` grava de modo assíncrono quando habilitado.
 8. Pausar cancela o trabalho antigo, drena eventos WS e só aceita dados REST atuais na retomada.
 
@@ -177,4 +177,4 @@ Seam fail-closed ([SDD orders](../sdd/orders-module-sdd.md)).
 - O round-trip PostgreSQL permanece não executado nesta sessão.
 - A pesquisa de agentes segue provisória até ingestão local das fontes externas.
 - A manutenção do vendor `ccxt-core` exige repetir a política de redirect e a prova HTTP após atualizações.
-- Não existe caminho de ordens, saldo privado ou produção autorizado pelo código atual.
+- Não existe execução financeira live, saldo privado ou produção; o seam `orders` e o HTTP de submit falham fechado após validação de risco.
