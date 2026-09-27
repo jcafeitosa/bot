@@ -11,7 +11,7 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (http_bridge v1 completo; `presentation/http/http_integration_tests.rs` para bearer/orders/portfolio HTTP; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Baseline verde: `./scripts/verify-backend-gates.sh` (**385** / **17** ignored; PG **15/15** opcional). Auditoria do goal: [modules-completeness-audit](./modules-completeness-audit.md). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; runtime live no monitor fora; seam HTTP promote/demote e snapshot com `promoted_bot_id` feitos. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
+> Revisão: 2026-09-27 (http_bridge v1 completo; `presentation/http/http_integration_tests.rs` para bearer/orders/portfolio HTTP; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Baseline verde: `./scripts/verify-backend-gates.sh` (**385** / **17** ignored; PG **15/15** opcional). Auditoria do goal: [modules-completeness-audit](./modules-completeness-audit.md). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; Gate 2 runtime **parcial** (`BotRuntimePort`, HTTP promote/demote, supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`, `evaluate_for_kind` SMA/EMA); auth owner e ciclo de promoção live completo pendentes. **`modules/orders`** — paper/recording/testnet + reconciliação (memória/PG, poll HTTP/job); prod REST bloqueado por política ([orders G2](../sdd/orders-live-execution-gate2-sdd.md)).
 
 ## Resumo
 
@@ -94,7 +94,7 @@ Bots especializados como **artefatos versionados**, com limites de autoridade, m
 
 ### O que existe hoje
 
-`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, `ApiState` com `InMemoryBotCatalogStore`; rotas `GET /catalog`, `POST /ranking`, `POST /catalog/persist`, `GET /catalog/snapshot`. `backtest` delega tipos e ranking ao módulo `bots`. **Há** `PgBotCatalogStore` + tabela `bot_catalog_entries`; **ainda não há** auth owner, promoção automática nem executor live no monitor (seam HTTP `BotRuntimePort` + snapshot enriquecido + publicação headless; loop de estratégia do supervisor ainda não usa `BotId` promovido).
+`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo (`build_catalog_from_config` / `build_catalog_from_monitor_registry`), `full_ranking`/`rank_bots`, `BotCatalogStore` + `PgBotCatalogStore`, `BotRuntimePort`, testes em `modules/bots/tests.rs`; rotas HTTP catalog/ranking/persist/snapshot e `/bots/runtime/*`. `backtest` e o supervisor do monitor usam `strategy_evaluation_binding` + `evaluate_for_kind` (`sma_cross`/`ema_cross`) e preenchem `BotSignal.bot_id` quando há promoção ativa no runtime partilhado (`shared_bot_runtime`). **Ainda não há** auth owner verificável, promoção automática por métricas nem fechamento G2 (Critic; ordens prod).
 
 ### Decisão
 
@@ -108,7 +108,7 @@ Toda operação de agente deve validar owner, agência, alvo, ação e estado no
 
 ### O que existe
 
-O backend possui gates de configuração e de uso REST da exchange, mas não possui autenticação de usuário, sessões, tokens, autorização por agência ou auditoria de operações administrativas.
+O backend possui gates de configuração, uso REST da exchange fail-closed e o **seam** HTTP `BOT_HTTP_ADMIN_TOKEN` / binds owner-agency ([http-admin-auth-seam-sdd](../sdd/http-admin-auth-seam-sdd.md)) — não substitui autenticação verificável do owner humano, sessões de produto, bootstrap único nem auditoria administrativa completa exigida na pesquisa Gate 1.
 
 ### Decisão
 
