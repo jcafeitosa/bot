@@ -104,6 +104,15 @@ Evidência G1 (2026-09-27): **346** testes bin `bot`, **8** ignorados; `orders_s
 
 Revisão Critic e hardening de produção permanecem **pendentes** antes de fechar G2.
 
+### Próximo slice: poller de reconciliação (design)
+
+1. Listar `state = 'pending'` (PG) ou `pending_count` > 0 (memória).
+2. Consultar status na exchange (testnet ccxt; **sem** prod).
+3. `confirm_exchange_order` ou `mark_divergent` (memória + `upsert_state` PG).
+4. Job opcional no `serve` (intervalo configurável; default desligado).
+
+Hoje: confirmação síncrona no submit wired + hidratação PG no boot; poller **não** implementado.
+
 ### Critérios para sair de “rascunho” (threat model)
 
 - [ ] Critic independente registra LGTM com achados tratados ou aceitos.
