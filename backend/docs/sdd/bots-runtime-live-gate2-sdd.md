@@ -46,11 +46,11 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **249** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*`, `monitor_strategy_from_config`, `strategy_evaluation_binding` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` com `BOT_HTTP_AGENCY_ID`.
+Evidência parcial (2026-09-27): **250** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*`, `monitor_strategy_from_config`, `strategy_evaluation_binding` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` com `BOT_HTTP_AGENCY_ID`.
 
 ## Validação Gate 2 (quando implementado)
 
-- Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot; supervisor usa `strategy_evaluation_binding` + `BotSignal.bot_id` quando promoção casa com mercado. **Pendente:** parâmetros SMA/estratégia por definição de catálogo (hoje permanecem no `Config` global).
+- Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot; supervisor usa `strategy_evaluation_binding` + `BotSignal.bot_id` quando promoção casa com mercado; `promote_bot_http` rejeita `bot_id` fora do catálogo (`assert_catalog_contains_bot`). **Pendente:** parâmetros SMA/estratégia por definição de catálogo (hoje permanecem no `Config` global).
 - Nenhuma ordem real sem executor orders Gate 2.
 - Revisão Critic + SDD agents (autorização).
 - `./scripts/verify-backend-gates.sh` verde.

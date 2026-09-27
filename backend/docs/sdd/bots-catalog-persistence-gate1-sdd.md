@@ -22,7 +22,7 @@ status: draft
 | Bots | `PgBotCatalogStore`, `BotCatalogBackend` | Persist/snapshot HTTP usa PG quando pool disponível |
 | Agents | `PgAgentIdentityStore`, `persist_identity_rows` | Write-through após register/pause/resume/retire |
 | Agents boot | `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` | Cold-start quando registry compartilhado vazio |
-| Schema | `0002_agents_bots_scaffold.sql` | `agent_*`, `bot_catalog_entries` |
+| Schema | `0002_agents_bots_scaffold.sql`, `0005_agent_promote_runtime_bot.sql` | `agent_*`, `bot_catalog_entries`, capability `promote_runtime_bot` |
 
 Testes ignorados: `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `postgres_scaffold_tables_exist_after_migrate`.
 
