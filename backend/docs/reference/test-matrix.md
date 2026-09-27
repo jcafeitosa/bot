@@ -58,7 +58,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **36** paths; `router_after_build_api_state_serves_catalog_and_meta`; `GET /meta` + `meta_and_*`; agents lifecycle + audit; bots runtime; orders/agents/portfolio HTTP (`routes/portfolio.rs` → `ApiState::paper_wallet_snapshot`); PG ignorados em `state.rs` (catálogo, idempotência submit, reconciliação hydrate/lookup). | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **36** paths; `router_after_build_api_state_serves_catalog_and_meta`; `GET /meta` + `meta_and_*` (`server.rs`); admin bearer + orders executors (`http_integration_tests.rs` — matriz [rotas mutantes](#rotas-mutantes-com-bot_http_admin_token)); bots runtime/catálogo/OpenAPI smoke (`server.rs`); portfolio HTTP (`routes/portfolio.rs` → `ApiState::paper_wallet_snapshot`); PG ignorados em `state.rs`. | `server.rs`, `http_integration_tests.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
@@ -81,9 +81,9 @@ O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (lo
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**14/14** testes `#[ignore]` de domínio).
 
-Evidência típica (atualizar após mudanças de teste): **339** aprovados + **16** ignorados = **355** casos no bin `bot` (só aprovados na linha `OK:` do gate); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **14/14** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **350** aprovados + **16** ignorados = **366** casos no bin `bot` (só aprovados na linha `OK:` do gate); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **14/14** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
-Bin `bot`: **339** aprovados, **16** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **350** aprovados, **16** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ### Testes `#[ignore]` no bin `bot` (16)
 
