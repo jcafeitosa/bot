@@ -83,7 +83,7 @@ Evidência (2026-09-27): **328** testes no binário `bot`, **6** ignorados (`per
 |------|--------|-----|--------------|
 | G1 PG scaffold | agents + bots catálogo | [bots-catalog-persistence-gate1-sdd.md](../sdd/bots-catalog-persistence-gate1-sdd.md) | **Parcial** (adapters + `run-pg-integration-tests.sh` + CI `postgres-integration`; default `cargo test` ignora PG) |
 | G1 HTTP admin seam | presentation/http | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | **Sim** (não é auth owner produto) |
-| G2 orders live | orders + idempotência HTTP `client_order_id` (memória) | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`paper` + portfolio snapshot; `live_exchange` + `BOT_ORDERS_EXCHANGE_SUBMIT=recording` → `ExchangeSpotExecutor` / `live_exchange_wired`; sem backend → **503**; REST testnet pendente; threat model rascunho) |
+| G2 orders live | orders + idempotência HTTP `client_order_id` (memória) | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`paper` + portfolio; `recording` → `live_exchange_wired`; `testnet`+`BINANCE_TESTNET_*` abre política REST, submit unwired; threat model rascunho) |
 | G2 bots runtime | bots + monitor + agents `promote_runtime_bot` quando `BOT_HTTP_AGENCY_ID` | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | **Parcial** (`MonitorEvaluatorKind` SMA/EMA no supervisor + `run_sma_crossover`; catálogo `monitor_evaluator`) |
 | Auth owner produto | agents | [agents-module-sdd.md](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [agents-capability-research.md](../research/agents-capability-research.md) | **Bloqueado** (seam `BOT_HTTP_*` ok; owner humano não) |
 
