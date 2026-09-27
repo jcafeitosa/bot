@@ -10,9 +10,9 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**389** no bin `bot` + integração workspace).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**406** no bin `bot`, **0** ignorados + integração workspace).
 >
-> **Bloqueio de fechamento:** fatia técnica/doc do goal entregue (`verify-backend-gates.sh` **389**/**17**, PG **15/15**, README/test-matrix seam commit `6f68b3fc`); **auth owner** produto e **Critic** `AGENTS.md` permanecem bloqueadores — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
+> **Bloqueio de fechamento:** fatia técnica/doc do goal entregue (`verify-backend-gates.sh` **406**/**0** ignored, PG **15/15**, `pg_integration`); **auth owner** produto e **Critic** `AGENTS.md` permanecem bloqueadores — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
 
 ## Resumo executivo
 
