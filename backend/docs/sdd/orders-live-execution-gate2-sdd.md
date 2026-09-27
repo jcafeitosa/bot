@@ -87,7 +87,7 @@ Evidência G1 (2026-09-27): **383** testes bin `bot`, **8** ignorados; `orders_s
 | Adapter `OrderExecutionPort` com exchange/testnet REST | `binance_spot_testnet_submit.rs` (buy/sell market por quote); CI sem credenciais | **Parcial** |
 | Reconciliação pós-submit | Memória + PG `0006`; GET/POST reconciliation; `LiveExchangeSpotOrderReconciliationQuery` (binding + `observe_testnet_spot_order_by_client_id`); job poll opcional | **Parcial** (prod REST; Critic) |
 | `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording determinístico; testnet exige credenciais/rede) |
-| Threat model + revisão Critic | seção rascunho neste SDD; Critic instância separada | **Parcial** |
+| Threat model + revisão Critic | Tabela de riscos + retenção ops ([cli-and-config](../reference/cli-and-config.md#pg-orders-retention-gate-2)); Critic instância separada | **Parcial** (ops doc ok; Critic + purge PG automatizado pendentes) |
 | `./scripts/verify-backend-gates.sh` verde | **383** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
 
 ## Threat model (rascunho)
