@@ -18,6 +18,7 @@ tags:
 |---|---|---|---|
 | `modules/bots` | `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross`/`ema_cross`), supervisor + backtest via `evaluate_for_kind`, catálogo HTTP `monitor_evaluator` | `monitor_strategy.rs`, `evaluation_binding.rs`, `simulation.rs`, `server.rs` | Auth owner; orders live |
 | `modules/orders` | `PaperLedgerExecutor`, `ExchangeSpotExecutor` (recording), `RecordingExecutor`, `ReservedLiveExchangeExecutor`, idempotência, HTTP execution-status/meta + `meta`/`live_exchange_wired` | `orders/tests.rs`, `http_bridge/orders.rs` | Adapter exchange real |
+| `modules/portfolio` | `paper_snapshot_with_fills`; HTTP lê ledger in-process (`orders` paper) | `controllers.rs`, `http_bridge/portfolio.rs`, `server.rs` | Posições/base asset (só fluxo quote hoje) |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
 | `presentation/http` | OpenAPI **34** paths; `GET /meta`; catálogo bots `monitor_evaluator`; contratos `meta_and_*`; `HttpAdminAuth` | `meta.rs`, `server.rs` (`bots_catalog_http_*`) | Auth owner produto (Gate 1) |
 

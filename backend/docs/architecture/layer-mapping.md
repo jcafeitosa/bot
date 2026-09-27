@@ -98,7 +98,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `active_config_snapshot` (incl. `monitor_registry`), `providers_status_snapshot` | Config / providers |
 | `order_execution_mode` + `GET /orders/execution-status` | Orders seam (read-only status) |
 
-Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking) chamam `http_bridge` diretamente com body/query.
+Rotas puramente stateless (risk, strategy, backtest, exchanges, ranking, **`portfolio/paper-snapshot`**) chamam `http_bridge` diretamente com body/query. O snapshot paper agrega fills de `PaperLedgerExecutor` (modo `paper`) via `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills`.
 
 ## Lacunas conscientes
 
