@@ -15,8 +15,8 @@ O `AGENTS.md` exige acordo do usuário com os seams públicos antes de escrever 
 |---|---|---|---|
 | C9 | Política de redirect no `ccxt-core` local: servidores HTTP locais verificam bloqueio antes de contato com outra origem e redirect na mesma origem; testes puros verificam limite de saltos, origem e downgrade; árvore Cargo prova dependência única. | Interface T-05 aprovada | `/root/c9_builder` / `/root/c9_critic` — **G3 BLOQUEADO**; 2 testes HTTP sem bind |
 | C10 | Contrato do adaptador e documentação: endpoint testnet e fallback após erro REST verificados; README e risco residual atualizados conforme testes reais. | C9 aprovado | Backend / Backend, instâncias a ativar |
-| C12 | Fixture CLI por timeframe produz ao menos um trade fechado por sinal; teste exercita binário e `run_sma_crossover`, sem banco. | Interface T-07 aprovada | `/root/c12_builder` / `/root/c12_critic` — em andamento |
-| C13 | Sell aplica slippage configurado no próximo open; equação de custo e regressão de stop/take profit verificadas. | C12 aprovado | Backend / Backend, instâncias a ativar |
+| C12 | Fixture CLI por timeframe produz ao menos um trade fechado por sinal; teste exercita binário e `run_sma_crossover`, sem banco. | Interface T-07 aprovada | `/root/c12_builder` / `/root/c12_critic` — **G3 APROVADO**; 8 pares e next-open revisados |
+| C13 | Sell aplica slippage configurado no próximo open; equação de custo e regressão de stop/take profit verificadas. | C12 aprovado | `/root/c13_builder` / `/root/c13_critic` — em andamento |
 | C14 | Pause/Resume responde sem esperar REST/JEV; drena WS, reconcilia REST, descarta resultados obsoletos e confirma estado na TUI, com fontes/relógio falsos. | Acordo T-10 | Backend / Backend, instâncias a ativar |
 | C15 | Produtor WS não bloqueia com canal cheio; overflow e canal fechado têm testes; README descreve perda recuperável. | C14 aprovado | Backend / Backend, instâncias a ativar |
 | C16 | Opt-in PostgreSQL inválido falha antes do monitor; opt-out não abre banco; `backtest --persist` permanece independente. | Acordo T-15 | Backend / Dados, instâncias a ativar |

@@ -3,7 +3,7 @@
 - **ID:** T-07 (design para implementação posterior)
 - **Autor:** System Designer Builder T-07
 - **Revisor:** Crítico de Arquitetura independente
-- **Estado:** G1 aprovado e seams públicos aprovados pelo usuário em 2026-09-26; C12 implementado, revisão G3 pendente; C13 pendente
+- **Estado:** G1 aprovado e seams públicos aprovados pelo usuário em 2026-09-26; C12 G3 aprovado por /root/c12_critic em 2026-09-26; C13 pendente
 - **Data:** 2026-09-26
 
 ## Contexto e problema
@@ -72,7 +72,7 @@ Cada CL tem Builder e Crítico independentes, até três ciclos, conforme `AGENT
 
 O rollout é apenas código local do subcomando e documentação; não há serviço nem deploy previsto. Reverter C12 restaura a fixture anterior e seu `dataset_id`; reverter C13 restaura os cálculos antigos, portanto regressa o erro de custo na venda por sinal. Não há migração de banco nem mudança de formato persistido; datasets sintéticos antigos e novos podem coexistir por hash. Executar backtest com config padrão após ambos para registrar `trades`, `wins`, `losses` e custos reais antes de considerar a entrega concluída.
 
-## Evidência de C12 (aguardando crítica G3)
+## Evidência de C12 (G3 aprovado por /root/c12_critic)
 
 - O teste do binário `backtest --config` falhou em red com `scalper/1m` e `trades: 0`; após a mudança passou nos oito pares permitidos de operação e timeframe, com `trades >= 1` e `wins + losses == trades`.
 - A fixture final tem `(slow + fast + 3) * timeframe.minutes()` candles de 1m. A análise e o teste observam Buy no open da barra 22 e Sell no open da barra 27 para SMA 5/20; sem taxas, slippage ou stops, `run_sma_crossover` fecha exatamente um trade com P&L zero. Ao mudar somente a última barra para `open=95`, mantendo `close` anterior em 100, o mesmo sinal Sell fecha um trade com P&L -5; isso distingue preenchimento no próximo open de execução no fechamento do sinal. Sem a última barra agregada, nenhum trade é fechado.
