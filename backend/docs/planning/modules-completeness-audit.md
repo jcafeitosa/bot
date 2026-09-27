@@ -17,7 +17,7 @@ tags:
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
 | `modules/bots` | `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross`/`ema_cross`), supervisor + backtest via `evaluate_for_kind`, catálogo HTTP `monitor_evaluator` | `monitor_strategy.rs`, `evaluation_binding.rs`, `simulation.rs`, `server.rs` | Auth owner; orders live |
-| `modules/orders` | `PaperLedgerExecutor`, `ExchangeSpotExecutor` (`recording` + `testnet` ccxt quando credenciais), `RecordingExecutor`, `ReservedLiveExchangeExecutor`, idempotência, HTTP execution-status/meta + `meta`/`live_exchange_wired` | `orders/tests.rs`, `spot_order_submit.rs`, `http_bridge/orders.rs` | Prod REST + threat model; posições paper |
+| `modules/orders` | Paper/live seams, idempotência HTTP+PG, `OrderReconciliationLedger` (pending em submit com `client_order_id`), monitor paper → ledger | `http_bridge/orders.rs`, `state.rs`, `supervisor.rs` | PG reconciliação; confirm exchange; prod REST |
 | `modules/portfolio` | `paper_snapshot_with_fills` + posições com `fill_unit_price`/`BOT_PAPER_FILL_UNIT_PRICE`; HTTP `positions[]` | `controllers.rs`, `http_bridge/portfolio.rs`, `paper_ledger_executor.rs` | Preço de mercado dinâmico (não só env fixo) |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
 | `presentation/http` | OpenAPI **34** paths; `GET /meta`; catálogo bots `monitor_evaluator`; contratos `meta_and_*`; `HttpAdminAuth` | `meta.rs`, `server.rs` (`bots_catalog_http_*`) | Auth owner produto (Gate 1) |
