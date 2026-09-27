@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **357** testes bin `bot`, **8** ignorados; `shared_bot_runtime`, `evaluate_for_kind` no supervisor e em `run_sma_crossover`, HTTP `/bots/runtime/*`, `MonitorEvaluatorKind` + catálogo `monitor_evaluator`, testes `strategy_evaluation_binding_uses_ema_evaluator_from_registry`, `ema_crossover_backtest_uses_strategy_evaluator`, `bots_runtime_promote_*`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`.
+Evidência parcial (2026-09-27): **358** testes bin `bot`, **8** ignorados; `shared_bot_runtime`, `evaluate_for_kind` no supervisor e em `run_sma_crossover`, HTTP `/bots/runtime/*`, `MonitorEvaluatorKind` + catálogo `monitor_evaluator`, testes `strategy_evaluation_binding_uses_ema_evaluator_from_registry`, `ema_crossover_backtest_uses_strategy_evaluator`, `bots_runtime_promote_*`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`.
 
 ## Testes HTTP (isolamento)
 
@@ -83,4 +83,4 @@ Testes de `POST /bots/runtime/promote` em `presentation/http/server.rs` usam `fr
 | Runtime injetado em testes HTTP = `serve` production | `HttpApiSeams::from_env` + `shared_bot_runtime()`; testes `from_env_shares_process_wide_bot_runtime_with_serve` | **Parcial** (testes HTTP ainda usam `InMemoryBotRuntime` isolado quando necessário) |
 | Ordens reais / exchange | depende [orders G2](./orders-live-execution-gate2-sdd.md) | **Não** |
 | Revisão Critic | — | **Não** |
-| `./scripts/verify-backend-gates.sh` verde | **357** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |
+| `./scripts/verify-backend-gates.sh` verde | **358** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |

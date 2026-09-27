@@ -46,7 +46,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
 | `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe síncrono em processo (`http_bridge/orders::submit_order_http`). |
 | `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Modo `live_exchange` wired + `client_order_id`: pending → reconciled com id do adapter (`recording-N` / testnet). |
-| `PgOrderReconciliationStore` | Espelha estado em `order_reconciliation` (`0006`); hidrata memória no boot HTTP (`hydrate_order_reconciliation_from_pg`); `GET /orders/reconciliation/{client_order_id}`. |
+| `PgOrderReconciliationStore` | Espelha estado em `order_reconciliation` (`0006`); hidrata memória no boot HTTP com `symbol`/`side` (`seed_hydrated_row`); `GET` + `POST /orders/reconciliation/poll`; poller `run_reconciliation_poll_once`. |
 | `PgOrderIdempotencyStore` | Dedupe durável quando `DATABASE_URL` conecta; `ApiState` consulta PG antes de executar e grava após sucesso. |
 | `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Scaffold G2: `Pending` → `Reconciled` / `Divergent` por `client_order_id`; wiring HTTP e poller exchange pendente. |
 
