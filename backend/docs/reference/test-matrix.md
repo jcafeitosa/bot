@@ -58,7 +58,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **36** paths; `GET /meta` + `meta_and_*`; agents lifecycle + audit; bots runtime; orders/agents HTTP; PG ignorado `pg_hydrate_order_reconciliation_from_pg_after_durable_write` (`state.rs`, `hydrate_order_reconciliation_from_pg`). | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **36** paths; `GET /meta` + `meta_and_*`; agents lifecycle + audit; bots runtime; orders/agents HTTP; PG ignorados em `state.rs` (`pg_bot_catalog_snapshot_round_trip_via_api_state`, `pg_hydrate_order_reconciliation_*`, `pg_order_reconciliation_lookup_*`). | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
@@ -79,11 +79,11 @@ cargo test --locked --test redirect_policy_test
 
 O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default), depois as cinco suítes acima — **não** `cargo test --locked` completo (reexecutaria o bin `bot` em paralelo e pode flake). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
 
-Evidência típica (atualizar após mudanças de teste): **387** aprovados no bin `bot`, **13** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **11/11** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`.
+Evidência típica (atualizar após mudanças de teste): **387** aprovados no bin `bot`, **14** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **12/12** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot`.
 
-Bin `bot`: **387** aprovados, **13** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **387** aprovados, **14** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
-### Testes `#[ignore]` no bin `bot` (13)
+### Testes `#[ignore]` no bin `bot` (14)
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|
@@ -94,7 +94,8 @@ Bin `bot`: **387** aprovados, **13** ignorados (incl. `integration_submits_minim
 | `pg_cold_start_apply_snapshot_after_write_through` | `modules/http_bridge/agents.rs` | boot `serve`: hydrate registry vazio após PG |
 | `pg_catalog_store_round_trip` | `modules/bots/adapters/pg_catalog.rs` | adapter store |
 | `pg_bot_catalog_snapshot_round_trip_via_api_state` | `presentation/http/state.rs` | `persist_bot_catalog` + `GET /bots/catalog/snapshot` via `catalog_from_store` |
-| `pg_order_idempotency_round_trip` | `modules/orders/adapters/pg_idempotency.rs` | idem |
+| `pg_order_idempotency_round_trip` | `modules/orders/adapters/pg_idempotency.rs` | adapter store |
+| `pg_submit_order_idempotency_reads_pg_when_memory_empty` | `presentation/http/state.rs` | `submit_order_http` dedupe via PG sem cache em memória |
 | `pg_order_reconciliation_round_trip` | `modules/orders/adapters/pg_reconciliation.rs` | idem |
 | `pg_hydrate_order_reconciliation_from_pg_after_durable_write` | `presentation/http/state.rs` | boot `serve`: `hydrate_order_reconciliation_from_pg` após linhas só em PG |
 | `pg_order_reconciliation_lookup_reads_pg_when_memory_empty` | `presentation/http/state.rs` | `GET /orders/reconciliation/{id}` fallback PG sem hydrate |

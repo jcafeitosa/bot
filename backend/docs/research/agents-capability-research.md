@@ -95,11 +95,11 @@ O código atual cobre parte da Etapa 1 **sem** satisfazer o item 4 (auth owner v
 | Capacidade | Onde | Limite |
 |------------|------|--------|
 | Registry + hierarquia + lifecycle | `modules/agents` | Memória + testes unitários |
-| Espelhamento PG + hydrate cold-start | `PgAgentIdentityStore`, `http_bridge/agents.rs`, boot `server.rs` | Sem reconciliação contínua; PG opcional em CI (`run-pg-integration-tests.sh`, 10 testes) |
+| Espelhamento PG + hydrate cold-start | `PgAgentIdentityStore`, `http_bridge/agents.rs`, boot `server.rs` | Sem reconciliação contínua; PG opcional em CI (`run-pg-integration-tests.sh`, 11 testes no total — 3 agents + demais domínios) |
 | Seam HTTP fail-closed | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` — [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | Não prova identidade do owner humano |
 | Capability `promote_runtime_bot` | `bot_promotion.rs`, migração `0005` | Autorização administrativa, não auth de produto |
 
-Baseline de testes: `./scripts/verify-backend-gates.sh` → **387** passed, **13** ignored (2026-09-27). PG script **11/11**. Auditoria: [modules-completeness-audit.md](../planning/modules-completeness-audit.md).
+Baseline de testes: `./scripts/verify-backend-gates.sh` → **387** passed, **14** ignored (2026-09-27). PG script **12/12**. Auditoria: [modules-completeness-audit.md](../planning/modules-completeness-audit.md).
 
 ## Fontes primárias
 
