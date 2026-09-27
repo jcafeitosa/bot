@@ -69,3 +69,16 @@ Evidência G1 (2026-09-27): **305** testes bin `bot`, **6** ignorados; `orders_s
 - Escopo inicial: paper ledger vs testnet Spot apenas.
 - Store de idempotência: memória vs PostgreSQL (`0002` ou migração nova).
 - Autorização owner/agency além de `BOT_HTTP_ADMIN_TOKEN` (Gate 1 auth).
+
+## Critérios de fechamento G2 (checklist)
+
+| Critério | Evidência atual | Fechado |
+|----------|-----------------|--------|
+| `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` | `order_execution.rs`, testes `orders_submit_*` | Sim |
+| Idempotência `client_order_id` (memória + PG opcional) | `PgOrderIdempotencyStore`, `duplicate_client_order_id_*` | Sim |
+| `live_exchange_not_wired` até adapter real | `ReservedLiveExchangeExecutor`, meta + execution-status | Sim (seam) |
+| `RecordingExecutor` / test double sem rede | `orders/tests.rs`, `http_bridge/orders.rs` | Sim |
+| Adapter `OrderExecutionPort` com exchange/testnet | — | **Não** |
+| `live_exchange_wired == true` com prova determinística | permanece `false` em `/meta` | **Não** |
+| Threat model + revisão Critic | — | **Não** |
+| `./scripts/verify-backend-gates.sh` verde | **305** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |

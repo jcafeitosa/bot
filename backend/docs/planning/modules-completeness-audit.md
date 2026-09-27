@@ -71,7 +71,7 @@ Evidência (2026-09-27): **305** testes no binário `bot`, **6** ignorados (`per
 |---|---|---|
 | Analisar completude (bots, orders, agents, HTTP) | Este documento + `unimplemented-modules-analysis.md` | Feito |
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
-| Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
+| Expandir/melhorar implementação | Bots (`MonitorEvaluatorKind`, catálogo/config HTTP), orders seams, agents PG + promote capability | **Parcial** (auth owner; adapter exchange orders) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
 | Build/testes verdes | `cargo test --locked` → 305 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
