@@ -38,7 +38,7 @@ tags:
 | `modules/orders` reconciliation | `reconciliation_pending_to_reconciled`, `reconciliation_mark_divergent_from_pending`, `reconciliation_seed_entry_restores_pending_count`, `reconciliation_poll_confirms_pending_when_recording_binding_exists`, `reconciliation_seed_hydrated_row_preserves_symbol_for_poll`; `recording_submit_returns_deterministic_exchange_order_id`. |
 | `presentation/http/state` | `submit_order_recording_live_exchange_auto_reconciles_client_order_id`; testes que usam ledger partilhado seguram `lock_shared_live_order_reconciliation_ledger_for_test()` durante o caso; com `EnvTestGuard`, adquirir **env antes** do ledger (ordem fixa evita deadlock em `--test-threads` > 1). |
 | `http_bridge/portfolio` | `paper_wallet_snapshot_reflects_in_process_ledger`; HTTP paper submit + `GET /portfolio/paper-snapshot` em `server.rs`; `ApiState::paper_wallet_snapshot` (`paper_wallet_snapshot_via_api_state_reflects_paper_submit` em `state.rs`). |
-| `http_bridge/bots` | Catálogo com `monitor_evaluator` e períodos (`catalog_for_config_exposes_ema_evaluator_from_registry`, `catalog_for_config_includes_monitor_strategy_periods`); HTTP `bots_catalog_http_includes_monitor_strategy_periods` em `server.rs`; promote/catalog gates v1/v2. |
+| `http_bridge/bots` | Catálogo com `monitor_evaluator` e períodos (`catalog_for_config_exposes_ema_evaluator_from_registry`, `catalog_for_config_includes_monitor_strategy_periods`); HTTP `bots_catalog_http_includes_monitor_strategy_periods`, `bots_catalog_http_lists_monitor_registry_v2_periods` em `server.rs`; promote/catalog gates v1/v2. |
 | `orders` | `PaperLedgerExecutor`; `ExchangeSpotExecutor` + `submit_spot_order` (`testnet_backend_is_not_wired_yet`); `RecordingExecutor`; `ReservedLiveExchangeExecutor`; idempotência PG (ignorado). |
 | `bots` | `MonitorEvaluatorKind`; `monitor_evaluation_for_promoted_identity` (`promoted_sma_cross_identity_uses_config_periods`, `promoted_ema_cross_from_registry_uses_configured_periods` em `monitor_strategy.rs`); `strategy_evaluation_binding_*` (promote v2 + EMA); runtime promote HTTP em `server.rs`; catálogo multi-estratégia. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
@@ -81,9 +81,9 @@ O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (lo
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**13/13** testes `#[ignore]` de domínio).
 
-Evidência típica (atualizar após mudanças de teste): **391** aprovados no bin `bot`, **15** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **13/13** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **392** aprovados no bin `bot`, **15** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **13/13** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
-Bin `bot`: **391** aprovados, **15** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **392** aprovados, **15** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ### Testes `#[ignore]` no bin `bot` (15)
 
