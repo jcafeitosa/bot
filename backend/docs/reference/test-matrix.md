@@ -55,7 +55,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **34** paths; `GET /meta` + `meta_and_*_agree_on_*`; catálogo `monitor_evaluator` (`bots_catalog_http_lists_ema_evaluator_from_monitor_registry`); bots runtime promote; orders/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **34** paths; `GET /meta` + `meta_and_*`; catálogo/config `monitor_evaluator` / `evaluator` (`config_active_preserves_ema_evaluator_on_monitor_registry`); bots runtime; orders/agents HTTP. | `server.rs`, `state.rs`, `routes/meta.rs`, `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
@@ -70,12 +70,12 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-304 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+305 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 6 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, pg identity, pg order idempotency, market, neo4j)
 ```
 
-Bin `bot`: 304 aprovados, 6 ignorados. PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: 305 aprovados, 6 ignorados. PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
 ## Lacunas explícitas
 

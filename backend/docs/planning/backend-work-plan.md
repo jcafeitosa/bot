@@ -31,7 +31,7 @@ O `AGENTS.md` exige acordo do usuário com os seams públicos antes de escrever 
 | C16 | Opt-in PostgreSQL inválido falha antes do monitor; opt-out não abre banco; `backtest --persist` permanece independente. | Interface T-15 aprovada | `/root/c16_builder` / `/root/c16_critic` — **G3 APROVADO COM FOLLOW-UP**; runtime C17 e PostgreSQL V18 pendentes |
 | C17 | Estado de persistência e recuperação REST na TUI; falha/commit incerto, lacuna, pausa e overflow exercitados com armazenamento falso. Adicionar em `live.rs` sinal interno com timestamp descartado em `Full` e consumi-lo no monitor: log/contador de C15 sozinho não atualiza o estado de persistência. | C14, C15 e C16 aprovados com follow-ups | `/root/c17_builder` / `/root/c17_critic` — em andamento |
 | Documentação | Índice, arquitetura, integrações, runbook, referência de CLI, catálogo de módulos, matriz de testes e análise de lacunas consolidados no OpenKnowledge. | C13 follow-up documental | Verificado por auditoria de links; 26 documentos, zero links quebrados |
-| V18 | Integração PostgreSQL em database `trading_bot` descartável: migração, commit, rollback após erro e idempotência observados; setup, host, resultado e limpeza registrados. | C16 e C17 aprovados; ambiente isolado acessível | QA/Dados / Crítico de Dados, instâncias a ativar; **BLOQUEADA pelo ambiente** |
+| V18 | Integração PostgreSQL em database `trading_bot` descartável: migração, commit, rollback após erro e idempotência observados; setup, host, resultado e limpeza registrados. | C16 e C17 aprovados; `run-pg-integration-tests.sh` + CI cobrem round-trips G1 | QA/Dados: evidência formal V18 (rollback/limpeza auditada) além dos 5 testes ignorados |
 
 C9/C10, C12/C13, C14/C15 e C16 foram executados com pares independentes e vereditos registrados acima. C17 depende dos estados de pausa, do commit de janelas REST, do descarte WS e do bootstrap de persistência dessas entregas. Alterações simultâneas no README são sequenciadas para evitar sobrescrita. Achado bloqueante ou importante volta ao Builder; após até três ciclos sem acordo, o Orquestrador arbitra sem substituir aprovação obrigatória.
 
@@ -39,7 +39,7 @@ C9/C10, C12/C13, C14/C15 e C16 foram executados com pares independentes e veredi
 
 Cada CL registra testes relevantes, `cargo fmt --check`, `cargo clippy --locked --all-targets -- -D warnings`, `cargo test --locked`, `git diff --check`, diff revisado e veredito do Critic. G4 reúne regressão de monitor/backtest, revisão de segurança do redirect e revisão de dados da persistência. Não há deploy ou habilitação de ordens neste plano.
 
-O teste PostgreSQL ignorado e V18 requerem database `trading_bot` **descartável e isolado**. A integração PostgreSQL continua não executada nesta sessão; o teste permanece ignorado sem alegar aprovação. O job de CI configurado é apenas configuração, não evidência de uma execução atual.
+O teste PostgreSQL ignorado no `cargo test` padrão e V18 requerem database `trading_bot` **descartável e isolado**. Evidência opcional reproduzível: `./scripts/run-pg-integration-tests.sh` (5 testes) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector); job CI `postgres-integration` em `.github/workflows/backend-ci.yml` executa o mesmo script. Execução local: [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md). V18 formal (rollback após erro, limpeza auditada) permanece pendente além dos round-trips automatizados.
 
 ## Próximas ações do Orquestrador
 
@@ -55,9 +55,9 @@ Rastreada em [modules-completeness-audit.md](./modules-completeness-audit.md) (g
 | Fatia | Estado (2026-09-27) | Próximo passo |
 |-------|---------------------|---------------|
 | HTTP seams (`/meta`, execution-status, admin bearer) | Implementado + testes `meta_and_*` | Auth owner produto |
-| Bots runtime G2 | Parcial: `MonitorEvaluatorKind`, catálogo `monitor_evaluator`, `evaluate_for_kind` | Auth owner; runtime injetado vs `serve` |
+| Bots runtime G2 | Parcial: `MonitorEvaluatorKind`, catálogo `monitor_evaluator`, `evaluate_for_kind`; `serve` usa `shared_bot_runtime()` | Auth owner; orders live no monitor |
 | Orders G2 | Parcial: `RecordingExecutor`, idempotência, `live_exchange_not_wired` | Adapter exchange real + threat model |
 | Agents G1 | Registry + PG + `promote_runtime_bot` capability | Auth owner verificável |
-| Evidência | `./scripts/verify-backend-gates.sh` verde; **304** testes bin `bot`, **6** ignorados | Revisão Critic AGENTS.md (instância separada) |
+| Evidência | `./scripts/verify-backend-gates.sh` verde; **305** testes bin `bot`, **6** ignorados | Revisão Critic AGENTS.md (instância separada) |
 
 Esta trilha não substitui C17/V18; compartilha apenas o gate de verificação (`verify-backend-gates.sh`).
