@@ -19,9 +19,9 @@ O binário tem três pontos de entrada funcionais:
 
 - **Monitor (TUI):** `main → core::config → modules::monitor::startup → supervisor → … → presentation::terminal`.
 - **Backtest (CLI):** `main → modules::backtest::cli → fixture 1m → modules::backtest → JSON`.
-- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (**34** paths utoipa, incl. `GET /orders/execution-status`).
+- **HTTP API (`serve`):** `main → presentation::http → Axum; OpenAPI `/openapi.json`, Scalar `/docs`; opcional `--with-monitor` para rotas `/api/v1/monitor/*`. Superfície completa em `presentation/http/routes/` (**36** paths utoipa; teste `openapi_surface_lists_core_paths` em `server.rs`).
 
-O backend não envia ordens. O uso REST autorizado hoje é o backfill público de candles Spot da conta `dev`; observe e paper são os modos operacionais disponíveis.
+Produção REST de ordens permanece bloqueada (`authorize_rest_use`). Monitor e HTTP podem usar seams opt-in (`paper`, `recording`, testnet Spot com credenciais) via `modules/orders` — ver §3c. Backfill público de candles Spot `dev` e modos observe/paper no monitor seguem como hoje.
 
 Mapeamento **domain / application / infrastructure / presentation** → [layer-mapping.md](./layer-mapping.md).
 
