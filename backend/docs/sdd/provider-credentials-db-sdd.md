@@ -34,4 +34,4 @@
 
 - Unit: env fallback when cache empty.
 - Scaffold: migration SQL contains table name.
-- Integration: `#[ignore]` insert/select against real `DATABASE_URL` (operator-only).
+- Integration: `loads_credentials_from_postgres` em `core/providers/credentials/pg_integration.rs` (`#[ignore]`); incluído em `./scripts/run-pg-integration-tests.sh` (**15/15** com `DATABASE_URL` → `trading_bot`; evidência 2026-09-27: `OK: PostgreSQL integration tests passed (15 tests)`).
