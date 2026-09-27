@@ -36,7 +36,7 @@ tags:
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` (paper, live_exchange wired/recording, reserved) em `server.rs`. |
 | `modules/orders` reconciliation | `reconciliation_pending_to_reconciled`, `reconciliation_mark_divergent_from_pending`, `reconciliation_seed_entry_restores_pending_count`; `recording_submit_returns_deterministic_exchange_order_id`. |
-| `presentation/http/state` | `submit_order_recording_live_exchange_auto_reconciles_client_order_id`; testes que usam ledger partilhado seguram `lock_shared_live_order_reconciliation_ledger_for_test()` durante o caso. |
+| `presentation/http/state` | `submit_order_recording_live_exchange_auto_reconciles_client_order_id`; testes que usam ledger partilhado seguram `lock_shared_live_order_reconciliation_ledger_for_test()` durante o caso; com `EnvTestGuard`, adquirir **env antes** do ledger (ordem fixa evita deadlock em `--test-threads` > 1). |
 | `http_bridge/portfolio` | `paper_wallet_snapshot_reflects_in_process_ledger`; HTTP paper submit + `GET /portfolio/paper-snapshot` em `server.rs`. |
 | `http_bridge/bots` | Catálogo com `monitor_evaluator` (`catalog_for_config_exposes_ema_evaluator_from_registry`); promote/catalog gates v1/v2. |
 | `orders` | `PaperLedgerExecutor`; `ExchangeSpotExecutor` + `submit_spot_order` (`testnet_backend_is_not_wired_yet`); `RecordingExecutor`; `ReservedLiveExchangeExecutor`; idempotência PG (ignorado). |
