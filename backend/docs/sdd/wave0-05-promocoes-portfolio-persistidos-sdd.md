@@ -33,7 +33,7 @@ status: draft
 1. **Promoções:** tabela nova, append-only, de eventos de promoção (`promoted`/`demoted`), com `bot_id`, `declared_by` (texto do corpo), `author_authenticated BOOLEAN NOT NULL DEFAULT false`, `agency_id` opcional, `state`, `at_ms`. A promoção ativa é o último evento. Com PG ligado, a ordem é: TX PG (evento + outbox) → só então memória. Falha PG → **503**, memória sem mudança.
 2. **Ledger paper:** tabela nova de fills paper (`fill_id`, `client_order_id` opcional e único quando presente, `symbol`, `side`, `quote_amount NUMERIC`, `fill_unit_price NUMERIC NULL`, `at_ms`). Grava na mesma operação do submit paper; falha PG → **503** e nada entra na memória.
 3. **Boot do `serve`:** hidrata a promoção ativa e os fills do PG antes de abrir o socket, no mesmo ponto em que hoje hidrata agentes e reconciliação.
-4. Migração na **próxima sequência livre no momento da implementação** (não fixar número). `0011` continua advisory.
+4. Migração na **próxima sequência livre depois da `0012` (reservada para W0-12)**, conferida no momento da implementação. `0011` continua advisory.
 5. Sem FK de promoções para `bot_catalog_entries`, porque o boot apaga e reinsere o catálogo; a checagem de existência continua em `assert_bot_promotion_allowed`.
 6. Escopo: processo `serve` (inclui `--with-monitor`). O monitor TUI em processo separado não hidrata nem grava; fica para W2-03/W2-05.
 
@@ -48,7 +48,7 @@ status: draft
 | `BotPromotionRecord` | ganha `author_authenticated: bool` (sempre `false` até P1); HTTP expõe o campo em `GET /bots/runtime/status` |
 | `PaperFill` | ganha `client_order_id: Option<String>` e `at_ms`; valores em `Decimal` no store e `NUMERIC` no PG. A requisição de ordem continua `f64` e é convertida na borda (`Decimal` desde a requisição é F-ORD-15, fora daqui) |
 | DTO de posições | sem tabela de posições: posições continuam derivadas dos fills; o DTO de `GET /portfolio/paper-snapshot` não muda |
-| Política sem PG | memória explícita (comportamento de hoje) e `GET /meta` → `promotion_persistence` / `paper_ledger_persistence` = `memory` \| `postgres` — **precisa de decisão** (alternativa: recusar promover sem PG) |
+| Política sem PG | **Decidido:** sem PG, `POST` de promote/demote responde **503** explícito (`bot_promotion_persistence_unavailable`) e a memória não muda, pelo mesmo raciocínio de W0-12 (`live_exchange` sem PG recusa o boot). O submit paper sem PG continua em memória, marcado em `GET /meta` → `paper_ledger_persistence = memory` (sem autoridade envolvida). **Alternativa registrada, reversível pelo owner:** promoção em memória explícita, visível em `/meta` (`promotion_persistence = memory`) |
 
 ## Critérios de aceite
 
@@ -58,6 +58,7 @@ status: draft
 - A4. Fill com `client_order_id` repetido não duplica linha (idempotente).
 - A5. Tabela de eventos de promoção sem `UPDATE`/`DELETE` pelo código da aplicação (teste de que o store só faz `INSERT`).
 - A6. Testes PG entram no manifesto de `run-pg-integration-tests.sh`.
+- A7. Sem PG: promote e demote → 503 `bot_promotion_persistence_unavailable`, `GET /bots/runtime/status` inalterado; submit paper aceito e `GET /meta` mostra `paper_ledger_persistence = memory`.
 
 ## Dependências
 
@@ -70,6 +71,7 @@ status: draft
 
 - Duas fontes (memória + PG) podem divergir se algum caminho mutar só a memória; mitigação: a memória só muda depois do commit.
 - `static LEDGER` e `shared_bot_runtime` globais continuam (W2-03); testes seguem com `--test-threads=1`.
+- Testes HTTP atuais que promovem sem PG esperam sucesso; passam a esperar 503 ou a rodar com PG. É mudança de comportamento deliberada, que o Critic deve conferir.
 - `declared_by` pode ser confundido com autor verificado; o campo `author_authenticated=false` e o nome da coluna existem para evitar isso.
 
 ## Validação
@@ -78,5 +80,5 @@ status: draft
 
 ## Rollout / rollback
 
-- Rollout: próximo build; sem PG, comportamento igual ao atual (com o flag em `/meta`). Nenhum deploy autorizado.
+- Rollout: próximo build. Sem PG, promote/demote passam a responder 503 (mudança de comportamento visível: hoje aceitam em memória); o ledger paper segue em memória com o flag em `/meta`. Nenhum deploy autorizado.
 - Rollback: reverter o código volta à memória; as tabelas novas ficam órfãs e inofensivas; remover exige outra migração na próxima sequência livre.

@@ -28,11 +28,20 @@ status: draft
 
 1. Remover o ramo `spot_seam` do supervisor e os helpers `monitor_submit_execution_mode` e `record_monitor_spot_submit_reconciliation`. O monitor submete só em `paper` (e não submete em `observe`).
 2. Remover o teste que monta `Testnet` sem `validate`; adicionar teste de que `validate` com `Testnet` falha (se ainda não houver).
-3. Com o ramo fora, remover o espelho `live_reconciliation_pg_mirror` (`register_…`, `clear_…`, `try_mirror_…`, `MIRROR_RUNTIME`) e o registro/limpeza em `state.rs:324-326`. Isso tira um `block_on` do escopo de W0-13.
+3. Com o ramo fora, remover o espelho `live_reconciliation_pg_mirror` (`register_…`, `clear_…`, `try_mirror_…`, `MIRROR_RUNTIME`) e o registro/limpeza em `state.rs:324-326`, conforme a regra do mirror abaixo.
 4. Manter o enum `RunMode::Testnet` e a mensagem do `validate`, para config antiga falhar com texto claro.
 5. Ordens testnet continuam só pelo `serve`, com os gates atuais.
 
-**Alternativa considerada:** manter o ramo atrás de flag explícita, com testes que passam por `validate`. Mantém código de ordem real no monitor sem promoção persistida (W0-05) nem ator autenticado (P1); rejeitada para a Onda 0.
+**Regra do mirror (única, N3 do master plan):**
+
+- W0-11 decide o destino do ramo que chama o mirror (`supervisor.rs:84`).
+- Se W0-11 **remove** o ramo, o mirror (`live_reconciliation_pg_mirror.rs`, com `MIRROR_RUNTIME.block_on`) sai junto, nesta fatia.
+- Se W0-11 **mantém** o ramo, tornar o mirror async (sem `block_on`) passa a ser escopo obrigatório **desta** fatia.
+- W0-13 não toca o mirror em nenhum caso.
+
+A decisão acima (remover) aplica o primeiro caso.
+
+**Alternativa considerada:** manter o ramo atrás de flag explícita, com testes que passam por `validate`. Mantém código de ordem real no monitor sem promoção persistida (W0-05) nem ator autenticado (P1), e pela regra acima obrigaria esta fatia a tornar o mirror async. Rejeitada para a Onda 0; o owner pode reverter essa escolha, e nesse caso o mirror async entra aqui.
 
 ## Seams públicos
 
@@ -48,7 +57,7 @@ status: draft
 ## Dependências
 
 - W0-05 só para a reintrodução futura, não para a remoção.
-- Coordenar com W0-13: se W0-11 entrar primeiro, W0-13 não precisa tratar o espelho; se W0-13 entrar primeiro, o espelho entra no escopo dele ([wave0-13-orders-block-on-sdd](./wave0-13-orders-block-on-sdd.md)).
+- W0-13 ([wave0-13-orders-block-on-sdd](./wave0-13-orders-block-on-sdd.md)) não toca o mirror; o critério A1 dele tem exceção explícita para `live_reconciliation_pg_mirror.rs`. Essa exceção cai quando W0-11 for feito.
 
 ## Riscos
 
