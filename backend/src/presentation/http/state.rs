@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::core::persistence::Database;
 use crate::core::providers::JevAdvisor;
 use crate::modules::agents::AgentRegistry;
+use crate::modules::bots::InMemoryBotCatalogStore;
 use crate::modules::config_api::Config;
 use crate::modules::monitor::MonitorHandle;
 
@@ -15,6 +16,7 @@ pub struct ApiStateInner {
     pub monitor: Option<MonitorHandle>,
     pub database: Option<Database>,
     pub agents: Arc<std::sync::Mutex<AgentRegistry>>,
+    pub bot_catalog: Arc<std::sync::Mutex<InMemoryBotCatalogStore>>,
     pub jev: Option<JevAdvisor>,
     pub app_config: Config,
 }
@@ -26,12 +28,13 @@ impl ApiState {
         jev: Option<JevAdvisor>,
         app_config: Config,
     ) -> Self {
-        Self::with_agent_registry(
+        Self::with_stores(
             monitor,
             database,
             jev,
             app_config,
             Arc::new(std::sync::Mutex::new(AgentRegistry::new())),
+            Arc::new(std::sync::Mutex::new(InMemoryBotCatalogStore::new())),
         )
     }
 
@@ -42,11 +45,30 @@ impl ApiState {
         app_config: Config,
         agents: Arc<std::sync::Mutex<AgentRegistry>>,
     ) -> Self {
+        Self::with_stores(
+            monitor,
+            database,
+            jev,
+            app_config,
+            agents,
+            Arc::new(std::sync::Mutex::new(InMemoryBotCatalogStore::new())),
+        )
+    }
+
+    pub fn with_stores(
+        monitor: Option<MonitorHandle>,
+        database: Option<Database>,
+        jev: Option<JevAdvisor>,
+        app_config: Config,
+        agents: Arc<std::sync::Mutex<AgentRegistry>>,
+        bot_catalog: Arc<std::sync::Mutex<InMemoryBotCatalogStore>>,
+    ) -> Self {
         Self {
             inner: Arc::new(ApiStateInner {
                 monitor,
                 database,
                 agents,
+                bot_catalog,
                 jev,
                 app_config,
             }),
@@ -75,6 +97,15 @@ impl ApiState {
             .agents
             .lock()
             .expect("agent registry lock poisoned");
+        f(&mut guard)
+    }
+
+    pub fn with_bot_catalog<R>(&self, f: impl FnOnce(&mut InMemoryBotCatalogStore) -> R) -> R {
+        let mut guard = self
+            .inner
+            .bot_catalog
+            .lock()
+            .expect("bot catalog lock poisoned");
         f(&mut guard)
     }
 }

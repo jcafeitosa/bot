@@ -52,7 +52,25 @@ pub async fn bot_ranking(
 pub async fn bot_catalog_persist(
     State(state): State<ApiState>,
 ) -> Result<Json<bots::BotCatalogPersistResponse>, ApiError> {
-    bots::persist_catalog_for_config(state.app_config())
+    let response =
+        state.with_bot_catalog(|store| bots::persist_catalog_for_config(state.app_config(), store));
+    response.map_err(ApiError::from_bot_error).map(Json)
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/bots/catalog/snapshot",
+    tag = "bots",
+    responses(
+        (status = 200, description = "Last in-memory catalog snapshot from POST /bots/catalog/persist", body = BotCatalogResponse),
+        (status = 400, description = "Store read error", body = crate::presentation::http::error::ApiErrorBody)
+    )
+)]
+pub async fn bot_catalog_snapshot(
+    State(state): State<ApiState>,
+) -> Result<Json<BotCatalogResponse>, ApiError> {
+    state
+        .with_bot_catalog(|store| bots::catalog_from_memory_store(store))
         .map_err(ApiError::from_bot_error)
         .map(Json)
 }

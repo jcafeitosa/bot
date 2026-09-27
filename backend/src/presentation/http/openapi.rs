@@ -31,6 +31,7 @@ use crate::presentation::http::error::ApiErrorBody;
         bots::bot_catalog,
         bots::bot_ranking,
         bots::bot_catalog_persist,
+        bots::bot_catalog_snapshot,
         agents::list_agents,
         agents::register_agent,
         agents::audit_log,

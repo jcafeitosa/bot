@@ -47,6 +47,7 @@ pub fn v1_routes() -> Router<ApiState> {
         .route("/portfolio/paper-snapshot", get(portfolio::paper_wallet))
         .route("/bots/catalog", get(bots::bot_catalog))
         .route("/bots/catalog/persist", post(bots::bot_catalog_persist))
+        .route("/bots/catalog/snapshot", get(bots::bot_catalog_snapshot))
         .route("/bots/ranking", post(bots::bot_ranking))
         .route("/backtest/sma-crossover", post(backtest::run_sma_backtest))
         .route("/orders/submit", post(orders::submit_order))

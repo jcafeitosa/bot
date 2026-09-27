@@ -21,20 +21,17 @@ impl BotCatalogStore for NoopBotCatalogStore {
 }
 
 /// In-process catalog snapshot until PostgreSQL Gate 1 lands.
-#[cfg(test)]
 #[derive(Debug, Default, Clone)]
 pub struct InMemoryBotCatalogStore {
     entries: Vec<BotDefinition>,
 }
 
-#[cfg(test)]
 impl InMemoryBotCatalogStore {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-#[cfg(test)]
 impl BotCatalogStore for InMemoryBotCatalogStore {
     fn save_catalog(&mut self, entries: &[BotDefinition]) -> Result<(), String> {
         self.entries = entries.to_vec();

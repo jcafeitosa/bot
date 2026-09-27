@@ -248,6 +248,46 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn bots_catalog_persist_then_snapshot_matches() {
+        let app = build_router(ApiState::default());
+        let persist = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/bots/catalog/persist")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(persist.status(), StatusCode::OK);
+        let snapshot = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri("/api/v1/bots/catalog/snapshot")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(snapshot.status(), StatusCode::OK);
+        let persist_bytes = axum::body::to_bytes(persist.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let snap_bytes = axum::body::to_bytes(snapshot.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let persist_doc: serde_json::Value = serde_json::from_slice(&persist_bytes).unwrap();
+        let snap_doc: serde_json::Value = serde_json::from_slice(&snap_bytes).unwrap();
+        assert_eq!(
+            persist_doc["bots"].as_array().map(|a| a.len()),
+            snap_doc["bots"].as_array().map(|a| a.len())
+        );
+    }
+
+    #[tokio::test]
     async fn orders_submit_risk_rejected_returns_422() {
         let app = build_router(ApiState::default());
         let body = r#"{"symbol":"BTC/USDT","side":"buy","quote_amount":500.0,"estimated_daily_loss":0.0,"open_positions":0,"limits":{"max_order_quote":10.0,"max_daily_loss_quote":20.0,"max_open_positions":1}}"#;
@@ -333,7 +373,7 @@ mod tests {
     fn openapi_surface_lists_core_paths() {
         let doc = ApiDoc::openapi();
         let paths = &doc.paths.paths;
-        assert_eq!(paths.len(), 29, "update test when adding utoipa paths");
+        assert_eq!(paths.len(), 30, "update test when adding utoipa paths");
         for key in [
             "/api/v1/config/active",
             "/api/v1/agents/{agent_id}/advisory",

@@ -5,8 +5,8 @@ use crate::core::config::Config;
 use crate::core::error::BotError;
 use crate::modules::backtest::models::StrategyDefinition;
 use crate::modules::bots::{
-    build_catalog_from_config, full_ranking, persist_catalog_snapshot, BotDefinition, BotMetrics,
-    BotRankingReport, NoopBotCatalogStore, StrategyId, StrategyVersion,
+    build_catalog_from_config, full_ranking, persist_catalog_snapshot, BotCatalogStore,
+    BotDefinition, BotMetrics, BotRankingReport, StrategyId, StrategyVersion,
 };
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -76,13 +76,24 @@ pub struct BotCatalogPersistResponse {
     pub persisted: bool,
 }
 
-pub fn persist_catalog_for_config(config: &Config) -> Result<BotCatalogPersistResponse, BotError> {
+pub fn persist_catalog_for_config(
+    config: &Config,
+    store: &mut impl BotCatalogStore,
+) -> Result<BotCatalogPersistResponse, BotError> {
     let strategy = strategy_from_config(config)?;
-    let mut store = NoopBotCatalogStore;
-    let defs = persist_catalog_snapshot(config, &strategy, &mut store)
+    let defs = persist_catalog_snapshot(config, &strategy, store)
         .map_err(|e| BotError::Configuration(e.to_string()))?;
     Ok(BotCatalogPersistResponse {
         bots: defs.into_iter().map(map_bot).collect(),
         persisted: true,
+    })
+}
+
+pub fn catalog_from_memory_store(
+    store: &impl BotCatalogStore,
+) -> Result<BotCatalogResponse, BotError> {
+    let defs = store.load_catalog().map_err(BotError::Configuration)?;
+    Ok(BotCatalogResponse {
+        bots: defs.into_iter().map(map_bot).collect(),
     })
 }

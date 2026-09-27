@@ -1,6 +1,10 @@
 #![allow(dead_code)]
 //! HTTP-facing facades so `presentation` does not import domain modules directly.
 
+//! Facades consumed by `presentation::http::routes` (no direct domain imports in routes):
+//! `agents`, `application`, `backtest`, `bots`, `config`, `exchanges`, `monitor`, `orders`,
+//! `portfolio`, `providers`, `risk`, `strategy`.
+
 pub mod agents;
 pub mod application;
 pub mod backtest;
@@ -20,8 +24,10 @@ mod bridge_tests {
 
     #[test]
     fn persist_catalog_bridge_wires_store_seam() {
+        use crate::modules::bots::InMemoryBotCatalogStore;
         let config = Config::default();
-        let out = super::bots::persist_catalog_for_config(&config).expect("persist");
+        let mut store = InMemoryBotCatalogStore::new();
+        let out = super::bots::persist_catalog_for_config(&config, &mut store).expect("persist");
         assert!(out.persisted);
         assert!(!out.bots.is_empty());
     }

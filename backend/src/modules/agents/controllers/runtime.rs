@@ -44,10 +44,18 @@ pub fn monitor_agent_hook_from_env() -> Arc<dyn MonitorAgentHook> {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Mutex, MutexGuard};
+
     use super::*;
+
+    fn env_test_lock() -> MutexGuard<'static, ()> {
+        static ENV_LOCK: Mutex<()> = Mutex::new(());
+        ENV_LOCK.lock().unwrap()
+    }
 
     #[test]
     fn invalid_agency_falls_back_to_noop() {
+        let _guard = env_test_lock();
         std::env::set_var("BOT_AGENCY", "!!!");
         let hook = monitor_agent_hook_from_env();
         std::env::remove_var("BOT_AGENCY");
@@ -56,6 +64,7 @@ mod tests {
 
     #[test]
     fn valid_agency_returns_registry_hook() {
+        let _guard = env_test_lock();
         std::env::set_var("BOT_AGENCY", "acme");
         let hook = monitor_agent_hook_from_env();
         std::env::remove_var("BOT_AGENCY");
@@ -99,15 +108,12 @@ mod tests {
 
     #[test]
     fn monitor_agent_hook_from_env_shares_registry() {
-        use std::sync::Mutex;
+        let _guard = env_test_lock();
 
         use crate::modules::agents::models::{
             AgentCapabilities, AgentId, AgentRole, NewAgentSpec, OwnerId, SupervisorRef,
         };
         use crate::modules::agents::MonitorAgentHook;
-
-        static ENV_LOCK: Mutex<()> = Mutex::new(());
-        let _guard = ENV_LOCK.lock().unwrap();
 
         let agency_raw = "env-hook-shared-agency";
         std::env::set_var("BOT_AGENCY", agency_raw);
