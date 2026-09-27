@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **257** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*` com `assert_bot_promotion_allowed` (catálogo + mercado), `monitor_strategy_from_config`, `strategy_evaluation_binding` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` com `BOT_HTTP_AGENCY_ID` e `fresh_agent_registry()` em `server.rs`.
+Evidência parcial (2026-09-27): **258** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*` com `assert_bot_promotion_allowed` (catálogo + mercado), `monitor_strategy_from_config`, `strategy_evaluation_binding` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` com `BOT_HTTP_AGENCY_ID` e `fresh_agent_registry()` em `server.rs`.
 
 ## Testes HTTP (isolamento)
 
