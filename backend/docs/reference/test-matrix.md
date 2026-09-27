@@ -75,12 +75,29 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-375 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
+376 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 8 testes ignorados (PG×6, Neo4j, testnet ccxt manual; ver `#[ignore]` no código)
 ```
 
-Bin `bot`: **375** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **376** aprovados, **8** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+
+## Rotas mutantes com `BOT_HTTP_ADMIN_TOKEN`
+
+| Rota | 401 sem Bearer | 2xx com Bearer (quando aplicável) |
+|------|----------------|-----------------------------------|
+| `POST /api/v1/agents` | `agents_register_requires_admin_bearer_when_enabled` | mesmo teste (201) |
+| `POST /api/v1/agents/{id}/pause` | `agents_pause_requires_admin_bearer_when_enabled` | — |
+| `POST /api/v1/agents/{id}/advisory` | `agents_advisory_requires_admin_bearer_when_enabled` | — |
+| `POST /api/v1/bots/catalog/persist` | `bots_catalog_persist_requires_admin_bearer_when_enabled` | mesmo teste (200) |
+| `POST /api/v1/bots/runtime/promote` | `bots_runtime_promote_requires_admin_bearer_when_enabled` | `bots_runtime_promote_and_demote_succeed_with_admin_bearer` |
+| `POST /api/v1/bots/runtime/demote` | `bots_runtime_demote_requires_admin_bearer_when_enabled` | `bots_runtime_promote_and_demote_succeed_with_admin_bearer` (204) |
+| `POST /api/v1/orders/submit` | `orders_submit_requires_admin_bearer_when_enabled` | — |
+| `POST /api/v1/orders/reconciliation/poll` | `orders_reconciliation_poll_requires_admin_bearer_when_enabled` | `orders_reconciliation_poll_succeeds_with_admin_bearer_when_enabled` |
+| `POST /api/v1/monitor/commands` | `monitor_commands_requires_admin_bearer_when_enabled` | `monitor_commands_succeeds_with_admin_bearer_when_handle_present` |
+
+Não cobre auth owner produto; ver [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md).
+
 
 ## Lacunas explícitas
 

@@ -58,6 +58,6 @@ Rastreada em [modules-completeness-audit.md](./modules-completeness-audit.md) (g
 | Bots runtime G2 | Parcial: EMA/SMA + catálogo `monitor_evaluator`; `shared_bot_runtime` / `HttpApiSeams::from_env` (testes paridade); HTTP promote com capability | Auth owner; orders live no monitor; E2E `BOT_RUNTIME_ENABLED` opcional |
 | Orders G2 | Parcial: paper/recording/testnet; reconciliação GET/POST poll + `observe_testnet_spot_order_by_client_id`; idempotência PG `0004`/`0006` | Threat model fechado + Critic; prod REST bloqueado |
 | Agents G1 | Registry + PG + promote capability; `BOT_HTTP_OWNER_ID` + `agents_register_rejects_owner_mismatch_when_bound`; checklist [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist) | Owner humano verificável + bootstrap (pesquisa bloqueia) |
-| Evidência | `./scripts/verify-backend-gates.sh` verde; **375** testes bin `bot`, **8** ignorados; PG **6/6** opcional | Revisão Critic AGENTS.md (instância separada) |
+| Evidência | `./scripts/verify-backend-gates.sh` verde; **376** testes bin `bot`, **8** ignorados; PG **6/6** opcional | Revisão Critic AGENTS.md (instância separada) |
 
 Esta trilha não substitui C17/V18; compartilha apenas o gate de verificação (`verify-backend-gates.sh`).
