@@ -240,6 +240,59 @@ async fn orders_submit_dev_accept_executor_returns_200() {
 }
 
 #[tokio::test]
+async fn orders_submit_pg_idempotency_store_unavailable_returns_order_store_unavailable() {
+    let Some(db) = crate::core::persistence::pg_integration::database_for_integration_test().await
+    else {
+        return;
+    };
+    let pool = db.as_postgres().pool().clone();
+    const HIDDEN: &str = "order_idempotency_keys_pg_test_hidden";
+    sqlx::query(&format!(
+        "ALTER TABLE order_idempotency_keys RENAME TO {HIDDEN}"
+    ))
+    .execute(&pool)
+    .await
+    .expect("hide table for test");
+    let state = ApiState::with_order_executor(
+        None,
+        AppDatabases {
+            postgres: Some(db),
+            neo4j: None,
+        },
+        None,
+        Config::default(),
+        fresh_agents(),
+        HttpAdminAuth::disabled(),
+        HttpOrderExecutor::dev_accept(),
+    );
+    let app = build_router(state);
+    let body = r#"{"symbol":"BTC/USDT","side":"buy","quote_amount":5.0,"estimated_daily_loss":0.0,"open_positions":0,"client_order_id":"idem-pg-down-1","limits":{"max_order_quote":10.0,"max_daily_loss_quote":20.0,"max_open_positions":1}}"#;
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/orders/submit")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    sqlx::query(&format!(
+        "ALTER TABLE {HIDDEN} RENAME TO order_idempotency_keys"
+    ))
+    .execute(&pool)
+    .await
+    .expect("restore table");
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(json["code"], "order_store_unavailable");
+}
+
+#[tokio::test]
 async fn orders_submit_live_exchange_reserved_returns_503_with_code() {
     let state = ApiState::with_order_executor(
         None,

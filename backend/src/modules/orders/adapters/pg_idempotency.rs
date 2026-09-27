@@ -1,5 +1,6 @@
 use sqlx::PgPool;
 
+use super::pg_store_error::orders_pg_store_error;
 use crate::core::database::PostgresDatabase;
 use crate::modules::orders::OrdersError;
 
@@ -23,9 +24,7 @@ impl PgOrderIdempotencyStore {
         .bind(key)
         .fetch_one(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("idempotency lookup failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("idempotency lookup", error))?;
         Ok(exists)
     }
 
@@ -36,9 +35,7 @@ impl PgOrderIdempotencyStore {
         .bind(key)
         .execute(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("idempotency record failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("idempotency record", error))?;
         Ok(())
     }
 
@@ -52,9 +49,7 @@ impl PgOrderIdempotencyStore {
         .bind(key)
         .fetch_optional(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("idempotency claim failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("idempotency claim", error))?;
         Ok(inserted.is_some())
     }
 
@@ -64,9 +59,7 @@ impl PgOrderIdempotencyStore {
             .bind(key)
             .execute(&self.pool)
             .await
-            .map_err(|error| {
-                OrdersError::InvalidRequest(format!("idempotency release failed: {error}"))
-            })?;
+            .map_err(|error| orders_pg_store_error("idempotency release", error))?;
         Ok(())
     }
 }
@@ -118,5 +111,31 @@ mod tests {
             .await
             .expect("lookup after release"));
         assert!(store.try_claim(&key).await.expect("re-claim"));
+    }
+
+    #[tokio::test]
+    async fn pg_order_idempotency_store_unavailable_when_table_missing() {
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
+        let pool = db.as_postgres().pool().clone();
+        const HIDDEN: &str = "order_idempotency_keys_pg_test_hidden";
+        sqlx::query(&format!(
+            "ALTER TABLE order_idempotency_keys RENAME TO {HIDDEN}"
+        ))
+        .execute(&pool)
+        .await
+        .expect("hide table for test");
+        let store = PgOrderIdempotencyStore::new(db.as_postgres());
+        let err = store.is_completed("probe-key").await.unwrap_err();
+        assert!(matches!(err, OrdersError::StoreUnavailable(_)));
+        sqlx::query(&format!(
+            "ALTER TABLE {HIDDEN} RENAME TO order_idempotency_keys"
+        ))
+        .execute(&pool)
+        .await
+        .expect("restore table");
     }
 }

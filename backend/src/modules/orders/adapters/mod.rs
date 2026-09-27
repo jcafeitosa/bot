@@ -12,6 +12,7 @@ mod live_reconciliation_pg_mirror;
 mod paper_ledger_executor;
 mod pg_idempotency;
 mod pg_reconciliation;
+mod pg_store_error;
 mod recording_executor;
 mod reserved_live_exchange;
 mod spot_order_reconciliation_query;

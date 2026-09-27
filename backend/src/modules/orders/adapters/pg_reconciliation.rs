@@ -1,5 +1,6 @@
 use sqlx::PgPool;
 
+use super::pg_store_error::orders_pg_store_error;
 use crate::core::database::PostgresDatabase;
 use crate::modules::orders::models::{OrderSide, OrdersError, ReconciliationState};
 
@@ -41,9 +42,7 @@ impl PgOrderReconciliationStore {
         .bind(side_label)
         .execute(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("reconciliation mark_pending failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("reconciliation mark_pending", error))?;
         if result.rows_affected() == 0 {
             return Err(OrdersError::InvalidRequest(
                 "client_order_id already tracked for reconciliation".into(),
@@ -78,9 +77,7 @@ impl PgOrderReconciliationStore {
         .bind(exchange_id)
         .fetch_optional(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("reconciliation confirm failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("reconciliation confirm", error))?;
         match row {
             Some(r) => Ok(r.into_state()),
             None => {
@@ -118,9 +115,7 @@ impl PgOrderReconciliationStore {
         .bind(key)
         .fetch_optional(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("reconciliation lookup failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("reconciliation lookup", error))?;
         Ok(row.map(|r| r.into_state()))
     }
 
@@ -167,9 +162,7 @@ impl PgOrderReconciliationStore {
         .bind(reason)
         .execute(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("reconciliation upsert failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("reconciliation upsert", error))?;
         Ok(())
     }
 
@@ -185,9 +178,7 @@ impl PgOrderReconciliationStore {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("reconciliation hydrate list failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("reconciliation hydrate list", error))?;
         Ok(rows
             .into_iter()
             .map(|row| {
@@ -228,9 +219,7 @@ impl PgOrderReconciliationStore {
         .bind(reason)
         .execute(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("reconciliation mark_divergent failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("reconciliation mark_divergent", error))?;
         if result.rows_affected() == 0 {
             return Err(OrdersError::InvalidRequest(
                 "reconciliation state cannot become divergent".into(),
@@ -245,9 +234,7 @@ impl PgOrderReconciliationStore {
         )
         .fetch_one(&self.pool)
         .await
-        .map_err(|error| {
-            OrdersError::InvalidRequest(format!("reconciliation pending_count failed: {error}"))
-        })?;
+        .map_err(|error| orders_pg_store_error("reconciliation pending_count", error))?;
         Ok(count as usize)
     }
 }

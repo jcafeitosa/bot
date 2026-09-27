@@ -87,7 +87,8 @@ pub async fn reconciliation_poll(
         (status = 200, description = "Order accepted by risk gate (execution may still be disabled)", body = SubmitOrderResponse),
         (status = 400, description = "Invalid request", body = crate::presentation::http::error::ApiErrorBody),
         (status = 422, description = "Risk rejected", body = crate::presentation::http::error::ApiErrorBody),
-        (status = 503, description = "Execution disabled (fail-closed)", body = crate::presentation::http::error::ApiErrorBody)
+        (status = 503, description = "Execution disabled (fail-closed)", body = crate::presentation::http::error::ApiErrorBody),
+        (status = 503, description = "Order durable store unavailable (fail-closed)", body = crate::presentation::http::error::ApiErrorBody)
     )
 )]
 pub async fn submit_order(

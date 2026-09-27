@@ -200,6 +200,11 @@ impl ApiError {
                 "live_exchange_not_wired",
                 "live exchange order execution is not wired in this build",
             ),
+            OrdersError::StoreUnavailable(message) => ApiError::with_code(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "order_store_unavailable",
+                message,
+            ),
         }
     }
 
@@ -209,6 +214,22 @@ impl ApiError {
             "jev_unavailable",
             "Jev advisory is disabled or not configured in this API process",
         )
+    }
+}
+
+#[cfg(test)]
+mod orders_error_mapping_tests {
+    use super::ApiError;
+    use crate::modules::orders::OrdersError;
+    use axum::http::StatusCode;
+
+    #[test]
+    fn store_unavailable_maps_to_service_unavailable() {
+        let api = ApiError::from_orders_error(OrdersError::StoreUnavailable(
+            "idempotency lookup: relation missing".into(),
+        ));
+        assert_eq!(api.status_code(), StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(api.error_code(), Some("order_store_unavailable"));
     }
 }
 

@@ -6,6 +6,8 @@ pub enum OrdersError {
     RiskRejected(String),
     ExecutionDisabled,
     LiveExchangeNotWired,
+    /// Durable order store (idempotency/reconciliation PG) unavailable — fail-closed.
+    StoreUnavailable(String),
 }
 
 impl fmt::Display for OrdersError {
@@ -18,6 +20,7 @@ impl fmt::Display for OrdersError {
                 f,
                 "live exchange order execution is not wired in this build"
             ),
+            Self::StoreUnavailable(message) => write!(f, "order store unavailable: {message}"),
         }
     }
 }
