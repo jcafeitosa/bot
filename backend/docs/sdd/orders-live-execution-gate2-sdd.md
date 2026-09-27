@@ -96,7 +96,7 @@ Evidência G1 (2026-09-27): **385** testes bin `bot`, **8** ignorados; `orders_s
 |-------|-----------------|-----|
 | Envio acidental de ordem live | Default `BOT_ORDERS_EXECUTION` fail-closed; `authorize_rest_use` permite `OrderSubmit` só com seam `recording` ou testnet+credenciais em dev Spot | Prod REST desabilitado; testnet opt-in explícito |
 | Replay de `client_order_id` | `OrderIdempotencyStore` memória + PG `0004` | Política de retenção **ops** documentada abaixo; job de purge PG **não** implementado |
-| Credenciais testnet em log | CI sem credenciais; adapter não loga keys | Auditar erros ccxt e tracing em submit testnet |
+| Credenciais testnet em log/resposta | CI sem credenciais; `map_bot_error` redige valores de `BINANCE_TESTNET_*` em mensagens (`redact_known_testnet_credentials`; teste `map_bot_error_redacts_configured_testnet_credentials_from_message`) | Revisar tracing ccxt em outros adapters; Critic |
 | Bypass de risco | `submit_order` sempre chama `risk::validate_intent` antes do port | — |
 | Admin token vazado | `BOT_HTTP_ADMIN_TOKEN` em rotas mutantes; não substitui auth owner | [agents G1](./agents-module-sdd.md) |
 | Estado de reconciliação inconsistente | Memória + PG; GET reconciliation; `POST /orders/reconciliation/poll` + job `BOT_ORDERS_RECONCILIATION_POLL_SECS` (recording) | Consulta testnet via fetch_order + binding; prod ausente |
