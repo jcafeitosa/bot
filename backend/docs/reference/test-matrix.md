@@ -58,7 +58,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **39** paths; orders OpenAPI **503** `order_store_unavailable` (`routes/orders.rs`); `store_unavailable_maps_to_service_unavailable` (`error.rs`); `router_after_build_api_state_*`; `GET /meta` + `meta_and_*` (`server.rs`); admin bearer + orders (`http_integration_tests.rs` — [rotas mutantes](#rotas-mutantes-com-bot_http_admin_token)); portfolio HTTP; PG em `state.rs` via `pg_integration` + script PG **25/25**. | `server.rs`, `http_integration_tests.rs`, `state.rs`, `routes/*`, `error.rs`, `admin_auth.rs`, `order_execution.rs`. |
+| `presentation/http` | OpenAPI **39** paths; orders OpenAPI **503** `order_store_unavailable` (`routes/orders.rs`); `store_unavailable_maps_to_service_unavailable` (`error.rs`); `router_after_build_api_state_*`; `GET /meta` + `meta_and_*` (`server.rs`); admin bearer + orders + F3 graph admin (`http_integration_tests.rs` — [rotas mutantes](#rotas-mutantes-com-bot_http_admin_token)); portfolio HTTP; PG em `state.rs` via `pg_integration` + script PG **25/25**. | `server.rs`, `http_integration_tests.rs`, `state.rs`, `routes/*`, `error.rs`, `admin_auth.rs`, `order_execution.rs`, `routes/graph_admin.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
