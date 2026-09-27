@@ -20,7 +20,7 @@ tags:
 | `modules/orders` | Paper/recording/testnet, idempotência+PG, reconciliação+poll (`LiveExchangeSpotOrderReconciliationQuery` + testnet observe), `SpotOrderSubmitAck` | `spot_order_reconciliation_query.rs`, `binance_spot_testnet_reconcile.rs`, `state.rs` | Prod REST; threat model/Critic |
 | `modules/portfolio` | `paper_snapshot_with_fills` + posições; HTTP `GET /portfolio/paper-snapshot` via `ApiState::paper_wallet_snapshot` | `controllers.rs`, `http_bridge/portfolio.rs`, `routes/portfolio.rs`, `state.rs` | Preço de mercado dinâmico (não só env fixo) |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
-| `presentation/http` | OpenAPI **36** paths; boot `ApiState::build_api_state_for_http_serve` (espelha `serve`); `GET /meta`; orders reconciliação; portfolio paper; `meta_and_*`; `HttpAdminAuth` ([test-matrix](../reference/test-matrix.md), [runtime G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial)) | `server.rs`, `state.rs`, `routes/*`, `verify-backend-gates.sh` / `verify-backend-full.sh` (**350** / **16** ignored; PG **14/14**) | Auth owner produto (Gate 1) |
+| `presentation/http` | OpenAPI **36** paths; boot `ApiState::build_api_state_for_http_serve` (espelha `serve`); `GET /meta`; orders reconciliação; portfolio paper; `meta_and_*`; `HttpAdminAuth` ([test-matrix](../reference/test-matrix.md), [runtime G2](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial)) | `server.rs`, `http_integration_tests.rs`, `state.rs`, `routes/*`, `verify-backend-gates.sh` / `verify-backend-full.sh` (**350** / **16** ignored; PG **14/14**) | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 
@@ -72,7 +72,7 @@ Evidência (2026-09-27, gate ~10,5s; `verify-backend-full.sh` → `OK: backend f
 |---|---|---|
 | Analisar completude (bots, orders, agents, HTTP) | Este documento + `unimplemented-modules-analysis.md` | Feito |
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
-| Expandir/melhorar implementação | Bots runtime/evaluator, orders G2 (testnet+reconciliação+poll+redação credenciais), agents PG + promote; `.env.example` seams HTTP (`BOT_ORDERS_EXECUTION` paper vs live_exchange) | **Parcial** (auth owner; Critic; prod REST política) |
+| Expandir/melhorar implementação | Bots runtime/evaluator, orders G2 (testnet+reconciliação+poll+redação credenciais), agents PG + promote; HTTP admin/orders em `http_integration_tests.rs`; `.env.example` seams HTTP | **Parcial** (auth owner; Critic; prod REST política) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
 | Build/testes verdes | `./scripts/verify-backend-gates.sh` → **350** ok (bin `bot`) + 5 suítes `tests/`; clippy/fmt/import | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |

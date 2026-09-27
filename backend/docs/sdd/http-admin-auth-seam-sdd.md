@@ -38,6 +38,7 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 ## Validação
 
 - Testes unitários `admin_auth.rs` (`binding_active_flags_reflect_env_bindings_without_leaking_ids`).
-- Testes HTTP `server.rs`: `meta_includes_http_seams_snapshot`, `meta_reports_http_bindings_when_configured`, `meta_reports_owner_binding_when_configured`, `meta_reports_agency_binding_without_admin_token`, `meta_and_orders_execution_status_agree_on_seams`, `meta_and_bot_runtime_status_agree_on_runtime_enabled`; bearer obrigatório (agents register, agents pause/resume/retire/advisory, bots persist, bots runtime promote/demote, orders submit, `orders_reconciliation_poll`, monitor commands), `owner_mismatch`, `agents_list_rejects_agency_mismatch_when_bound`, `agents_register_rejects_agency_mismatch_when_bound`, `bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent`, `bots_runtime_promote_and_demote_succeed_with_admin_bearer`.
+- Testes HTTP `server.rs`: `meta_*`, `meta_and_*`, agency/owner mismatch, bots runtime capability, monitor commands, OpenAPI smoke.
+- Testes HTTP `http_integration_tests.rs`: bearer obrigatório (agents register/pause, bots catalog persist, bots runtime promote, orders submit paper/admin, `orders_reconciliation_poll`); ver [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token).
 - `state.rs` `state_tests`: `for_http_server_wires_process_wide_bot_runtime_like_serve` (mesmo `Arc` que `shared_bot_runtime()` / `HttpApiSeams::from_env`).
 - `./scripts/verify-backend-gates.sh`.
