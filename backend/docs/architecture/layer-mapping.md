@@ -96,7 +96,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `GET /portfolio/paper-snapshot` | `ApiState::paper_wallet_snapshot` → `http_bridge/portfolio` + ledger paper |
 | `submit_order_http` (async) | Orders: risco + `HttpOrderExecutor`; reconciliação memória/PG; idempotência memória/PG |
 | `monitor_snapshot`, `accept_monitor_command` | Monitor |
-| `active_config_snapshot` (incl. `monitor_registry`), `providers_status_snapshot` | Config / providers |
+| `active_config_snapshot`, `config_snapshot_from_path`, `providers_status_snapshot` | Config / providers |
 | `order_execution_mode` + `GET /orders/execution-status` | Orders seam (read-only status) |
 | `order_reconciliation_lookup` + `GET /orders/reconciliation/{client_order_id}` | Reconciliação pós-submit live; fallback PG `pg_order_reconciliation_lookup_reads_pg_when_memory_empty` |
 | `reconcile_pending_orders_once` / `POST /orders/reconciliation/poll` + job `BOT_ORDERS_RECONCILIATION_POLL_SECS` | Poller (`LiveExchangeSpotOrderReconciliationQuery`) |
@@ -106,7 +106,7 @@ Métodos usados pelas rotas com estado ou config carregada no `serve`:
 | `register_live_reconciliation_pg_mirror` | Infra: monitor testnet espelha reconciliação no PG quando `DATABASE_URL` ativo |
 | `observe_testnet_spot_order_by_client_id` | Infra exchanges → observação ccxt para poller testnet |
 
-Rotas puramente stateless (risk, strategy, backtest, exchanges, `application/signals`, `config/snapshot` por path) chamam `http_bridge` diretamente com body/query. **`GET /portfolio/paper-snapshot`** usa `ApiState::paper_wallet_snapshot` → `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (fills de `PaperLedgerExecutor` após submit paper HTTP ou monitor `RunMode::Paper`; `paper_fill_unit_price` no body ou `BOT_PAPER_FILL_UNIT_PRICE`).
+Rotas puramente stateless (risk, strategy, backtest, exchanges, `application/signals`) chamam `http_bridge` diretamente com body/query. **`GET /config/snapshot`** e **`GET /config/active`** usam `ApiState` (path explícito vs config do boot). **`GET /portfolio/paper-snapshot`** usa `ApiState::paper_wallet_snapshot` → `http_bridge::portfolio::paper_wallet_snapshot` → `portfolio::paper_snapshot_with_fills` (fills de `PaperLedgerExecutor` após submit paper HTTP ou monitor `RunMode::Paper`; `paper_fill_unit_price` no body ou `BOT_PAPER_FILL_UNIT_PRICE`).
 
 ## Lacunas conscientes
 

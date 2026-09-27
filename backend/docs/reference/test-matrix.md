@@ -40,7 +40,7 @@ tags:
 | `http_bridge/portfolio` | `paper_wallet_snapshot_reflects_in_process_ledger`; HTTP paper submit + `GET /portfolio/paper-snapshot` em `server.rs`; `ApiState::paper_wallet_snapshot` (`paper_wallet_snapshot_via_api_state_reflects_paper_submit` em `state.rs`). |
 | `http_bridge/bots` | Catálogo com `monitor_evaluator` (`catalog_for_config_exposes_ema_evaluator_from_registry`); promote/catalog gates v1/v2. |
 | `orders` | `PaperLedgerExecutor`; `ExchangeSpotExecutor` + `submit_spot_order` (`testnet_backend_is_not_wired_yet`); `RecordingExecutor`; `ReservedLiveExchangeExecutor`; idempotência PG (ignorado). |
-| `bots` | `MonitorEvaluatorKind`; `strategy_evaluation_binding_uses_ema_evaluator_from_registry`; runtime promote; catálogo multi-estratégia. |
+| `bots` | `MonitorEvaluatorKind`; `monitor_evaluation_for_promoted_identity` (`promoted_sma_cross_identity_uses_config_periods`, `promoted_ema_cross_from_registry_uses_configured_periods` em `monitor_strategy.rs`); `strategy_evaluation_binding_*` (promote v2 + EMA); runtime promote HTTP em `server.rs`; catálogo multi-estratégia. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
 | `backtest` | `run_sma_crossover` respeita `StrategyDefinition::evaluator`; fees, slippage, stop/take-profit (`ema_crossover_backtest_uses_strategy_evaluator`). |
 | `domain` | Ranking, métricas, janela de avaliação e tipos de identidade. |
