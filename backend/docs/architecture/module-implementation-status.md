@@ -53,9 +53,9 @@ Legenda **MVC:** `M+C` = models + controllers; `M+A` = models + adapters; `Infra
 | backtest | `modules/backtest/` | M+C + `cli` | simulation tests, `tests/backtest_fixture.rs` |
 | exchanges | `modules/exchanges/` | M+A; `controllers` reexporta orquestração | `exchanges::tests`, adapters tests |
 | monitor | `modules/monitor/` | M+C+views | supervisor/handle/startup tests; `main` monitor path |
-| agents | `modules/agents/` | M+C+A (`jev`, `pg_registry`) | `modules/agents/tests.rs`, HTTP agents + PG hydrate |
-| bots | `modules/bots/` | M+C+A (`PgBotCatalogStore`, `BotCatalogBackend`) | `modules/bots/tests.rs`, HTTP bots routes |
-| orders | `modules/orders/` | M+C+A (`FailClosedExecutor`) | `modules/orders/tests.rs`, HTTP 503 fail-closed |
+| agents | `modules/agents/` | M+C+A (`jev`, `pg_registry`, `bot_promotion`) | `modules/agents/tests.rs`, HTTP agents + PG hydrate; `promote_runtime_bot` quando `BOT_HTTP_AGENCY_ID` |
+| bots | `modules/bots/` | M+C+A (`PgBotCatalogStore`, `BotRuntimePort`, `BotCatalogBackend`) | `modules/bots/tests.rs`, HTTP catalog + `/bots/runtime/*`, supervisor `strategy_evaluation_binding` |
+| orders | `modules/orders/` | M+C+A (`FailClosedExecutor`, `HttpOrderExecutor`, `OrderIdempotencyStore`, `PgOrderIdempotencyStore`) | `modules/orders/tests.rs`, `http_bridge/orders`, HTTP 422/503 + `dev_accept` + `client_order_id` |
 | http_bridge | `modules/http_bridge/` | Facades por domínio | `bridge_tests::persist_catalog_bridge_wires_store_seam` |
 | config_api | `modules/config_api.rs` | Reexport tipado (evita `presentation` → `core::config`) | Rotas HTTP `config` |
 | application_contracts | `modules/application_contracts.rs` | Tipos compartilhados (`Signal`, `BotSignal`) | `application_contracts::tests` |
