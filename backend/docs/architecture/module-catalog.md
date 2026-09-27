@@ -61,7 +61,8 @@ flowchart LR
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `modules` | `jev` | `JevAdvisor::review` | Advisory TypeSafe. | Endpoint/config. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly` em memória; lifecycle e advisory Jev sem worker nem API HTTP. **Não** é o módulo `bots`. | `modules/agents/tests.rs`. |
-| `modules` | `bots` | — | **Não implementado.** Futuro: executores versionados de trading e promoção; ver [SDD agents — Relação com bots](../sdd/agents-module-sdd.md). | — |
+| `modules` | `bots` | `BotIdentity`, `full_ranking`, `build_catalog_from_config` | Executores strategy×timeframe versionados; catálogo e ranking em memória; HTTP `GET /api/v1/bots/catalog`, `POST /api/v1/bots/ranking`. Sem runtime live nem PostgreSQL (Gate 1). | `modules/bots/tests.rs`. |
+| `modules` | `orders` | `submit_order`, `OrderExecutionPort`, `FailClosedExecutor` | Valida `OrderIntent` via `risk`; port fail-closed (`ExecutionDisabled`). Sem HTTP nem exchange live. | `modules/orders/tests.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
 | `presentation` | `http` | API Axum | OpenAPI (`/openapi.json`), Scalar (`/docs`), subcomando `serve`; monitor HTTP exige `MonitorHandle` no processo. | Testes em `presentation/http/server.rs`. |
@@ -81,7 +82,7 @@ Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-mo
 
 **Limites:** sem PostgreSQL de identidades, sem autenticação do owner no transporte, sem runtime durável, scheduler, gateway MCP ou canais externos.
 
-**Agents vs bots vs backtest:** `backtest::BotId` identifica uma corrida simulada (`strategy@version:timeframe:symbol`), não um agente administrativo nem um executor `modules/bots`. O monitor opera o loop de mercado e pode, no futuro, usar `MonitorAgentHook`; hoje permanece noop. Tabela completa: [SDD agents — Relação com bots](../sdd/agents-module-sdd.md).
+**Agents vs bots vs backtest:** `bots::BotId` e `backtest::BotId` (reexport) compõem a mesma chave canônica `strategy@version:timeframe:symbol`; isso não é `AgentId`. O monitor opera o loop de mercado e pode, no futuro, usar `MonitorAgentHook`; hoje permanece noop. Tabela completa: [SDD bots](../sdd/bots-module-sdd.md), [SDD agents — Relação com bots](../sdd/agents-module-sdd.md).
 
 ## 4. Módulos de exchanges (`src/modules/exchanges/`)
 
