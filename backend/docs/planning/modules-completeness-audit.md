@@ -11,6 +11,8 @@ tags:
 # Auditoria de completude — bots, orders, agents e HTTP
 
 > Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**385** no bin `bot` + integração workspace).
+>
+> **Bloqueio de fechamento:** fatia técnica/doc do goal entregue (`verify-backend-gates.sh` **385**/**17**, PG **15/15**, README commit `74bb2bab`); **auth owner** produto e **Critic** `AGENTS.md` permanecem bloqueadores — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
 
 ## Resumo executivo
 
