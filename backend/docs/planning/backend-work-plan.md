@@ -11,18 +11,18 @@ tags:
 
 - **Responsável:** Orquestrador `/root`
 - **Data:** 2026-09-26
-- **Estado:** plano de G2 revisado e aprovado por `/root/workplan_critic`; C9/C10 tiveram a prova HTTP executada fora do sandbox em 2026-09-27
+- **Estado:** plano de G2 revisado e aprovado por `/root/workplan_critic`; os testes HTTP de C9 passaram fora do sandbox em 2026-09-27; novo parecer independente de G3 ainda pendente
 - **Base:** SDDs [T-05](../sdd/rest-redirect-sdd.md), [T-07](../sdd/backtest-trades-and-slippage-sdd.md), [T-10](../sdd/monitor-pause-resume-sdd.md) e [T-15](../sdd/monitor-persistence-policy-sdd.md), todos com G1 técnico aprovado por críticos independentes
 
 ## Escopo e gates
 
 O objetivo é corrigir o risco de redirect REST, a fixture e o custo de venda do backtest, a pausa/retomada do monitor e a semântica da persistência opcional. As entregas [T-13](../sdd/legacy-file-cleanup-sdd.md) e [T-16](../sdd/backend-module-map-sdd.md) já passaram por revisão independente; seus arquivos permanecem no worktree e não são refeitos aqui.
 
-O `AGENTS.md` exige acordo do usuário com os seams públicos antes de escrever cada teste. O usuário aprovou explicitamente as interfaces de T-05, T-07, T-10 e T-15 em 2026-09-26. G2 está fechado quanto a esse requisito. C9 foi revalidado fora do sandbox: os dois testes HTTP obrigatórios passaram, junto dos testes puros de origem. C9 deixa de estar bloqueado por ambiente; C10 pode seguir sua revisão documental. Os demais CLs independentes podem avançar com seus próprios pares. O autor nunca aprova o próprio artefato. Cada CL seguirá red → green → revisão, com documentação no mesmo CL quando aplicável.
+O `AGENTS.md` exige acordo do usuário com os seams públicos antes de escrever cada teste. O usuário aprovou explicitamente as interfaces de T-05, T-07, T-10 e T-15 em 2026-09-26. G2 está fechado quanto a esse requisito. C9 foi revalidado fora do sandbox: os dois testes HTTP obrigatórios passaram, junto dos testes puros de origem. O bloqueio ambiental da prova foi removido; o veredito original do Critic foi `REPROVADO` por falta dessa prova e ainda precisa de reexame antes de aprovar G3. C10 depende desse parecer. Os demais CLs independentes podem avançar com seus próprios pares. O autor nunca aprova o próprio artefato. Cada CL seguirá red → green → revisão, com documentação no mesmo CL quando aplicável.
 
 | CL | Entrega e evidência mínima | Dependência | Builder / Critic |
 |---|---|---|---|
-| C9 | Política de redirect no `ccxt-core` local: servidores HTTP locais verificam bloqueio antes de contato com outra origem e redirect na mesma origem; testes puros verificam limite de saltos, origem e downgrade; árvore Cargo prova dependência única. | Interface T-05 aprovada | `/root/c9_builder` / `/root/c9_critic` — **G3 validado fora do sandbox**; 2 testes HTTP passaram |
+| C9 | Política de redirect no `ccxt-core` local: servidores HTTP locais verificam bloqueio antes de contato com outra origem e redirect na mesma origem; testes puros verificam limite de saltos, origem e downgrade; árvore Cargo prova dependência única. | Interface T-05 aprovada | `/root/c9_builder` / `/root/c9_critic` — 2 testes HTTP passaram fora do sandbox; **revisão G3 pendente** |
 | C10 | Contrato do adaptador e documentação: endpoint testnet e fallback após erro REST verificados; README e risco residual atualizados conforme testes reais. | C9 aprovado | Backend / Backend, instâncias a ativar |
 | C12 | Fixture CLI por timeframe produz ao menos um trade fechado por sinal; teste exercita binário e `run_sma_crossover`, sem banco. | Interface T-07 aprovada | `/root/c12_builder` / `/root/c12_critic` — **G3 APROVADO**; 8 pares e next-open revisados |
 | C13 | Sell aplica slippage configurado no próximo open; equação de custo e regressão de stop/take profit verificadas. | C12 aprovado | `/root/c13_builder` / `/root/c13_critic` — **G3 APROVADO COM FOLLOW-UP**; corrigir link T-07 do README antes de G4 |
@@ -43,7 +43,7 @@ O teste PostgreSQL ignorado e V18 requerem database `trading_bot` **descartável
 
 ## Próximas ações do Orquestrador
 
-1. Registrar a revisão documental de C10 e manter o resultado HTTP no SDD T-05.
+1. Encaminhar os resultados HTTP de C9 ao Critic independente e registrar o novo veredito G3 antes de C10.
 2. Ativar Builder e Critic separados para cada CL restante antes do primeiro teste.
 3. Encaminhar cada entrega ao Critic, resolver achados, atualizar README/SDDs e registrar evidências por gate.
 4. Executar V18 e reavaliar G4 quando houver banco de teste isolado acessível.
