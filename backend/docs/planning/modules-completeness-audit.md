@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-26. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (175 unitários + integração).
+> Revisão: 2026-09-26. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (176 unitários + integração).
 
 ## Resumo executivo
 
@@ -23,6 +23,14 @@ tags:
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
 
+## Persistência Gate 1 (scaffold)
+
+- Migração SQL `0002_agents_bots_scaffold.sql` (agents + `bot_catalog_entries`); `Database::migrate()` no boot HTTP quando `DATABASE_URL` conecta.
+- Teste ignorado `postgres_scaffold_tables_exist_after_migrate` em `core/persistence/mod.rs`.
+- Adapter Rust e SDD completo: [Gate 1 draft](../sdd/bots-catalog-persistence-gate1-sdd.md).
+- `core/agents_stack/` (Neo4j) existe no working tree mas **não** está em `core/mod.rs` — fora do build até dependência `neo4rs` e wiring.
+
+
 ## Verificação local
 
 ```text
@@ -32,7 +40,7 @@ cargo test --locked
 ./scripts/check-import-direction.sh
 ```
 
-Evidência: **175** testes no binário `bot`, **1** ignorado (`persist_dataset_round_trip`).
+Evidência: **176** testes no binário `bot`, **2** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`).
 
 ## Documentação relacionada
 
@@ -49,7 +57,7 @@ Evidência: **175** testes no binário `bot`, **1** ignorado (`persist_dataset_r
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Store bots em `ApiState`, HTTP orders/bots/agents | **Parcial** (sem PG/auth/live) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 175 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 176 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Fechamento do goal (pendente)

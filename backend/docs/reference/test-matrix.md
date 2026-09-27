@@ -63,7 +63,7 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-175 testes unitários passaram (bin bot) (inclui testes HTTP em `presentation/http/server.rs`)
+176 testes unitários passaram (bin bot) (inclui testes HTTP em `presentation/http/server.rs`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 1 teste PostgreSQL ignorado por ausência de DATABASE_URL
 ```

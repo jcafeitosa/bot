@@ -98,7 +98,7 @@ cargo test --locked
 ./scripts/check-import-direction.sh
 ```
 
-Evidência observada: **175** testes unitários no binário `bot` (inclui HTTP OpenAPI, bots ranking, orders fail-closed), **1** ignorado (`persist_dataset_round_trip`), integração redirect/config/fixture **ok**, import direction **ok**, clippy **sem warnings**.
+Evidência observada: **176** testes unitários no binário `bot` (inclui HTTP OpenAPI, bots ranking, orders fail-closed), **2** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`), integração redirect/config/fixture **ok**, import direction **ok**, clippy **sem warnings**.
 
 ## Gates de aceitação
 

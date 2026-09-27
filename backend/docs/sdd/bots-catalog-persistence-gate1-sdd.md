@@ -1,31 +1,38 @@
 ---
-title: SDD — Gate 1 persistência do catálogo bots (PostgreSQL)
-description: Schema, adapter PostgresBotCatalogStore e critérios de aceite após InMemoryBotCatalogStore
+title: SDD — Gate 1 persistência agents/bots (PostgreSQL)
+description: Schema scaffold, repositórios Rust e critérios de aceite após stores em memória
 tags:
   - sdd
   - backend
   - bots
+  - agents
   - persistence
 status: draft
 ---
 
-# SDD — Gate 1: `BotCatalogStore` PostgreSQL
+# SDD — Gate 1: PostgreSQL para agents e catálogo bots
 
-- **Estado:** draft — não implementado; `InMemoryBotCatalogStore` + HTTP persist/snapshot já existem.
-- **Referências:** [SDD bots](./bots-module-sdd.md), migrações `src/core/persistence/migrations/`.
+- **Estado:** draft — migração SQL **scaffold** aplicável via `Database::migrate()`; adapters Rust (`PostgresBotCatalogStore`, identity PG) **não** implementados.
+- **Referências:** [SDD bots](./bots-module-sdd.md), [SDD agents](./agents-module-sdd.md), `src/core/persistence/migrations/0002_agents_bots_scaffold.sql`.
 
 ## Objetivo
 
-Migração `0002_bot_catalog.sql`, `PostgresBotCatalogStore`, teste integração ignorado (`trading_bot`).
+1. Schema `0002_agents_bots_scaffold.sql` (tabelas `agent_identities`, `agent_identity_events`, `bot_catalog_entries`).
+2. Repositórios Rust que leem/escrevem essas tabelas, preservando seams públicos dos módulos.
+3. Testes de integração ignorados com `DATABASE_URL` → `trading_bot`.
 
-## Schema proposto
+## Schema (scaffold existente)
 
-Tabela `bot_catalog_snapshot`: `id`, `config_hash`, `captured_at`, `payload` (JSONB de `BotDefinition[]`).
+- **Agents:** `agent_identities`, `agent_identity_events` (eventos de lifecycle).
+- **Bots:** `bot_catalog_entries` (linhas versionadas por `bot_id`, não snapshot JSONB).
 
 ## Validação
 
-`cargo test --locked` + `cargo test bot_catalog_store_round_trip -- --ignored` com `DATABASE_URL`.
+```text
+cargo test --locked
+cargo test postgres_scaffold_tables_exist_after_migrate -- --ignored
+```
 
 ## Rollback
 
-Remover migração e adapter; HTTP permanece em memória.
+Reverter migração 0002 e adapters; HTTP e domínio permanecem em memória.
