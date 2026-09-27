@@ -40,8 +40,9 @@ cargo run -- serve --config src/core/config/bot.toml --bind 127.0.0.1:8080
 |---|---|
 | `--bind` | Endereço de escuta (padrão `127.0.0.1:8080`). |
 | `--config` | Override opcional do caminho `bot.toml` só para o processo da API. |
+| `--with-monitor` | Sobe o monitor headless no mesmo processo; `/api/v1/monitor/*` deixa de retornar 503. |
 
-Rotas `/api/v1/monitor/*` respondem **503** quando o monitor live não está no mesmo processo (apenas `serve`, sem TUI). Registro de agents, risco, estratégia, backtest e config snapshot funcionam sem monitor anexo. Advisory Jev exige `jev.enabled` e credenciais no ambiente.
+Sem `--with-monitor`, rotas `/api/v1/monitor/*` respondem **503**. Com `--with-monitor`, o loop de mercado roda headless (sem Ratatui) e snapshot/comandos HTTP funcionam. Registro de agents, risco, estratégia, backtest e config snapshot funcionam sem monitor anexo. Advisory Jev exige `jev.enabled` e credenciais no ambiente.
 
 ## Opções do monitor
 
