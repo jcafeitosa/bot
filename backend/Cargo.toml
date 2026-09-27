@@ -38,3 +38,6 @@ tempfile = "3"
 [[bin]]
 name = "bot"
 path = "src/main.rs"
+
+[patch.crates-io]
+ccxt-core = { path = "vendor/ccxt-core-0.1.5" }

@@ -51,7 +51,7 @@ fn monitor_and_backtest_reject_missing_default_and_explicit_config() {
         let expected_path = if command.contains(&"--config") {
             explicit
         } else {
-            "src/config/bot.toml"
+            "src/core/config/bot.toml"
         };
         assert_config_error_reports_path(command, dir.path(), expected_path);
     }

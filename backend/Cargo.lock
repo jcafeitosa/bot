@@ -561,8 +561,6 @@ dependencies = [
 [[package]]
 name = "ccxt-core"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8ab1b4698fd9eaa81e3f023453cde7391e873ec7f6134dd6161ff6a57206903"
 dependencies = [
  "anyhow",
  "async-stream",

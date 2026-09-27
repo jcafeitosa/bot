@@ -1,35 +1,22 @@
-mod app;
-mod backtest;
-mod backtest_cli;
-mod config;
-mod domain;
-mod error;
-mod exchanges;
-mod jev;
-mod logging;
-mod market;
-mod market_feed;
-mod persistence;
-mod portfolio;
-mod risk;
-mod strategy;
-mod ui;
+mod core;
+mod modules;
+mod presentation;
 
+use crate::core::config::Config;
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use config::Config;
 
 #[derive(Debug, Subcommand)]
 enum BotCommand {
     /// Run SMA crossover backtest on synthetic 1m candles
-    Backtest(backtest_cli::BacktestCli),
+    Backtest(modules::backtest::cli::BacktestCli),
 }
 
 #[derive(Debug, Parser)]
 #[command(name = "bot", about = "Rust trading bot — terminal-only backend")]
 struct TopCli {
     #[command(flatten)]
-    monitor: config::MonitorCli,
+    monitor: crate::core::config::MonitorCli,
     #[command(subcommand)]
     command: Option<BotCommand>,
 }
@@ -38,26 +25,38 @@ struct TopCli {
 async fn main() -> Result<()> {
     let cli = TopCli::parse();
     match cli.command {
-        Some(BotCommand::Backtest(args)) => backtest_cli::run(&args).await?,
+        Some(BotCommand::Backtest(args)) => modules::backtest::cli::run(&args).await?,
         None => {
             let config = Config::load(&cli.monitor)?;
-            let _logging_guard = logging::init(&config.logging)?;
+            let _logging_guard = crate::core::logging::init(&config.logging)?;
+            if config.operation.is_hft() {
+                anyhow::bail!("HFT is not supported by this REST polling implementation; use a dedicated low-latency feed/execution stack");
+            }
 
-            let database = if std::env::var("DATABASE_URL").is_ok() {
-                match persistence::Database::connect_from_env().await {
-                    Ok(db) => {
-                        db.migrate().await?;
-                        tracing::info!(target: "persistence", "PostgreSQL migrations applied");
-                        Some(db)
+            let persist_flag = std::env::var("PERSIST_MARKET_DATA")
+                .map(Some)
+                .or_else(|error| match error {
+                    std::env::VarError::NotPresent => Ok(None),
+                    std::env::VarError::NotUnicode(_) => {
+                        Err(modules::monitor::StartupError::InvalidFlag)
                     }
-                    Err(error) => {
-                        tracing::warn!(target: "persistence", %error, "DATABASE_URL is set but persistence is unavailable");
-                        None
+                })?;
+            let database = modules::monitor::bootstrap_monitor(
+                persist_flag.as_deref(),
+                &config.market.timeframe,
+                || match std::env::var("DATABASE_URL") {
+                    Ok(url) => Ok(Some(url)),
+                    Err(std::env::VarError::NotPresent) => Ok(None),
+                    Err(std::env::VarError::NotUnicode(_)) => {
+                        Err(modules::monitor::StartupError::InvalidUrl)
                     }
-                }
-            } else {
-                None
-            };
+                },
+                modules::monitor::connect_database,
+            )
+            .await?;
+            if database.is_some() {
+                tracing::info!(target: "persistence", "PostgreSQL migrations applied");
+            }
 
             tracing::info!(
                 target: "system",
@@ -68,11 +67,7 @@ async fn main() -> Result<()> {
                 "Starting trading monitor"
             );
 
-            if config.operation.is_hft() {
-                anyhow::bail!("HFT is not supported by this REST polling implementation; use a dedicated low-latency feed/execution stack");
-            }
-
-            app::run(config, database).await?;
+            modules::monitor::run(config, database).await?;
         }
     }
     Ok(())
