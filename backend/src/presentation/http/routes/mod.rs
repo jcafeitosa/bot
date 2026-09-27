@@ -40,6 +40,14 @@ pub fn v1_routes() -> Router<ApiState> {
                 .delete(provider_credentials_admin::delete_provider_credential),
         )
         .route("/admin/graph/agents", get(graph_admin::list_graph_agents))
+        .route(
+            "/admin/graph/supervision-chain",
+            get(graph_admin::graph_supervision_chain),
+        )
+        .route(
+            "/admin/graph/bots-for-agent",
+            get(graph_admin::graph_bots_for_agent),
+        )
         .route("/exchanges/catalog", get(exchanges::catalog))
         .route("/exchanges/routing", get(exchanges::routing_matrix))
         .route("/agents/audit", get(agents::audit_log))

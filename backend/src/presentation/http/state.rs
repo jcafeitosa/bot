@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::core::config::ProductOwnerBootstrapConfig;
 use crate::core::database::{
-    AppDatabases, GraphProjectionSync, GraphQueryPort, ProjectedAgentList,
+    AppDatabases, GraphProjectionSync, GraphQueryPort, ProjectedAgentList, ProjectedBotsForAgent,
+    ProjectedSupervisionChain,
 };
 use crate::core::error::BotError;
 use crate::core::persistence::Database;
@@ -888,6 +889,59 @@ impl ApiState {
         })?;
         let port = neo4j.graph_query();
         port.list_agents(limit)
+            .await
+            .map_err(ApiError::from_graph_query_error)
+    }
+
+    /// Advisory read-only supervision chain from Neo4j (PG remains SoT for identity).
+    pub async fn graph_supervision_chain_advisory(
+        &self,
+        agency_id: &str,
+        agent_id: &str,
+    ) -> Result<ProjectedSupervisionChain, ApiError> {
+        self.database().ok_or_else(|| {
+            ApiError::with_code(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "graph_query_unavailable",
+                "PostgreSQL is not configured for graph admin queries",
+            )
+        })?;
+        let neo4j = self.inner.databases.neo4j().ok_or_else(|| {
+            ApiError::with_code(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "graph_query_unavailable",
+                "Neo4j is not configured for graph admin queries",
+            )
+        })?;
+        let port = neo4j.graph_query();
+        port.supervision_chain(agency_id, agent_id)
+            .await
+            .map_err(ApiError::from_graph_query_error)
+    }
+
+    /// Advisory read-only bots for agent from Neo4j (PG remains SoT for catalog).
+    pub async fn graph_bots_for_agent_advisory(
+        &self,
+        agency_id: &str,
+        agent_id: &str,
+        limit: u32,
+    ) -> Result<ProjectedBotsForAgent, ApiError> {
+        self.database().ok_or_else(|| {
+            ApiError::with_code(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "graph_query_unavailable",
+                "PostgreSQL is not configured for graph admin queries",
+            )
+        })?;
+        let neo4j = self.inner.databases.neo4j().ok_or_else(|| {
+            ApiError::with_code(
+                axum::http::StatusCode::SERVICE_UNAVAILABLE,
+                "graph_query_unavailable",
+                "Neo4j is not configured for graph admin queries",
+            )
+        })?;
+        let port = neo4j.graph_query();
+        port.bots_for_agent(agency_id, agent_id, limit)
             .await
             .map_err(ApiError::from_graph_query_error)
     }

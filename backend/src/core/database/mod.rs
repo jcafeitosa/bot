@@ -42,8 +42,8 @@ pub use graph_projection_outbox_worker::{
     spawn_graph_projection_outbox_drain_worker, GraphProjectionOutboxStats,
 };
 pub use graph_query::{
-    GraphQueryError, GraphQueryPort, ProjectedAgentList, ProjectedAgentNode,
-    ProjectedSupervisionChain, SupervisionChainNode,
+    GraphQueryError, GraphQueryPort, ProjectedAgentList, ProjectedAgentNode, ProjectedBotForAgent,
+    ProjectedBotsForAgent, ProjectedSupervisionChain, SupervisionChainNode,
 };
 pub use monitor_bootstrap::{
     bootstrap_monitor_postgres, connect_postgres_for_monitor, postgres_for_cli_persist,

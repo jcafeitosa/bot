@@ -533,8 +533,8 @@ mod tests {
         let doc = ApiDoc::openapi();
         let paths = &doc.paths.paths;
         assert!(
-            paths.len() >= 37,
-            "expected at least 37 openapi paths, got {}",
+            paths.len() >= 39,
+            "expected at least 39 openapi paths, got {}",
             paths.len()
         );
         for key in [
@@ -548,6 +548,8 @@ mod tests {
             "/api/v1/orders/reconciliation/{client_order_id}",
             "/api/v1/admin/provider-credentials",
             "/api/v1/admin/graph/agents",
+            "/api/v1/admin/graph/supervision-chain",
+            "/api/v1/admin/graph/bots-for-agent",
         ] {
             assert!(paths.contains_key(key), "missing openapi path {key}");
         }

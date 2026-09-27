@@ -41,7 +41,7 @@ Implementação: `Neo4jGraphQuery` em `graph_query.rs`. CLI: `bot graph query ag
 | Port + Neo4j impl + testes unitários | **Sim** |
 | CLI agents + supervision-chain + bots-for-agent | **Sim** |
 | `bots_for_agent` port + Neo4j | **Sim** |
-| Leitura HTTP admin read-only (agents list) | **Sim** (advisory; PG+Neo4j gated) |
+| Leitura HTTP admin read-only (agents, supervision-chain, bots-for-agent) | **Sim** (advisory; PG+Neo4j gated) |
 | Leitura autorizativa no runtime HTTP (decisões de domínio) | **Não** (roadmap) |
 | `code_impact_for_module` port + Neo4j + CLI | **Sim** |
 
@@ -56,5 +56,15 @@ Query: `limit` opcional (1–500, default 32). Implementação: `ApiState::list_
 | Tipo | Evidência |
 |------|-----------|
 | HTTP integration | `graph_admin_list_returns_503_without_postgres`, `graph_admin_list_returns_503_without_neo4j_when_postgres_wired`, `graph_admin_list_requires_admin_bearer_when_enabled` em `http_integration_tests.rs` |
+
+| GET | `/api/v1/admin/graph/supervision-chain` | `BOT_HTTP_ADMIN_TOKEN` (Bearer) | **200** `ProjectedSupervisionChain`; query `agency_id`, `agent_id`; **400** `invalid_graph_query`; **503** `graph_query_unavailable` sem PG/Neo4j |
+| GET | `/api/v1/admin/graph/bots-for-agent` | `BOT_HTTP_ADMIN_TOKEN` (Bearer) | **200** `ProjectedBotsForAgent`; query `agency_id`, `agent_id`, `limit` (1–500, default 32); **400** `invalid_graph_query`; **503** `graph_query_unavailable` sem PG/Neo4j |
+
+Implementação adicional: `ApiState::graph_supervision_chain_advisory` / `graph_bots_for_agent_advisory` → `Neo4jGraph::graph_query()`.
+
+| Tipo | Evidência (supervision-chain / bots-for-agent) |
+|------|-----------|
+| HTTP integration | `graph_admin_supervision_chain_returns_503_without_postgres`, `graph_admin_supervision_chain_returns_503_without_neo4j_when_postgres_wired`, `graph_admin_supervision_chain_requires_admin_bearer_when_enabled`, `graph_admin_bots_for_agent_returns_503_without_postgres`, `graph_admin_bots_for_agent_returns_503_without_neo4j_when_postgres_wired`, `graph_admin_bots_for_agent_requires_admin_bearer_when_enabled` |
+
 | Neo4j E2E HTTP **200** | skip sem stack (mesmo critério que `neo4j_list_agents_after_local_graph`) |
 

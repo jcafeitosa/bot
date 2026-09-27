@@ -124,21 +124,21 @@ pub struct ProjectedAgentList {
     pub agents: Vec<ProjectedAgentNode>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct SupervisionChainNode {
     pub depth: u32,
     pub kind: String,
     pub id: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectedSupervisionChain {
     pub agency_id: String,
     pub agent_id: String,
     pub chain: Vec<SupervisionChainNode>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectedBotForAgent {
     pub bot_id: String,
     pub strategy_id: String,
@@ -146,7 +146,7 @@ pub struct ProjectedBotForAgent {
     pub operation_mode: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct ProjectedBotsForAgent {
     pub agency_id: String,
     pub agent_id: String,
