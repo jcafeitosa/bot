@@ -10,15 +10,15 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (294 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (**298** no bin `bot` + integração workspace).
 
 ## Resumo executivo
 
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
 | `modules/bots` | `MonitorStrategyRegistry`, `[[strategy.monitor_registry]]`, catálogo multi-estratégia, runtime HTTP | `monitor_strategy.rs`, `catalog.rs`, `server.rs` | Evaluators não-SMA; auth owner |
-| `modules/orders` | `ReservedLiveExchangeExecutor`, idempotência PG/memória, `GET /orders/execution-status` | `order_execution.rs`, `http_bridge/orders.rs`, `server.rs` | Adapter exchange real; auth owner |
-| `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hydrate no `serve` + `require_bound_agency` | `modules/agents/tests.rs`, `server.rs`, rotas agents | Auth owner produto (fora do seam `HttpAdminAuth`) |
+| `modules/orders` | `RecordingExecutor`, `ReservedLiveExchangeExecutor`, idempotência, HTTP execution-status/meta | `orders/tests.rs`, `http_bridge/orders.rs` | Adapter exchange real |
+| `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
 | `presentation/http` | OpenAPI **34** paths, `GET /meta` + contratos `meta_and_*_agree_on_*` (orders/bots), `HttpAdminAuth`, rotas v1 | `meta.rs`, `openapi.rs`, `server.rs` | Auth owner produto (Gate 1) |
 
 Execução live e produção permanecem bloqueadas até gates de segurança.
@@ -39,7 +39,7 @@ Gate canônico (recomendado):
 ./scripts/verify-backend-gates.sh
 ```
 
-Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace).
+Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
 Evidência (2026-09-27): **298** testes no binário `bot`, **6** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, `pg_order_idempotency_round_trip`, Neo4j integration). Estabilidade: 5× `cargo test --locked --bin bot` sem falhas; HTTP `server.rs` usa `fresh_agent_registry()` por teste.
 
