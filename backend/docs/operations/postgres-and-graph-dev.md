@@ -45,14 +45,29 @@ CRUD HTTP admin (`/api/v1/admin/provider-credentials*`) disponível com PG + bea
 
 ## Neo4j (opcional)
 
+Stack de grafo de produto (projeção write-only + leitura F3 advisory). Preferir `BOT_GRAPH_ENABLED=true`; legado equivalente: `BOT_AGENTS_ENABLED=true`.
+
 ```text
-BOT_AGENTS_ENABLED=true
+BOT_GRAPH_ENABLED=true
 BOT_NEO4J_URI=bolt://127.0.0.1:7688
 BOT_NEO4J_USER=neo4j
 BOT_NEO4J_PASSWORD=<local-only>
 ```
 
-Verificar extensões:
+Com `DATABASE_URL` → `trading_bot` e Neo4j wired, migração `0009` cria `graph_projection_outbox`. O HTTP `serve` inicia o worker **F2.1.2** (`spawn_graph_projection_outbox_worker`) quando intervalo > 0 (`neo4j.graph_projection_outbox_drain_secs` / `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS`, default 30; `0` desliga). Batch por tick: `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_BATCH` (default 32).
+
+### Outbox — operação F2.1.2 / F2.1.3
+
+| Ação | Comando / endpoint |
+|------|-------------------|
+| Backlog no health | `GET /healthz` → `graph_projection_outbox` (`pending`, `retry`, `oldest_pending_age_secs`, `degraded`); `status: degraded` com fila relevante |
+| Drain manual | `cargo run --locked -- graph-projection drain --limit 32` (JSON `processed` / `succeeded` / `failed`; exige PG + Neo4j) |
+| Leitura CLI (F3) | `cargo run --locked -- graph query agents --limit 32`; subcomandos `supervision-chain`, `bots-for-agent`, `code-impact --module-path modules/orders` |
+| Evidência no gate | `./scripts/verify-backend-gates.sh` chama `assert-completeness-evidence.sh` após os testes do bin `bot` |
+
+SDD: [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md) (§6–7), [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). Runbook: [runbook.md](./runbook.md#grafo-de-produto--outbox-neo4j-f212--f213).
+
+## Verificar extensões PostgreSQL
 
 ```sql
 SELECT extname FROM pg_extension WHERE extname IN ('timescaledb', 'vector');

@@ -56,6 +56,34 @@ As regras de redirects e validação da janela REST estão detalhadas no [SDD de
 | Persistência indisponível | Trate o aviso como degradação, valide `DATABASE_URL` e não interprete o arquivo como histórico completo. |
 | Janela REST rejeitada | Corrija a origem dos dados ou aguarde nova janela válida; não persista a janela rejeitada. |
 | Redirect externo rejeitado | Preserve o erro e investigue a origem configurada; não relaxe a política sem revisar o [SDD T-05](../sdd/rest-redirect-sdd.md). |
+| `GET /healthz` com `status: degraded` e `graph_projection_outbox` | Backlog na tabela `graph_projection_outbox` (pending/retry ou idade); confirme Neo4j Bolt, `DATABASE_URL` e worker F2.1.2; drain manual F2.1.3 abaixo. |
+| `graph query` ou admin graph HTTP **503** `graph_query_unavailable` | Stack de grafo desligada ou Neo4j indisponível; não é falha de orders/paper. Ver [postgres-and-graph-dev](./postgres-and-graph-dev.md). |
+
+## Grafo de produto — outbox Neo4j (F2.1.2 / F2.1.3)
+
+Projeção **write-only** (agents/bots/orders) com fila PG `graph_projection_outbox`. Detalhes: [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md).
+
+**Pré-requisitos:** `DATABASE_URL` → `trading_bot`; `BOT_GRAPH_ENABLED=true` (ou legado `BOT_AGENTS_ENABLED`) + `BOT_NEO4J_*`. Sem isso, o processo segue sem worker/outbox no health.
+
+**F2.1.2 — worker em background:** no `serve` (e monitor com PG+Neo4j), `spawn_graph_projection_outbox_worker` drena a outbox periodicamente. Intervalo: `neo4j.graph_projection_outbox_drain_secs` em `system.toml` (default 30) ou `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS` (`0` desliga). Lote: `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_BATCH` (default 32).
+
+**Sinal operacional:** `GET /healthz` expõe `graph_projection_outbox` (`pending`, `retry`, `oldest_pending_age_secs`, `degraded`) e `status: degraded` quando há backlog relevante. `/readyz` continua fail-closed só se PG ou Neo4j estiverem down (não duplica a política da outbox).
+
+**F2.1.3 — drain manual (ops):**
+
+```sh
+cd backend
+export DATABASE_URL=postgresql://USER:PASSWORD@127.0.0.1:5432/trading_bot
+export BOT_GRAPH_ENABLED=true
+export BOT_NEO4J_URI=bolt://127.0.0.1:7688
+export BOT_NEO4J_USER=neo4j
+export BOT_NEO4J_PASSWORD=<local-only>
+cargo run --locked -- graph-projection drain --limit 32
+```
+
+Saída JSON: `{ "processed", "succeeded", "failed" }`. Fail-closed com mensagem clara se PG ou Neo4j ausentes.
+
+**F3 — leitura advisory (sem mutação):** CLI `cargo run --locked -- graph query agents --limit 32` (também `supervision-chain`, `bots-for-agent`, `code-impact --module-path …`). HTTP admin read-only com bearer: ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). Não habilite `live_exchange` nem prod REST como recuperação de grafo.
 
 ## Encerramento e recuperação
 
@@ -73,10 +101,16 @@ Gate canônico (mesmo job `rust` da CI):
 ./scripts/verify-backend-gates.sh
 ```
 
-Inclui `fmt`, `clippy --bin bot`, import-direction, testes do bin `bot` com `--test-threads=1` e cinco suítes em `tests/`. Com PostgreSQL descartável (`DATABASE_URL` → `trading_bot`):
+Inclui `fmt`, `clippy --bin bot`, import-direction, testes do bin `bot` com `--test-threads=1`, cinco suítes em `tests/` e `scripts/assert-completeness-evidence.sh` (valida [modules-completeness-evidence.json](../planning/modules-completeness-evidence.json) contra a contagem do gate e o manifesto PG). Com PostgreSQL descartável (`DATABASE_URL` → `trading_bot`):
 
 ```sh
 ./scripts/verify-backend-full.sh
 ```
 
-Baseline esperada (2026-09-27): linha `OK:` do gate → **470** passed, **0** ignored no bin `bot`; com PG → `run-pg-integration-tests.sh` **22/22**. Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.
+HTTP mutante/bearer (paridade local):
+
+```sh
+cargo test --locked --bin bot http_integration -- --test-threads=1
+```
+
+Baseline esperada (2026-09-27): linha `OK:` do gate → **503** passed, **0** ignored no bin `bot`; `http_integration` → **62** passed; com PG → `run-pg-integration-tests.sh` **26/26**. Baseline e detalhes: [auditoria de completude](../planning/modules-completeness-audit.md#verificação-local). O [plano de execução](../planning/backend-work-plan.md) registra gates T-03…T-15 e a trilha paralela de completude de módulos.
