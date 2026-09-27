@@ -50,11 +50,11 @@ Evidência parcial (2026-09-27): **298** testes bin `bot`, **6** ignorados; `sha
 
 ## Testes HTTP (isolamento)
 
-Testes de `POST /bots/runtime/promote` em `presentation/http/server.rs` usam `fresh_agent_registry()` (registry por teste) e `bot_id` alinhado ao `Config::default()` (`15m`, símbolo compacto `BTCUSDT`); `bots_runtime_promote_rejects_timeframe_not_matching_monitor_config` cobre rejeição de timeframe divergente.
+Testes de `POST /bots/runtime/promote` em `presentation/http/server.rs` usam `fresh_agent_registry()` (registry por teste) e `bot_id` alinhado ao `Config::default()` (`15m`, símbolo compacto `BTCUSDT`); `bots_runtime_promote_rejects_timeframe_not_matching_monitor_config` cobre rejeição de timeframe divergente. `state_tests::persist_catalog_then_promote_monitor_registry_v2_bot` valida promoção `sma-cross@2` + `strategy_evaluation_binding_with_runtime` (períodos 3/15).
 
 ## Validação Gate 2 (quando implementado)
 
-- Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot; supervisor usa `strategy_evaluation_binding` + `BotSignal.bot_id` quando promoção casa com mercado; `promote_bot_http` rejeita `bot_id` fora do catálogo (`assert_catalog_contains_bot`). **Pendente:** parâmetros SMA/estratégia por definição de catálogo (hoje permanecem no `Config` global).
+- Testes de promoção/demote sem rede; `MonitorHandle::publish_snapshot` enriquece `MonitorSnapshot` via `shared_bot_runtime()`; HTTP espelha campos no snapshot; supervisor usa `strategy_evaluation_binding` + `BotSignal.bot_id` quando promoção casa com mercado; `promote_bot_http` rejeita `bot_id` fora do catálogo (`assert_catalog_contains_bot`). Períodos SMA por `strategy@version` vêm de `MonitorStrategyRegistry` + `[[strategy.monitor_registry]]` (evidência: `persist_catalog_then_promote_monitor_registry_v2_bot` + `strategy_evaluation_binding_with_v2_promotion_uses_registry_periods`). **Pendente:** evaluators além de SMA; alinhar runtime injetado em testes HTTP com `shared_bot_runtime()` do `serve`.
 - Nenhuma ordem real sem executor orders Gate 2.
 - Revisão Critic + SDD agents (autorização).
 - `./scripts/verify-backend-gates.sh` verde.

@@ -82,6 +82,7 @@ Fundação **IdentityOnly** (draft G1 pendente — [SDD agents](../sdd/agents-mo
 | `controllers/lifecycle` | `pause_agent`, `resume_agent`, `retire_agent` — aposentado é terminal. |
 | `controllers/advisory` | `run_advisory_step` — exige agente ativo com `consult_jev`; delega a `core::providers::jev`. |
 | `controllers/supervisor_hook` | `MonitorAgentHook` / `NoopMonitorAgentHook` — seam futuro com o supervisor do monitor. |
+| `controllers/bot_promotion` | `assert_runtime_promotion_authorized` — `bot_id` válido, agente ativo, capability `promote_runtime_bot` (testes em `bot_promotion.rs`). |
 | `adapters/jev` | Adaptador fino para `JevAdvisor`; sem política de domínio nova. |
 
 **Persistência:** `PgAgentIdentityStore` (migração `0002_agents_bots_scaffold.sql`); mutações HTTP espelham best-effort; boot `serve` restaura snapshot só se o registry compartilhado estiver vazio (`apply_agent_identity_snapshot`).
@@ -100,7 +101,7 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 | `models` | `BotIdentity`, `BotId`, `BotDefinition`, `BotMetrics`, erros e tipos de ranking. |
 | `controllers` | `build_catalog_from_config`, `full_ranking` / `rank_bots`. |
 | `adapters` | `BotCatalogStore`; `BotRuntimePort` (`FailClosedBotRuntime`, `InMemoryBotRuntime`); `BotCatalogBackend` (memória ou PG via `AppDatabases`). |
-| `controllers` | `persist_monitor_catalog_snapshot` / `build_catalog_from_monitor_registry` (registry × timeframes). |
+| `controllers` | `persist_monitor_catalog_snapshot` / `build_catalog_from_monitor_registry`; `strategy_evaluation_binding_with_runtime` (SMA do registry quando promoção casa com mercado). |
 
 **HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking`, `GET /api/v1/bots/runtime/status`, `POST /api/v1/bots/runtime/promote|demote` via `presentation/http/routes/bots.rs` (catálogo em `ApiState`; runtime via `BotRuntimePort`, default fail-closed, `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime` no processo `serve`; snapshot monitor enriquecido).
 
