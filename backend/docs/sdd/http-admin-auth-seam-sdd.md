@@ -22,9 +22,9 @@ Rotas HTTP mutantes (agents lifecycle, bots catalog persist, bots runtime promot
 | `BOT_HTTP_ADMIN_TOKEN` ausente/vazio | Sem exigência de bearer (comportamento dev/local). |
 | `BOT_HTTP_ADMIN_TOKEN` definido | Rotas mutantes listadas exigem `Authorization: Bearer <token>`; falha → **401**. |
 | `BOT_HTTP_OWNER_ID` definido (com token) | `POST /api/v1/agents` exige `owner_id` igual; falha → **403** `owner_mismatch`. |
-| `BOT_HTTP_AGENCY_ID` definido | Rotas `/api/v1/agents*` exigem `agency` igual (query ou body); falha → **403** `http_agency_mismatch`. |
+| `BOT_HTTP_AGENCY_ID` definido | Rotas `/api/v1/agents*` exigem `agency` igual (query ou body); falha → **403** `http_agency_mismatch`. Com bind ativo, `POST /api/v1/bots/runtime/promote` também exige que `promoted_by` seja agente ativo da agência com capability `promote_runtime_bot` (`assert_runtime_promotion_authorized`). |
 
-Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admin`, `require_register_owner_id`, `require_bound_agency` (todas as rotas em `routes/agents.rs`).
+Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admin`, `require_register_owner_id`, `require_bound_agency` (rotas `routes/agents.rs`); promoção de bot em `ApiState::promote_bot_http`.
 
 ## Fora de escopo
 
@@ -34,5 +34,5 @@ Implementação: `presentation/http/admin_auth.rs`, `ApiState::require_http_admi
 ## Validação
 
 - Testes unitários `admin_auth.rs`.
-- Testes HTTP `server.rs`: bearer obrigatório (agents register, bots persist, orders submit, monitor commands), `owner_mismatch`, `agents_list_rejects_agency_mismatch_when_bound`, `agents_register_rejects_agency_mismatch_when_bound`.
+- Testes HTTP `server.rs`: bearer obrigatório (agents register, bots persist, orders submit, monitor commands), `owner_mismatch`, `agents_list_rejects_agency_mismatch_when_bound`, `agents_register_rejects_agency_mismatch_when_bound`, `bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent`.
 - `./scripts/verify-backend-gates.sh`.
