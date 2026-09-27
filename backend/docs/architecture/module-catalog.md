@@ -64,6 +64,7 @@ flowchart LR
 | `modules` | `bots` | — | **Não implementado.** Futuro: executores versionados de trading e promoção; ver [SDD agents — Relação com bots](../sdd/agents-module-sdd.md). | — |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |
+| `presentation` | `http` | API Axum | OpenAPI (`/openapi.json`), Scalar (`/docs`), subcomando `serve`; monitor HTTP exige `MonitorHandle` no processo. | Testes em `presentation/http/server.rs`. |
 
 ## 3. Módulo `agents` (`src/modules/agents/`)
 
