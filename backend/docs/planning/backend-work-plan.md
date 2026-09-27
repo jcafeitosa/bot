@@ -43,7 +43,7 @@ O teste PostgreSQL ignorado e V18 requerem database `trading_bot` **descartável
 
 ## Próximas ações do Orquestrador
 
-1. Iniciar C10 com Builder e Critic independentes para verificar contrato/fallback do produto.
-2. Ativar Builder e Critic separados para cada CL restante antes do primeiro teste.
-3. Encaminhar cada entrega ao Critic, resolver achados, atualizar README/SDDs e registrar evidências por gate.
-4. Executar V18 e reavaliar G4 quando houver banco de teste isolado acessível.
+1. Acompanhar C17 e sua revisão independente; resolver achados de integridade e atualizar README/SDD T-15.
+2. Reavaliar D19 e o índice documental após estabilizar as escritas externas; não alegar G3 enquanto houver duplicação ou artefato ausente.
+3. Preparar V18 em banco PostgreSQL descartável e isolado quando houver ambiente acessível; registrar setup e execução reais.
+4. Consolidar G4 após C17, D19 e V18, sem antecipar lançamento.
