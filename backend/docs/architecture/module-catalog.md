@@ -122,7 +122,7 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 |---|---|
 | `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
 | `server::run` | Bootstrap `AppDatabases`, hydrate agents PG, `ApiState::for_http_server` (`HttpApiSeams::from_env`), Axum + Scalar. |
-| `routes/*` | Superfície v1: agents, bots (catalog + runtime), orders, monitor (snapshot com promoção bot + commands mutante), risk, backtest, config, health, meta. |
+| `routes/*` | Superfície v1: agents, bots (catalog + runtime), orders, monitor (snapshot com promoção bot + commands mutante), risk, backtest, config, health, `GET /meta` (`http_seams`: modo orders, admin/binding flags, runtime bots, `live_exchange_wired` via `ApiState::live_exchange_wired`). |
 
 Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `bots/runtime/promote|demote`, `orders/submit`, `monitor/commands`.
 
