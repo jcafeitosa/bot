@@ -5,6 +5,7 @@ mod bundle;
 mod config;
 mod graph_projection;
 mod graph_projection_outbox;
+mod graph_projection_outbox_worker;
 pub(crate) mod monitor_bootstrap;
 mod neo4j;
 mod neo4j_agent_hierarchy;
@@ -24,6 +25,10 @@ pub use graph_projection_outbox::{
     enqueue_graph_projection_outbox, graph_projection_best_effort, DrainSummary,
     GraphProjectionOutboxError, GraphProjectionOutboxMessage, GraphProjectionPayload,
     GraphProjectionSync,
+};
+pub use graph_projection_outbox_worker::{
+    fetch_graph_projection_outbox_stats, graph_projection_outbox_degraded,
+    spawn_graph_projection_outbox_drain_worker, GraphProjectionOutboxStats,
 };
 pub use monitor_bootstrap::{
     bootstrap_monitor_postgres, connect_postgres_for_monitor, postgres_for_cli_persist,

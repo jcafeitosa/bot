@@ -35,6 +35,15 @@ impl AppDatabases {
         self.neo4j.as_ref()
     }
 
+    /// Starts F2.1.2 background outbox drain when PostgreSQL, Neo4j, and interval config are set.
+    pub fn spawn_graph_projection_outbox_worker(&self) {
+        if let (Some(postgres), Some(neo4j)) = (self.postgres.clone(), self.neo4j.clone()) {
+            super::graph_projection_outbox_worker::spawn_graph_projection_outbox_drain_worker(
+                postgres, neo4j,
+            );
+        }
+    }
+
     pub async fn bootstrap_runtime() -> Self {
         Self::bootstrap_http_api().await
     }

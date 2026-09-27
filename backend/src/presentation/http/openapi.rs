@@ -63,6 +63,7 @@ use crate::presentation::http::error::ApiErrorBody;
     ),
     components(schemas(
         ApiErrorBody,
+        health::GraphProjectionOutboxHealth,
         health::HealthResponse,
         health::ReadyResponse,
         meta::HttpSeamsMeta,

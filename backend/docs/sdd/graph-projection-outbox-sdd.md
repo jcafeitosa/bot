@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Outbox PG para projeção Neo4j (fatia F2.1)
 
-- **Estado:** draft — F2.1 slice 1 (tabela + enqueue unificado + drain stub); PG SoT; Neo4j derivado.
+- **Estado:** draft — F2.1 slice 1 + **F2.1.2** worker/health; PG SoT; Neo4j derivado.
 - **Referências:** [unified-neo4j-graph-strategy](../architecture/unified-neo4j-graph-strategy.md), [agents-neo4j-projection-sdd](./agents-neo4j-projection-sdd.md), [bots-neo4j-projection-sdd](./bots-neo4j-projection-sdd.md), [orders-neo4j-projection-sdd](./orders-neo4j-projection-sdd.md).
 
 ## 1. Contexto
@@ -30,7 +30,7 @@ F1/F2/F3 projetam agents/bots/orders em Neo4j via `best_effort_*` após commit P
 
 **Timing transacional:** hooks HTTP/monitor executam **após** persist PG — enqueue **não** está na mesma transação que o domínio hoje. F2.1.2 pode aceitar `&mut Transaction`.
 
-**Fora de escopo F2.1:** worker HTTP/cron; DLQ; métricas SLO; enqueue na mesma TX de domínio.
+**Fora de escopo F2.1:** DLQ; métricas SLO; enqueue na mesma TX de domínio (F2.1.3+).
 
 ## 3. Schema
 
@@ -44,6 +44,12 @@ Drain com Neo4j down: `ping` falha → linhas permanecem `pending`/`retry`. MERG
 
 `./scripts/verify-backend-gates.sh`; testes `pg_graph_projection_outbox_*` e mock port.
 
-## 6. F2.1.2 (pendente)
+## 6. F2.1.2 (*implemented*)
 
-Worker em background, readiness lag, CLI operacional, enqueue na mesma TX quando o seam de domínio permitir.
+| Seam | Comportamento |
+|------|----------------|
+| `spawn_graph_projection_outbox_worker` | Ticker no bootstrap HTTP (`serve`) e monitor quando `DATABASE_URL` + Neo4j agents stack habilitados. |
+| Config | `neo4j.graph_projection_outbox_drain_secs` em `system.toml` (default 30; `0` desliga); env `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS`, batch `BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_BATCH`. |
+| Health | `/healthz` inclui `graph_projection_outbox` (pending/retry/idade) e `status: degraded` com backlog; `/readyz` inalterado (fail-closed só em PG/Neo4j down). |
+
+**Pendente F2.1.3+:** CLI operacional manual drain; enqueue na mesma TX quando o seam de domínio permitir.

@@ -19,6 +19,7 @@ pub async fn run(
     monitor: Option<crate::modules::monitor::MonitorHandle>,
 ) -> anyhow::Result<()> {
     let databases = crate::core::database::AppDatabases::bootstrap_runtime().await;
+    databases.spawn_graph_projection_outbox_worker();
     let agents = shared_agent_registry();
     let state =
         ApiState::build_api_state_for_http_serve(monitor, databases, app_config, agents).await;

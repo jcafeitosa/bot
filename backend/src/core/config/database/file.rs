@@ -102,6 +102,33 @@ fn env_or_toml(name: &'static str, toml: &str) -> Result<String, DatabaseConfigE
     }
 }
 
+pub fn graph_projection_outbox_drain_interval_secs() -> Option<u64> {
+    if let Some(raw) = env_nonempty("BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS") {
+        let secs = raw.parse::<u64>().ok()?;
+        return (secs > 0).then_some(secs);
+    }
+    let secs = SystemConfig::active()
+        .neo4j
+        .graph_projection_outbox_drain_secs;
+    (secs > 0).then_some(secs)
+}
+
+pub fn graph_projection_outbox_drain_batch() -> u32 {
+    if let Some(raw) = env_nonempty("BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_BATCH") {
+        if let Ok(batch) = raw.parse::<u32>() {
+            return batch.clamp(1, 500);
+        }
+    }
+    32
+}
+
+fn env_nonempty(name: &'static str) -> Option<String> {
+    env::var(name)
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|v| !v.is_empty())
+}
+
 fn required_env(name: &'static str) -> Result<String, DatabaseConfigError> {
     match env::var(name) {
         Ok(value) if value.trim().is_empty() => Err(DatabaseConfigError::EmptyVariable(name)),

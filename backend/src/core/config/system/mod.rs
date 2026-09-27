@@ -52,6 +52,12 @@ pub struct Neo4jSection {
     pub user: String,
     #[serde(default = "default_neo4j_database")]
     pub database: String,
+    #[serde(default = "default_graph_projection_outbox_drain_secs")]
+    pub graph_projection_outbox_drain_secs: u64,
+}
+
+fn default_graph_projection_outbox_drain_secs() -> u64 {
+    30
 }
 
 fn default_neo4j_uri() -> String {
@@ -70,6 +76,7 @@ impl Default for Neo4jSection {
             uri: default_neo4j_uri(),
             user: default_neo4j_user(),
             database: default_neo4j_database(),
+            graph_projection_outbox_drain_secs: default_graph_projection_outbox_drain_secs(),
         }
     }
 }

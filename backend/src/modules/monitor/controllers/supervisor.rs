@@ -1017,6 +1017,13 @@ async fn run_with_agent_hook_inner(
         })
     });
     let neo4j = crate::core::database::AppDatabases::optional_neo4j_graph().await;
+    if let (Some(ref pg), Some(ref graph)) = (&database, &neo4j) {
+        crate::core::database::AppDatabases {
+            postgres: Some(pg.clone()),
+            neo4j: Some(graph.clone()),
+        }
+        .spawn_graph_projection_outbox_worker();
+    }
     let mut market_task = tokio::spawn(run_market_loop(MarketLoop {
         config: config.clone(),
         limits,

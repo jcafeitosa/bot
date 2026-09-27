@@ -13,6 +13,8 @@ monitor_agency = ""
 uri = "bolt://127.0.0.1:7688"
 user = "neo4j"
 database = "neo4j"
+# Background drain of graph_projection_outbox when PG + Neo4j wired (0 = disabled).
+graph_projection_outbox_drain_secs = 30
 # Password: BOT_NEO4J_PASSWORD in .env only.
 
 [monitor]

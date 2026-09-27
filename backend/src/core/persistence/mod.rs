@@ -161,6 +161,7 @@ mod migration_scaffold_tests {
             "bot_catalog_entries",
             "order_idempotency_keys",
             "order_reconciliation",
+            "graph_projection_outbox",
         ] {
             assert!(
                 db.table_exists(table).await.expect("table_exists query"),
