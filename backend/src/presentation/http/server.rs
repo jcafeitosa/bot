@@ -311,9 +311,10 @@ mod tests {
     async fn router_after_build_api_state_paper_submit_updates_portfolio() {
         use crate::core::database::AppDatabases;
         use crate::core::test_env_lock::EnvTestGuard;
-        use crate::modules::orders::PaperLedgerExecutor;
+        use crate::modules::orders::{PaperLedgerExecutor, PaperLedgerTestGuard};
 
         let _env = EnvTestGuard::acquire();
+        let _paper_ledger = PaperLedgerTestGuard::acquire();
         std::env::set_var("BOT_ORDERS_EXECUTION", "paper");
         PaperLedgerExecutor::clear_ledger();
 

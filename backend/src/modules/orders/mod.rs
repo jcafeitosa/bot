@@ -24,7 +24,7 @@ pub use adapters::{
 #[cfg(test)]
 pub use adapters::{
     clear_shared_live_order_reconciliation_ledger_for_test,
-    lock_shared_live_order_reconciliation_ledger_for_test,
+    lock_shared_live_order_reconciliation_ledger_for_test, PaperLedgerTestGuard,
 };
 pub use controllers::{run_reconciliation_poll_once, submit_order, ReconciliationPollSummary};
 pub use models::{

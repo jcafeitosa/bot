@@ -33,6 +33,8 @@ pub use live_reconciliation_pg_mirror::{
     clear_live_reconciliation_pg_mirror, register_live_reconciliation_pg_mirror,
     try_mirror_reconciliation_upsert,
 };
+#[cfg(test)]
+pub use paper_ledger_executor::PaperLedgerTestGuard;
 pub use paper_ledger_executor::{PaperFill, PaperLedgerExecutor};
 pub use pg_idempotency::PgOrderIdempotencyStore;
 pub use pg_reconciliation::PgOrderReconciliationStore;

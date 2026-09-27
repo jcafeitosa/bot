@@ -21,16 +21,29 @@ fn paper_fill_unit_price_from_env() -> Option<f64> {
 static LEDGER: Mutex<Vec<PaperFill>> = Mutex::new(Vec::new());
 
 #[cfg(test)]
-static PAPER_LEDGER_TEST_SERIAL: Mutex<()> = Mutex::new(());
+static PAPER_LEDGER_TEST_SCOPE: Mutex<()> = Mutex::new(());
+
+/// Hold for the whole test (including `.await`) while using the in-process paper ledger.
+#[cfg(test)]
+pub struct PaperLedgerTestGuard {
+    _guard: std::sync::MutexGuard<'static, ()>,
+}
+
+#[cfg(test)]
+impl PaperLedgerTestGuard {
+    pub fn acquire() -> Self {
+        Self {
+            _guard: PAPER_LEDGER_TEST_SCOPE
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()),
+        }
+    }
+}
 
 fn with_ledger_mut<F, R>(f: F) -> R
 where
     F: FnOnce(&mut Vec<PaperFill>) -> R,
 {
-    #[cfg(test)]
-    let _serial = PAPER_LEDGER_TEST_SERIAL
-        .lock()
-        .expect("paper ledger test serial lock");
     let mut guard = LEDGER.lock().expect("paper ledger lock");
     f(&mut guard)
 }
@@ -39,10 +52,6 @@ fn with_ledger<F, R>(f: F) -> R
 where
     F: FnOnce(&Vec<PaperFill>) -> R,
 {
-    #[cfg(test)]
-    let _serial = PAPER_LEDGER_TEST_SERIAL
-        .lock()
-        .expect("paper ledger test serial lock");
     let guard = LEDGER.lock().expect("paper ledger lock");
     f(&guard)
 }

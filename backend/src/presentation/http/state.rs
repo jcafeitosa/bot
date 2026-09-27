@@ -403,6 +403,7 @@ impl ApiState {
             .filter(|value| !value.is_empty())
             .map(str::to_string);
 
+        let mut pg_claimed_key: Option<String> = None;
         if let Some(ref key) = idem_key {
             if OrderIdempotencyStore::is_completed(&*self.inner.order_idempotency, key) {
                 return Ok(SubmitOrderResponse { accepted: true });
@@ -412,6 +413,11 @@ impl ApiState {
                     OrderIdempotencyStore::record_completed(&*self.inner.order_idempotency, key);
                     return Ok(SubmitOrderResponse { accepted: true });
                 }
+                if !pg.try_claim(key).await? {
+                    OrderIdempotencyStore::record_completed(&*self.inner.order_idempotency, key);
+                    return Ok(SubmitOrderResponse { accepted: true });
+                }
+                pg_claimed_key = Some(key.clone());
             }
         }
 
@@ -422,16 +428,20 @@ impl ApiState {
             None
         };
 
-        let response = crate::modules::http_bridge::orders::submit_order_http(
+        let response = match crate::modules::http_bridge::orders::submit_order_http(
             body,
             &self.inner.order_executor,
             &*self.inner.order_idempotency,
             reconciliation,
-        )?;
-
-        if let (Some(pg), Some(key)) = (&self.inner.order_idempotency_pg, &idem_key) {
-            pg.record_completed(key).await?;
-        }
+        ) {
+            Ok(response) => response,
+            Err(error) => {
+                if let (Some(pg), Some(key)) = (&self.inner.order_idempotency_pg, &pg_claimed_key) {
+                    pg.release_claim(key).await?;
+                }
+                return Err(error);
+            }
+        };
 
         if track_live_reconciliation {
             if let Some(key) = &idem_key {
@@ -1419,6 +1429,64 @@ mod state_tests {
         assert!(replay.accepted);
     }
 
+    #[tokio::test]
+    async fn pg_submit_order_idempotency_releases_claim_when_submit_fails() {
+        use crate::modules::http_bridge::orders::OrderSideBody;
+        use crate::modules::http_bridge::risk::RiskLimitsBody;
+        use crate::modules::orders::{OrdersError, PgOrderIdempotencyStore};
+        use crate::presentation::http::order_execution::HttpOrderExecutor;
+
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
+        let key = format!(
+            "idem-risk-fail-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        );
+        let state = ApiState::with_order_executor(
+            None,
+            AppDatabases {
+                postgres: Some(db.clone()),
+                neo4j: None,
+            },
+            None,
+            crate::modules::config_api::Config::default(),
+            Arc::new(std::sync::Mutex::new(AgentRegistry::new())),
+            HttpAdminAuth::disabled(),
+            HttpOrderExecutor::dev_accept(),
+        );
+        let body = SubmitOrderHttpRequest {
+            symbol: "BTC/USDT".into(),
+            side: OrderSideBody::Buy,
+            quote_amount: 100.0,
+            estimated_daily_loss: 0.0,
+            open_positions: 0,
+            limits: RiskLimitsBody {
+                max_order_quote: 10.0,
+                max_daily_loss_quote: 20.0,
+                max_open_positions: 1,
+            },
+            client_order_id: Some(key.clone()),
+            paper_fill_unit_price: None,
+        };
+        let err = state.submit_order_http(body).await.unwrap_err();
+        assert!(matches!(err, OrdersError::RiskRejected(_)));
+
+        let store = PgOrderIdempotencyStore::new(db.as_postgres());
+        assert!(
+            !store
+                .is_completed(&key)
+                .await
+                .expect("lookup after failed submit"),
+            "claim must be released when execution does not complete"
+        );
+    }
+
     #[test]
     fn bot_ranking_from_metrics_via_api_state_returns_entry() {
         use crate::modules::bots::{
@@ -1487,9 +1555,10 @@ mod state_tests {
         use crate::modules::http_bridge::orders::OrderSideBody;
         use crate::modules::http_bridge::portfolio::PaperSnapshotQuery;
         use crate::modules::http_bridge::risk::RiskLimitsBody;
-        use crate::modules::orders::PaperLedgerExecutor;
+        use crate::modules::orders::{PaperLedgerExecutor, PaperLedgerTestGuard};
         use crate::presentation::http::order_execution::HttpOrderExecutor;
 
+        let _paper_ledger = PaperLedgerTestGuard::acquire();
         PaperLedgerExecutor::clear_ledger();
         let state = ApiState::with_order_executor(
             None,

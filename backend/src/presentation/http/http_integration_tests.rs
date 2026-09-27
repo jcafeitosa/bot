@@ -13,7 +13,7 @@ use crate::core::database::AppDatabases;
 use crate::core::test_env_lock::EnvTestGuard;
 use crate::modules::agents::AgentRegistry;
 use crate::modules::config_api::Config;
-use crate::modules::orders::PaperLedgerExecutor;
+use crate::modules::orders::{PaperLedgerExecutor, PaperLedgerTestGuard};
 use crate::presentation::http::admin_auth::HttpAdminAuth;
 use crate::presentation::http::order_execution::HttpOrderExecutor;
 use crate::presentation::http::server::build_router;
@@ -184,6 +184,7 @@ async fn orders_submit_requires_admin_bearer_when_enabled() {
 
 #[tokio::test]
 async fn orders_submit_succeeds_with_admin_bearer_when_paper_executor() {
+    let _paper_ledger = PaperLedgerTestGuard::acquire();
     PaperLedgerExecutor::clear_ledger();
     let state = ApiState::with_order_executor(
         None,
@@ -899,6 +900,7 @@ async fn meta_reports_agency_binding_without_admin_token() {
 
 #[tokio::test]
 async fn orders_submit_paper_executor_returns_200() {
+    let _paper_ledger = PaperLedgerTestGuard::acquire();
     PaperLedgerExecutor::clear_ledger();
     let state = ApiState::with_order_executor(
         None,
@@ -1077,6 +1079,7 @@ async fn bots_runtime_promote_allowed_when_bound_agency_and_capable_agent() {
 
 #[tokio::test]
 async fn portfolio_paper_snapshot_http_reflects_paper_submit() {
+    let _paper_ledger = PaperLedgerTestGuard::acquire();
     PaperLedgerExecutor::clear_ledger();
     let state = ApiState::with_order_executor(
         None,

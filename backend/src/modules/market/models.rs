@@ -364,7 +364,6 @@ mod tests {
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    use crate::core::persistence::Database;
     use crate::modules::market::persist_historical_dataset;
 
     fn fixture_dataset() -> HistoricalDataset {
