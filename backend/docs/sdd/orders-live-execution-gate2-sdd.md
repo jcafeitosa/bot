@@ -85,7 +85,7 @@ Evidência G1 (2026-09-27): **350** testes bin `bot`, **8** ignorados; `orders_s
 | `RecordingExecutor` / test double sem rede | `orders/tests.rs`, `http_bridge/orders.rs` | Sim |
 | `PaperLedgerExecutor` (modo `paper`) | `paper_ledger_executor.rs`, `orders_submit_paper_executor_returns_200` | Sim |
 | Adapter `OrderExecutionPort` com exchange/testnet REST | `binance_spot_testnet_submit.rs` (buy/sell market por quote); CI sem credenciais | **Parcial** |
-| Reconciliação pós-submit | Memória + PG `0006`; HTTP auto-reconcile recording; `GET /orders/reconciliation/{client_order_id}`; `run_reconciliation_poll_once` + `RecordingSpotOrderReconciliationQuery`; hydrate no boot; poller testnet/prod pendente | **Parcial** |
+| Reconciliação pós-submit | Memória + PG `0006`; HTTP auto-reconcile recording; `GET /orders/reconciliation/{client_order_id}`; `run_reconciliation_poll_once` + `RecordingSpotOrderReconciliationQuery`; hydrate no boot; poller REST testnet/prod pendente | **Parcial** |
 | `live_exchange_wired == true` com prova determinística | `HttpOrderExecutor::live_exchange` + testes `from_env_live_exchange_wired_*`, `orders_submit_live_exchange_wired_returns_200`, `meta_and_orders_execution_status_live_exchange_wired_true` | **Parcial** (recording determinístico; testnet exige credenciais/rede) |
 | Threat model + revisão Critic | seção rascunho neste SDD; Critic instância separada | **Parcial** |
 | `./scripts/verify-backend-gates.sh` verde | **350** testes bin `bot` (2026-09-27) | Sim (baseline G1/G2 parcial) |
@@ -111,7 +111,7 @@ Revisão Critic e hardening de produção permanecem **pendentes** antes de fech
 3. `confirm_exchange_order` ou `mark_divergent` (memória + `upsert_state` PG).
 4. Job opcional no `serve` (intervalo configurável; default desligado).
 
-Implementado (recording): `run_reconciliation_poll_once`, `SpotOrderReconciliationQuery` + `recording_bind_client_exchange` no submit HTTP wired; job periódico no `serve` e consulta testnet **pendentes**.
+Implementado (recording): `run_reconciliation_poll_once`, `SpotOrderReconciliationQuery` + `recording_bind_client_exchange` no submit HTTP wired; job periódico no `serve` (`BOT_ORDERS_RECONCILIATION_POLL_SECS`); `LiveExchangeSpotOrderReconciliationQuery` (recording + testnet via binding map); consulta REST testnet por `client_order_id` **pendente**.
 
 ### Critérios para sair de “rascunho” (threat model)
 
