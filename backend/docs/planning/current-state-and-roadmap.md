@@ -88,6 +88,17 @@ tags:
 - Atualizar SDDs quando o comportamento mudar; não registrar uma intenção como se fosse implementação.
 - Ingerir e citar fontes da pesquisa de agentes antes de remover o status provisório.
 
+## Verificação executada em 2026-09-27
+
+```text
+CARGO_TARGET_DIR=/private/tmp/bot-backend-target cargo test --locked
+71 unitários + 1 fixture + 2 config CLI + 3 redirect-origin = passaram
+1 teste PostgreSQL = ignorado; requer DATABASE_URL para trading_bot
+2 redirect-policy HTTP = falharam antes do teste por PermissionDenied ao abrir listener local
+```
+
+A suíte de lógica e contratos passou. A prova HTTP observável de redirect continua pendente porque o sandbox não permite abrir listeners em loopback; isso mantém P0/T-05 bloqueado. A compilação em target temporário produziu warnings existentes de código não usado em `app.rs` e variantes/campos sem uso; eles não foram alterados nesta tarefa documental.
+
 ## Gates de aceitação
 
 - **G0:** escopo, usuários e não objetivos registrados.
