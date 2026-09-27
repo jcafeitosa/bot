@@ -10,7 +10,7 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (187 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (189 unitários + integração).
 
 ## Resumo executivo
 
@@ -40,7 +40,7 @@ cargo test --locked
 ./scripts/check-import-direction.sh
 ```
 
-Evidência: **187** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
+Evidência: **189** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -55,11 +55,11 @@ Evidência: **187** testes no binário `bot`, **5** ignorados (`persist_dataset_
 |---|---|---|
 | Analisar completude (bots, orders, agents, HTTP) | Este documento + `unimplemented-modules-analysis.md` | Feito |
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
-| Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner, orders live, load PG agents) |
+| Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 187 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 189 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Fechamento do goal (pendente)
 
-Auth owner, leitura PG do registry agents, adapter real de orders ([SDD orders](../sdd/orders-module-sdd.md)), runtime bots live, revisão Critic AGENTS.md. PG scaffold: [Gate 1](../sdd/bots-catalog-persistence-gate1-sdd.md).
+Auth owner, adapter real de orders ([SDD orders](../sdd/orders-module-sdd.md)), runtime bots live, revisão Critic AGENTS.md. PG scaffold: [Gate 1](../sdd/bots-catalog-persistence-gate1-sdd.md).
