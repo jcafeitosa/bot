@@ -385,12 +385,12 @@ mod integration_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL database trading_bot"]
     async fn persist_dataset_round_trip() {
-        let db = Database::connect_from_env()
-            .await
-            .expect("DATABASE_URL must be set for ignored integration test");
-        db.migrate().await.expect("migrations");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let dataset = fixture_dataset();
         let dataset_id = dataset.manifest.dataset_id.clone();
         let expected = dataset.manifest.candle_count as i64;

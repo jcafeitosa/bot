@@ -3,6 +3,9 @@ pub use dataset::{CandleRow, MarketDatasetManifestRow, MarketDatasetPersistInput
 
 mod dataset;
 
+#[cfg(test)]
+pub mod pg_integration;
+
 use crate::core::database::{DatabaseError, PostgresDatabase};
 
 pub type PersistenceError = DatabaseError;
@@ -148,12 +151,10 @@ mod migration_scaffold_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL database trading_bot"]
     async fn postgres_scaffold_tables_exist_after_migrate() {
-        let db = super::Database::connect_from_env()
-            .await
-            .expect("DATABASE_URL must be set for ignored integration test");
-        db.migrate().await.expect("migrations");
+        let Some(db) = super::pg_integration::database_for_integration_test().await else {
+            return;
+        };
         for table in [
             "agent_identities",
             "agent_identity_events",

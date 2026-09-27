@@ -319,12 +319,12 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_order_reconciliation_round_trip() {
-        use crate::core::persistence::Database;
-
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let store = PgOrderReconciliationStore::new(db.as_postgres());
         let key = format!(
             "recon-pg-{}",

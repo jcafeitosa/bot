@@ -3,6 +3,7 @@ use thiserror::Error;
 use crate::core::persistence::{Database, PersistenceError};
 
 use super::config::postgres_url_from_env;
+use crate::core::config::monitor::database_url_for_monitor;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum MonitorBootstrapError {
@@ -52,7 +53,7 @@ pub async fn bootstrap_monitor_postgres(
     if timeframe != "1m" {
         return Err(MonitorBootstrapError::UnsupportedTimeframe);
     }
-    let url = postgres_url_from_env()
+    let url = database_url_for_monitor()
         .map_err(|_| MonitorBootstrapError::InvalidUrl)?
         .filter(|value| !value.is_empty())
         .ok_or(MonitorBootstrapError::MissingUrl)?;

@@ -273,11 +273,12 @@ mod tests {
         assert_eq!(agent_id.as_deref(), Some("ceo"));
     }
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_identity_snapshot_round_trip() {
-        use crate::core::persistence::Database;
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let store = PgAgentIdentityStore::new(db.as_postgres());
         let owner = OwnerId::new("owner-pg").unwrap();
         let agency = AgencyId::new("agency-pg").unwrap();

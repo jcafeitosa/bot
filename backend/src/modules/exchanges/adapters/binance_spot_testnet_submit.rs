@@ -215,8 +215,10 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "manual: export BINANCE_TESTNET_API_KEY/SECRET then cargo test -- --ignored integration_submits_minimal_market_buy_on_testnet"]
     fn integration_submits_minimal_market_buy_on_testnet() {
+        if !crate::core::persistence::pg_integration::binance_testnet_credentials_configured() {
+            return;
+        }
         let request = SubmitOrderRequest {
             symbol: "BTC/USDT",
             side: OrderSide::Buy,

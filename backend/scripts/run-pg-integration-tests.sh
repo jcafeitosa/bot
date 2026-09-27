@@ -34,6 +34,6 @@ PG_TESTS=(
 
 for test_name in "${PG_TESTS[@]}"; do
   echo "==> ${test_name}"
-  CARGO_INCREMENTAL=0 cargo test --locked --bin bot "${test_name}" -- --ignored --nocapture
+  CARGO_INCREMENTAL=0 cargo test --locked --bin bot "${test_name}" -- --nocapture
 done
 echo "OK: PostgreSQL integration tests passed (${#PG_TESTS[@]} tests)"

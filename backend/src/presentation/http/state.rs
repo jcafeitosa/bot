@@ -885,10 +885,12 @@ mod state_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_bot_catalog_snapshot_round_trip_via_api_state() {
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let config = crate::modules::config_api::Config::default();
         let databases = AppDatabases {
             postgres: Some(db.clone()),
@@ -1364,14 +1366,16 @@ mod state_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_submit_order_idempotency_reads_pg_when_memory_empty() {
         use crate::modules::http_bridge::orders::OrderSideBody;
         use crate::modules::http_bridge::risk::RiskLimitsBody;
         use crate::presentation::http::order_execution::HttpOrderExecutor;
 
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let store = PgOrderIdempotencyStore::new(db.as_postgres());
         let key = format!(
             "idem-lookup-{}",
@@ -1624,13 +1628,15 @@ mod state_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_hydrate_order_reconciliation_from_pg_after_durable_write() {
         use crate::modules::orders::OrderSide;
 
         let _ledger_guard = lock_shared_live_order_reconciliation_ledger_for_test();
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let store = PgOrderReconciliationStore::new(db.as_postgres());
         let key = format!(
             "recon-hydrate-{}",
@@ -1710,13 +1716,15 @@ mod state_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_order_reconciliation_lookup_reads_pg_when_memory_empty() {
         use crate::modules::orders::OrderSide;
 
         let _ledger_guard = lock_shared_live_order_reconciliation_ledger_for_test();
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let store = PgOrderReconciliationStore::new(db.as_postgres());
         let key = format!(
             "recon-lookup-{}",
@@ -1823,7 +1831,6 @@ mod state_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_http_boot_sequence_mirrors_serve_wiring() {
         use crate::modules::agents::AgentRegistry;
         use crate::modules::http_bridge::agents::{
@@ -1833,8 +1840,11 @@ mod state_tests {
         use std::sync::{Arc, Mutex};
 
         let _ledger_guard = lock_shared_live_order_reconciliation_ledger_for_test();
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let suffix = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("clock")
@@ -1991,7 +2001,6 @@ mod state_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_register_agent_and_persist_cold_start_via_snapshot() {
         use crate::modules::agents::AgentRegistry;
         use crate::modules::http_bridge::agents::{
@@ -2000,8 +2009,11 @@ mod state_tests {
         };
         use std::sync::{Arc, Mutex};
 
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let postgres = db.as_postgres();
         let suffix = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

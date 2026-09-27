@@ -475,12 +475,12 @@ mod pg_write_through_tests {
     use crate::modules::agents::{AgentLifecycleState, AgentRegistry};
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_agent_lifecycle_write_through_round_trip() {
-        use crate::core::persistence::Database;
-
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let postgres = db.as_postgres();
 
         let mut registry = AgentRegistry::new();
@@ -530,12 +530,12 @@ mod pg_write_through_tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_cold_start_apply_snapshot_after_write_through() {
-        use crate::core::persistence::Database;
-
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         let postgres = db.as_postgres();
 
         let mut registry = AgentRegistry::new();

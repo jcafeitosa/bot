@@ -1,3 +1,5 @@
+#![allow(dead_code)] // injectable bootstrap API exercised by unit tests
+
 use std::future::Future;
 
 use crate::core::database::MonitorBootstrapError;
@@ -50,6 +52,22 @@ where
 
 pub async fn connect_database(url: String) -> Result<Database, StartupError> {
     crate::core::database::connect_postgres_for_monitor(url).await
+}
+
+pub async fn bootstrap_monitor_database(
+    persist_flag: Option<&str>,
+    timeframe: &str,
+) -> Result<Option<Database>, StartupError> {
+    bootstrap_monitor(
+        persist_flag,
+        timeframe,
+        || {
+            crate::core::config::monitor::database_url_for_monitor()
+                .map_err(|_| StartupError::InvalidUrl)
+        },
+        connect_database,
+    )
+    .await
 }
 
 #[cfg(test)]

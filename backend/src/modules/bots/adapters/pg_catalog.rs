@@ -135,15 +135,16 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
     async fn pg_catalog_store_round_trip() {
-        use crate::core::persistence::Database;
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
         use crate::modules::backtest::models::StrategyDefinition;
         use crate::modules::bots::models::MonitorEvaluatorKind;
         use crate::modules::bots::{build_catalog_from_config, persist_catalog_snapshot};
 
-        let db = Database::connect_from_env().await.expect("DATABASE_URL");
-        db.migrate().await.expect("migrate");
         let mut store = PgBotCatalogStore::new(db.as_postgres());
         let strategy = StrategyDefinition {
             id: StrategyId::new("sma-cross").unwrap(),

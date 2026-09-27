@@ -33,7 +33,7 @@ pub use backtest::require_database_url_for_persist;
 pub use bots::bot_runtime_enabled_from_env;
 pub use exchanges::redact_known_testnet_credentials;
 pub use http::HttpAdminAuthConfig;
-pub use monitor::{database_url_for_monitor, persist_market_data_flag_raw, MonitorEnvError};
+pub use monitor::{persist_market_data_flag_raw, MonitorEnvError};
 pub use orders::{
     exchange_submit_recording_enabled, http_order_execution_mode_from_env,
     live_exchange_submit_backend, live_exchange_submit_backend_enabled,

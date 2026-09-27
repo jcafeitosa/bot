@@ -75,10 +75,11 @@ mod integration_tests {
     use crate::core::database::config::load_agents_stack_from_env;
 
     #[tokio::test]
-    #[ignore = "requires Neo4j docker-compose `graph` and BOT_AGENTS_ENABLED=true"]
     async fn ping_and_node_count_against_local_graph() {
+        if !crate::core::persistence::pg_integration::neo4j_stack_enabled() {
+            return;
+        }
         let config = load_agents_stack_from_env().expect("config");
-        assert!(config.enabled);
         let graph = Neo4jGraph::connect(&config.neo4j).await.expect("connect");
         graph.ping().await.expect("ping");
         assert!(graph.node_count().await.expect("count") > 0);

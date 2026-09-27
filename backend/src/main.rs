@@ -13,10 +13,6 @@ fn map_monitor_env(error: MonitorEnvError) -> StartupError {
     }
 }
 
-fn read_monitor_database_url() -> Result<Option<String>, StartupError> {
-    crate::core::config::database_url_for_monitor().map_err(map_monitor_env)
-}
-
 fn read_persist_flag() -> Result<Option<String>, StartupError> {
     crate::core::config::persist_market_data_flag_raw().map_err(map_monitor_env)
 }
@@ -64,11 +60,9 @@ async fn main() -> Result<()> {
                     );
                 }
                 let persist_flag = read_persist_flag()?;
-                let database = modules::monitor::bootstrap_monitor(
+                let database = modules::monitor::bootstrap_monitor_database(
                     persist_flag.as_deref(),
                     &config.market.timeframe,
-                    read_monitor_database_url,
-                    modules::monitor::connect_database,
                 )
                 .await?;
                 let agent_hook = modules::agents::monitor_agent_hook_from_env();
@@ -100,11 +94,9 @@ async fn main() -> Result<()> {
             }
 
             let persist_flag = read_persist_flag()?;
-            let database = modules::monitor::bootstrap_monitor(
+            let database = modules::monitor::bootstrap_monitor_database(
                 persist_flag.as_deref(),
                 &config.market.timeframe,
-                read_monitor_database_url,
-                modules::monitor::connect_database,
             )
             .await?;
             if database.is_some() {
