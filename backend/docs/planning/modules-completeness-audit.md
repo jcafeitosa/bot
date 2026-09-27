@@ -17,7 +17,7 @@ tags:
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
 | `modules/bots` | `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross`/`ema_cross`), supervisor + backtest via `evaluate_for_kind`, catálogo HTTP `monitor_evaluator` | `monitor_strategy.rs`, `evaluation_binding.rs`, `simulation.rs`, `server.rs` | Auth owner; orders live |
-| `modules/orders` | Paper/recording/testnet, idempotência+PG, reconciliação memória+PG+`GET/POST /orders/reconciliation/*` (incl. poll), `SpotOrderSubmitAck` | `orders.rs`, `state.rs`, `pg_reconciliation.rs`, `server.rs` | Poller HTTP (`POST …/poll`); divergência testnet/job; prod REST; threat model/Critic |
+| `modules/orders` | Paper/recording/testnet, idempotência+PG, reconciliação memória+PG+poll HTTP/background, `SpotOrderSubmitAck` | `orders.rs`, `state.rs`, `pg_reconciliation.rs`, `reconciliation_poll.rs`, `server.rs` | Query exchange testnet no poller; prod REST; threat model/Critic |
 | `modules/portfolio` | `paper_snapshot_with_fills` + posições com `fill_unit_price`/`BOT_PAPER_FILL_UNIT_PRICE`; HTTP `positions[]` | `controllers.rs`, `http_bridge/portfolio.rs`, `paper_ledger_executor.rs` | Preço de mercado dinâmico (não só env fixo) |
 | `modules/agents` | Registry + PG; `assert_runtime_promotion_authorized` (bot_id, capability, lifecycle) | `bot_promotion.rs`, `server.rs` | Auth owner produto |
 | `presentation/http` | OpenAPI **36** paths; `GET /meta` (`order_reconciliation_pending`); catálogo bots `monitor_evaluator`; contratos `meta_and_*`; `HttpAdminAuth` | `meta.rs`, `server.rs` (`bots_catalog_http_*`) | Auth owner produto (Gate 1) |

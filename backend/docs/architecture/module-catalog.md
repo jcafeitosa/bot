@@ -112,20 +112,20 @@ Seam fail-closed + Gate 2 parcial ([SDD orders](../sdd/orders-module-sdd.md), [G
 | Submódulo | Contrato e comportamento |
 |---|---|
 | `models` | `SubmitOrderRequest`, `OrderSide`, `OrdersError` (`ExecutionDisabled`, `LiveExchangeNotWired`, …). |
-| `controllers` | `submit_order` — valida request e `risk::validate_intent`; dedupe `client_order_id` via `OrderIdempotencyStore`. |
-| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor`, `PaperLedgerExecutor`, `RecordingExecutor`, `ExchangeSpotExecutor` + `submit_spot_order` (`recording` / `testnet`+credenciais → `binance_spot_testnet_submit`), `ReservedLiveExchangeExecutor`; idempotência memória/PG; reconciliação memória + `PgOrderReconciliationStore` (`0006_order_reconciliation.sql`). |
+| `controllers` | `submit_order` — valida request e `risk::validate_intent`; dedupe `client_order_id` via `OrderIdempotencyStore`; `run_reconciliation_poll_once` — uma passagem sobre `list_pending` + `SpotOrderReconciliationQuery`. |
+| `adapters` | `OrderExecutionPort`: `FailClosedExecutor`, `AcceptingExecutor`, `PaperLedgerExecutor`, `RecordingExecutor`, `ExchangeSpotExecutor` + `submit_spot_order` (`recording` / `testnet`+credenciais → `binance_spot_testnet_submit`), `ReservedLiveExchangeExecutor`; idempotência memória/PG; reconciliação memória + `PgOrderReconciliationStore` (`0006_order_reconciliation.sql`); `RecordingSpotOrderReconciliationQuery` + `recording_bind_client_exchange` (recording). |
 
-**HTTP:** `GET /api/v1/orders/execution-status`; `GET /api/v1/orders/reconciliation/{client_order_id}` (memória + fallback PG); `POST /api/v1/orders/submit` (**503** `execution_disabled` / `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`, `paper` ou `live_exchange` wired) → `ApiState::submit_order_http`; `GET /meta` inclui `order_reconciliation_pending` (max memória/PG); bearer admin quando `BOT_HTTP_ADMIN_TOKEN` definido; `BOT_ORDERS_EXECUTION` em `HttpApiSeams::from_env`.
+**HTTP:** `GET /api/v1/orders/execution-status`; `GET /api/v1/orders/reconciliation/{client_order_id}` (memória + fallback PG); `POST /api/v1/orders/reconciliation/poll` → `ApiState::reconcile_pending_orders_once` (admin bearer); `POST /api/v1/orders/submit` (**503** `execution_disabled` / `live_exchange_not_wired`, **422** risco, **200** com `dev_accept`, `paper` ou `live_exchange` wired) → `ApiState::submit_order_http`; `GET /meta` inclui `order_reconciliation_pending` (max memória/PG); job opcional `BOT_ORDERS_RECONCILIATION_POLL_SECS` no `serve` quando `live_exchange_wired`; bearer admin quando `BOT_HTTP_ADMIN_TOKEN` definido; `BOT_ORDERS_EXECUTION` em `HttpApiSeams::from_env`.
 
 ## 3d. Camada `presentation::http`
 
 | Peça | Comportamento |
 |---|---|
 | `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
-| `server::run` | Bootstrap `AppDatabases`, hydrate agents PG, `ApiState::for_http_server` (`HttpApiSeams::from_env`), Axum + Scalar. |
+| `server::run` | Bootstrap `AppDatabases`, hydrate agents + reconciliação orders PG, `ApiState::for_http_server` (`HttpApiSeams::from_env`), poll reconciliação em background (opcional), Axum + Scalar. |
 | `routes/*` | Superfície v1: agents, bots (catalog `monitor_evaluator` + runtime), orders, monitor, risk, backtest, `config/active` e `config/snapshot` (`monitor_registry[].evaluator`), health, `GET /meta` (`http_seams`). |
 
-Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `bots/runtime/promote|demote`, `orders/submit`, `monitor/commands`.
+Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `bots/runtime/promote|demote`, `orders/submit`, `orders/reconciliation/poll`, `monitor/commands`.
 
 ## 4. Módulos de exchanges (`src/modules/exchanges/`)
 
