@@ -60,9 +60,9 @@ Evidência (2026-09-27): **321** testes no binário `bot`, **6** ignorados (`per
 | Completude bots | Registry + catálogo HTTP, runtime promote, supervisor + backtest `evaluate_for_kind` (SMA/EMA) | **Parcial** (sem orders live; auth owner) |
 | Completude orders | `submit_order`, `PaperLedgerExecutor`, `exchange_order_gate`, execution-status, `live_exchange_not_wired`, idempotência | **Parcial** (adapter exchange REST ausente) |
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
-| Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `config/active` + catálogo com `evaluator`/`monitor_evaluator`; `meta_and_*`; orders/bots/agents v1; PG hydrate | **Parcial** (auth owner, exchange adapter) |
+| Integração HTTP + camadas | OpenAPI **34** paths; `GET /meta`; `config/active` + catálogo com `evaluator`/`monitor_evaluator`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` snapshot; PG hydrate | **Parcial** (auth owner, exchange REST real) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 319+ + clippy/fmt/import; PG 5/5 opcional (`verify-backend-full.sh`) | **Feito** |
+| Build/testes verdes | **321** + clippy/fmt/import; PG 5/5 opcional (`verify-backend-full.sh`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -73,7 +73,7 @@ Evidência (2026-09-27): **321** testes no binário `bot`, **6** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots (`MonitorEvaluatorKind`, catálogo/config HTTP), orders seams, agents PG + promote capability | **Parcial** (auth owner; adapter exchange orders) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 319+ ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → **321** ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
