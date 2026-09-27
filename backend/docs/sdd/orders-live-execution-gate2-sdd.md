@@ -38,6 +38,7 @@ status: draft
 | `OrderExecutionPort::execute` | Entrada já validada por risco; retorna `OrderAck` ou erro de domínio mapeável a HTTP. |
 | `OrderIdempotencyStore` | Evita duplicata de submit com mesma chave (memória ou PG — decisão no SDD de persistência). |
 | `ApiState::order_executor` | Seleção por config/env; default `FailClosedExecutor`. |
+| `AcceptingExecutor` | Double de teste em G1 (`submit_succeeds_when_port_accepts`); não wired no HTTP. |
 
 ## Validação (baseline G1 antes de Gate 2)
 
@@ -45,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **210** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `submit_order_fail_closed_via_state_returns_execution_disabled`.
+Evidência G1 (2026-09-27): **211** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `submit_order_fail_closed_via_state_returns_execution_disabled`.
 
 ## Validação Gate 2 (quando implementado)
 

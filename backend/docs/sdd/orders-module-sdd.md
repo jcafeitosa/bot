@@ -38,6 +38,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `SubmitOrderRequest` | Campos alinhados a `OrderIntent` + metadados (`symbol`, `side`) sem efeito de exchange. |
 | `OrderExecutionPort::execute` | Único caminho para “enviar” ordem. |
 | `FailClosedExecutor` | Implementação padrão; nunca chama rede. |
+| `AcceptingExecutor` | Double de teste do port (não usado em `ApiState` HTTP). |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK. |
 
 ## Validação
