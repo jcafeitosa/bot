@@ -8,7 +8,7 @@ tags:
   - http
   - wave0
 status: partial
-w0_01_status: draft
+w0_01_status: ready-for-g1-review
 ---
 
 # SDD — HTTP admin bearer seam (serve sem token; rotas protegidas retornam 503)

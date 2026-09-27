@@ -70,7 +70,7 @@ A entrega de implementação é uma unidade coerente: mudança do workflow GitHu
 
 ### Descoberta do conjunto PG (C0)
 
-- **Proposta sujeita a revisão técnica: parser estático + proibição de wrapper.** O `assert-pg-integration-manifest.sh` deve descobrir, com uma estratégia robusta para a sintaxe Rust usada pelo repositório, todos os testes que chamam `database_for_integration_test()` fora do próprio helper e comparar o conjunto exato com `PG_TESTS`. Um chamador que não seja função de teste deve falhar com arquivo/linha; teste chamador ausente do manifesto ou entrada sem função correspondente também falha. Confirmar na revisão G1 que o parser proposto consegue associar chamadas ao `fn` correto em todos os casos (atributos, funções async, módulos aninhados, comentários e formatação); não tratar uma busca textual simplista como prova.
+- **Parser AST syn proposto; ver seção de adendo G1.: parser estático + proibição de wrapper.** O `assert-pg-integration-manifest.sh` deve descobrir, com uma estratégia robusta para a sintaxe Rust usada pelo repositório, todos os testes que chamam `database_for_integration_test()` fora do próprio helper e comparar o conjunto exato com `PG_TESTS`. Um chamador que não seja função de teste deve falhar com arquivo/linha; teste chamador ausente do manifesto ou entrada sem função correspondente também falha. Confirmar na revisão G1 que o parser proposto consegue associar chamadas ao `fn` correto em todos os casos (atributos, funções async, módulos aninhados, comentários e formatação); não tratar uma busca textual simplista como prova.
 - **O que o estático não prova, e quem cobre:** que o teste de fato chega ao helper em tempo de execução. Isso é coberto por C1 (linha `PG_INTEGRATION_HELPER_OK` obrigatória por teste do manifesto).
 - **Alternativa considerada:** descoberta dinâmica (rodar todos os testes do bin com `BOT_PG_INTEGRATION_REQUIRED=1` e sem `DATABASE_URL`; os que falham com a mensagem estável do helper formam o conjunto PG). Pega wrappers sem regra extra, mas não pega teste que retorna cedo antes do helper e roda a suíte inteira no gate. Rejeitada como método principal; fica como verificação manual opcional.
 
@@ -122,3 +122,29 @@ Critérios de T-CI-01 (toolchain e job `rust`) e T-CI-02 (PG 18 e manifesto), co
 
 - Rollout: mudança de CI/scripts/helpers somente após aprovação G1 e autorização de implementação; nenhuma publicação/deploy. Ativar o job com banco descartável, marcador aplicado pelo workflow/setup explícito, e confirmar logs de versão, extensões, manifesto e execução individual. Só aceitar quando ambos jobs de CI estiverem verdes.
 - Rollback: reverter o commit completo workflow + helpers/scripts para o último estado conhecido. Isso remove a nova recusa de marcador em runtime também; até lá, não apontar runtime para o banco marcado. A reversão não deve manter workflow e helper em estados incompatíveis. Nenhuma implantação de aplicação está prevista.
+
+## Revisão G1 ciclo 3 — contratos revisados C0/C1/C4
+
+> Este adendo complementa as descrições anteriores e prevalece em caso de conflito. Mantém status `draft`; não aprova G1 nem autoriza implementação.
+
+### C4 — imagem e evidência reproduzível
+
+Imagem candidata: `timescale/timescaledb-ha@sha256:131bfdf82ec0dfe42eaa3f4a189f8e04b7b1dc2b27705cfd921e55ebef339840`, digest fixado em `docker-compose.bot.yml`. Nesta revisão, `docker inspect` do container local `bot-agents-postgres` confirmou digest e image ID iguais; consulta SQL ao banco retornou `server_version_num=180006`, `timescaledb=2.30.1` e `vector=0.8.6`. Isso comprova o container local, não a inicialização no GitHub Actions.
+
+Antes da aprovação G1, CI deve iniciar o digest exato como service container com `POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=postgres`, `POSTGRES_DB=trading_bot`, porta 5432 e health `pg_isready -U postgres -d trading_bot` (intervalo 5s, timeout 5s, 10 tentativas). Após healthy, registrar saída/exit code sem segredo e link da execução para `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc 'SHOW server_version_num'` e `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "SELECT extname || '=' || extversion FROM pg_extension WHERE extname IN ('timescaledb','vector') ORDER BY extname"`. Gate: versão ≥ 180000 e as duas extensões instaladas. Se disponíveis, mas não instaladas, executar `CREATE EXTENSION IF NOT EXISTS timescaledb; CREATE EXTENSION IF NOT EXISTS vector;` e consultar novamente; falha é bloqueante. CI real ainda não foi executado; C4 fica pendente até evidência do runner GitHub.
+
+### C0 — checker Rust AST
+
+Criar binário checker independente em `backend/scripts/pg-manifest-checker/`, com versões/features de `syn` fixadas no lockfile, usando `syn::parse_file` e `syn::visit::Visit`. Percorrer arquivos `.rs` rastreados sob `backend/src`, módulos inline, `ItemFn`, blocos e `ExprCall`; extrair nome qualificado, caminho relativo e linha/coluna da chamada direta ao helper cujo último segmento do caminho seja `database_for_integration_test`. Comparar conjunto exato extraído com `PG_TESTS`, reportando divergências e origens. Reconhecer somente `#[test]` e `#[tokio::test]` (formas observadas), também em `async fn`; novos atributos exigem suporte e fixture explícitos.
+
+Fail closed para wrappers, aliases/imports, indireção por ponteiro/closure, `include!`, módulos externos via `#[path]`, macros contendo token do helper e código gerado; erros trazem arquivo/linha. Não expandir proc-macros nem inferir fluxo. Fixtures sem banco: async tokio em módulo inline passa; função sem atributo, wrapper, teste omitido, entrada fantasma e macro/include falham; menção em comentário/string é ignorada. Limite: AST não prova expansão/semântica de macros ou alcançabilidade runtime; essas formas ficam proibidas e C1 cobre execução.
+
+### C1 — chegada ao helper e término das assertions
+
+`PG_INTEGRATION_HELPER_OK` comprova conexão/migração, não conclusão do teste. Cada teste PG termina com `pg_integration_assertions_complete!("<nome_qualificado>")`, após operações e assertions PostgreSQL. A macro emite `PG_INTEGRATION_ASSERTIONS_OK:<nome_qualificado>`. O checker AST exige exatamente uma chamada direta ao helper e exatamente uma chamada de completion como última statement; retorno antecipado antes dela não emite a linha e causa falha do runner.
+
+Para cada invocação isolada `--exact`, runner exige exit zero, `1 passed`, zero falhas/ignorados, exatamente uma linha `PG_INTEGRATION_HELPER_OK` e uma linha `PG_INTEGRATION_ASSERTIONS_OK` com o mesmo nome. Fixture adversarial com `return` após helper e antes do marcador deve falhar por ausência de completion; fixture com assertions seguidas pelo marcador final deve passar. Revisão de código verifica o marcador depois das assertions; a linha prova o protocolo, não a qualidade semântica das assertions.
+
+### Estado
+
+C0/C1 ficam especificados para revisão independente. C4 ainda precisa da execução CI real no digest. Sem re-review independente e evidência GitHub, G1 permanece pendente.
