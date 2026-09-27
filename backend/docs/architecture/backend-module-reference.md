@@ -121,4 +121,4 @@ Esses seams mantêm profundidade: o chamador conhece uma interface pequena e as 
 - HFT é rejeitado; o backend usa polling REST e WS de klines.
 - Produção e ordens continuam desabilitadas.
 - A pesquisa de capacidades de agentes permanece provisória até ingestão local das fontes externas.
-- A política de redirects depende da implementação vendorizada de `ccxt-core`; o SDD correspondente registra a evidência e os gates pendentes.
+- A política de redirects depende da implementação vendorizada de `ccxt-core`; o SDD correspondente registra a política, a prova HTTP e os limites de manutenção do vendor.

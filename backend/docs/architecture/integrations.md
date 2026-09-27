@@ -49,7 +49,7 @@ A política pretendida:
 - permite redirect dentro da mesma origem;
 - transforma rejeição em erro observável no poll.
 
-O código não deve usar a validação posterior de `response.url()` como substituto da política no cliente. A prova de transporte local permanece um gate separado quando o ambiente permitir loopback.
+O código não deve usar a validação posterior de `response.url()` como substituto da política no cliente. A prova de transporte local foi executada fora do sandbox; os testes bloquearam redirect cross-origin antes do contato e aceitaram redirect na mesma origem.
 
 ## PostgreSQL
 
@@ -82,7 +82,7 @@ Os contratos operacionais estão na [referência de CLI e configuração](../ref
 | Risco | Controle atual | Pendência |
 |---|---|---|
 | Origem REST incorreta | Conta valida origem e `authorize_rest_use` restringe o uso. | Cobertura contínua ao atualizar adapters. |
-| Redirect para host externo | Política no cliente HTTP vendorizado. | Completar prova HTTP observável em ambiente com loopback. |
+| Redirect para host externo | Política no cliente HTTP vendorizado. | Prova HTTP observável passou fora do sandbox; revalidar quando o vendor mudar. |
 | Mensagem WS inválida | Parser e validação antes do feed. | Monitorar métricas/rejeições estruturadas. |
 | Banco errado | Nome `trading_bot` obrigatório. | Provisionamento operacional documentado fora do código. |
 | Vazamento de segredo | Variáveis de ambiente e payload Jev reduzido. | Rotação e runbook de incidente de credencial. |

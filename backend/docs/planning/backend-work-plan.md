@@ -11,7 +11,7 @@ tags:
 
 - **Responsável:** Orquestrador `/root`
 - **Data:** 2026-09-26
-- **Estado:** plano de G2 revisado e aprovado por `/root/workplan_critic`; usuário aprovou as interfaces dos quatro SDDs em 2026-09-26; C9 bloqueado em G3 por falta de prova HTTP no sandbox
+- **Estado:** plano de G2 revisado e aprovado por `/root/workplan_critic`; C9/C10 tiveram a prova HTTP executada fora do sandbox em 2026-09-27
 - **Base:** SDDs [T-05](../sdd/rest-redirect-sdd.md), [T-07](../sdd/backtest-trades-and-slippage-sdd.md), [T-10](../sdd/monitor-pause-resume-sdd.md) e [T-15](../sdd/monitor-persistence-policy-sdd.md), todos com G1 técnico aprovado por críticos independentes
 
 ## Escopo e gates
