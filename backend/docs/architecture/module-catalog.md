@@ -133,7 +133,9 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 |---|---|
 | `exchanges/mod.rs` | Define `ExchangeId`, `MarketType`, `ExchangeAccountId`, `Transport` e `ExchangeError`. A chave de conta inclui exchange, tipo e rótulo. |
 | `account_file` | Lê TOML de contas, normaliza credenciais e verifica URLs REST/WS permitidas por ambiente. Não imprime segredos. |
-| `binance` | Implementa `MarketDataSource` para OHLCV Spot. Exige origem testnet registrada, remove candle aberto e rejeita dados não finitos, incoerentes, desalinhados ou duplicados conflitantes. |
+| `binance` | `MarketDataSource` (OHLCV Spot testnet) + `build_dev_spot_binance` compartilhado com submit. |
+| `binance_spot_testnet_submit` | Gate 2: market buy por `quote_amount` (`quoteOrderQty` ccxt); requer `BINANCE_TESTNET_*`. |
+| `credentials_env` | Probes de env (`binance_testnet_credentials_configured`, seam testnet) sem logar segredos. |
 | `bootstrap` | Lê o arquivo de exchanges, monta `ExchangeRegistry`, seleciona contas Spot e expõe contas de mercado registradas. |
 | `capabilities` | Catálogo declarativo de capacidades. Declarar Futures ou ordens não as habilita. |
 | `live` | Conecta ao WebSocket Binance, filtra somente klines fechados `1m`, valida payload, encaminha eventos e respeita cancelamento. |
@@ -141,7 +143,7 @@ Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `
 | `preflight` | Emite o plano de transporte e recursos autorizados para diagnóstico; não abre conexões de execução. |
 | `registry` | Guarda contas por chave estável e impede duplicidade. A seleção de mercado ocorre antes do adapter. |
 | `resources` | Modela recursos gerenciados e o catálogo de recursos; é descritivo e não concede execução. |
-| `rest` | Gate `authorize_rest_use`. Permite somente `PublicSpotBackfill` em `dev`; ordens e dados privados falham fechado. |
+| `rest` | `authorize_rest_use`: backfill público Spot dev; `OrderSubmit` com seam `recording` ou `testnet`+credenciais. |
 | `router` | Traduz `MarketNeed` em transporte e assinaturas WS; não decide autorização financeira. |
 | `stream` | Modela `StreamKind`, `StreamEvent` e `StreamSubscription`, incluindo intervalo e símbolo. |
 | `ws` | Valida `WsConfig` e produz `WsSessionPlan`; atualmente o stream autorizado de mercado é Binance Spot testnet `1m`. |
