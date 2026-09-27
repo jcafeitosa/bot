@@ -25,6 +25,8 @@ Produção REST de ordens permanece bloqueada (`authorize_rest_use`). Monitor e 
 
 Mapeamento **domain / application / infrastructure / presentation** → [layer-mapping.md](./layer-mapping.md).
 
+Dual-store PG + Neo4j (funções separadas, pareados em produção alvo) → [unified-neo4j-graph-strategy.md](./unified-neo4j-graph-strategy.md).
+
 ```mermaid
 flowchart LR
   Main[main] --> Config[core/config]

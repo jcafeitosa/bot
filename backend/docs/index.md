@@ -13,14 +13,17 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 ## Comece aqui
 
 - [Guia de execução e operação](./operations/runbook.md) — pré-requisitos, inicialização, modos suportados, persistência, diagnóstico e `./scripts/verify-backend-gates.sh`.
-- [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente e validações.
+- [PostgreSQL e grafo (dev)](./operations/postgres-and-graph-dev.md) — `DATABASE_URL`, PG **18/18**, retenção orders G2 ([cli-and-config § retention](./reference/cli-and-config.md#pg-orders-retention-gate-2)).
+- [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente (`backend/.env.example`), validações e [verificação local (gates)](./reference/cli-and-config.md#verificação-local-gates).
 - [API HTTP (OpenAPI + Scalar)](./reference/cli-and-config.md#subcomando-serve-http) — subcomando `serve`, `/openapi.json`, `/docs`, `GET /meta` (`http_seams`), agents e `--with-monitor`.
 - [Referência de módulos do backend](./architecture/backend-module-reference.md) — visão consolidada, interfaces, seams, fluxos e limites.
 - [Catálogo completo de módulos](./architecture/module-catalog.md) — todos os módulos Rust, facades HTTP (`§3d` `http_bridge`), submódulos de exchange, contratos e invariantes.
 - [Matriz de testes](./reference/test-matrix.md) — cobertura por módulo, integração, evidências e lacunas (incl. [runtime bots vs `serve` (G2)](./reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial)).
 - [Mapeamento de camadas](./architecture/layer-mapping.md) — domain, application, infrastructure, presentation.
 - [Integrações do backend](./architecture/integrations.md) — Binance, ccxt, PostgreSQL, Jev, terminal e controles.
+- [Estratégia Neo4j unificado (dual-store)](./architecture/unified-neo4j-graph-strategy.md) — PG SoT transacional + Neo4j grafo complementar pareado em produção alvo.
 - [Estado atual e planejamento](./planning/current-state-and-roadmap.md) — feito, pendências, bloqueios, gates e roadmap.
+- [Auditoria de completude de módulos](./planning/modules-completeness-audit.md) — bots/orders/agents/HTTP; baseline **414**/**0** ignored; PG **18/18**; goal **parcial** (auth owner + Critic).
 - README do backend — visão geral, arquitetura e comandos rápidos.
 
 ## Pesquisa
@@ -38,7 +41,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 ## Planejamento
 
-- [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md) — baseline `./scripts/verify-backend-gates.sh` (**386** passed, **17** ignored; PG **15/15** no CI `postgres-integration` ou local com `DATABASE_URL`); [pacote Critic (handoff)](./planning/modules-completeness-audit.md#pacote-para-revisão-critic-handoff); checklists [agents G1](./sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [orders G2](./sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](./sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist)
+- [Auditoria de completude — bots, orders, agents, HTTP](./planning/modules-completeness-audit.md) — baseline `./scripts/verify-backend-gates.sh` (**414** passed, **0** ignored; PG **18/18** no CI `postgres-integration` ou local com `DATABASE_URL`); [ENTREGA G4 Builder](./planning/modules-completeness-audit.md#entrega-pacote-completude-módulos--g4-builder) (**PENDENTE** Critic); [pacote Critic (handoff)](./planning/modules-completeness-audit.md#pacote-para-revisão-critic-handoff); checklists [agents G1](./sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [orders G2](./sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](./sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist)
 - [Status de implementação MVC mínimo](./architecture/module-implementation-status.md) — checklist `core`/`modules`/`presentation` e veredito vs goal de completude
 - [Plano de execução das correções pendentes do backend](./planning/backend-work-plan.md) — sequência de entregas, gates, dependências e bloqueios atuais.
 - [Análise de módulos ainda não desenvolvidos](./planning/unimplemented-modules-analysis.md) — capacidades previstas sem implementação completa, dependências e ordem recomendada.
@@ -63,9 +66,10 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD — Gate 2 orders live (parcial)](./sdd/orders-live-execution-gate2-sdd.md) — `HttpOrderExecutor`, idempotência HTTP; adapter exchange real pendente.
 - [SDD — Gate 2 bots runtime (parcial)](./sdd/bots-runtime-live-gate2-sdd.md) — `BotRuntimePort`, `MonitorEvaluatorKind` (SMA/EMA), promoção HTTP; auth owner pendente.
 - [SDD — Módulo agents (fundação IdentityOnly)](./sdd/agents-module-sdd.md) — registry + espelhamento/hidratação PG, hierarquia, lifecycle e seam Jev; auth owner pendente.
+- [SDD — Módulo `org`](./sdd/org-module-sdd.md) — desenho do sistema organizacional completo: unidades, cargos, posições, ocupações, autoridade e auditoria; draft aguardando revisão Critic e aprovação do owner, com mutações fail-closed até autenticação verificável.
 - [SDD — HTTP admin bearer seam](./sdd/http-admin-auth-seam-sdd.md) — `BOT_HTTP_ADMIN_TOKEN`, binds opcionais de owner/agency; não substitui auth owner Gate 1.
 - [SDD — Configuração centralizada](./sdd/centralized-config-sdd.md) — `system.toml`, `.env`, `bot.toml`, árvore `core/config/`.
-- [SDD — Provider credentials (PostgreSQL)](./sdd/provider-credentials-db-sdd.md) — migração `0007`, cache em memória; teste ignorado `loads_credentials_from_postgres`.
+- [SDD — Provider credentials (PostgreSQL)](./sdd/provider-credentials-db-sdd.md) — migração `0007`, cache em memória; `loads_credentials_from_postgres` no script PG **18/18**.
 
 ## Governança
 

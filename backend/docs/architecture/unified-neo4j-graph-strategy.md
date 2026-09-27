@@ -1,6 +1,6 @@
 ---
-title: Estratégia de grafo unificado Neo4j
-description: Visão, matriz módulo×grafo, SoT PG vs Neo4j, seams e fases para um único grafo operacional
+title: Estratégia de grafo unificado Neo4j (dual-store operacional)
+description: PG SoT transacional + Neo4j grafo único complementar — funções separadas, pareados em produção alvo, projeção idempotente
 tags:
   - architecture
   - backend
@@ -26,7 +26,113 @@ O produto trata **governança** (owner → CEO → … → workers), **bots exec
 
 **Não objetivos desta fatia:** live trading; substituir PG; expor segredos no grafo; segundo grafo (FalkorDB, `graph.json` como SoT de runtime).
 
-## 2. Estado atual (F0) — inventário verificado
+PostgreSQL **não será substituído**. Neo4j **não** é opcional “nice to have” no alvo de produção: os dois **funcionam juntos**, cada um com função definida — sem overlap confuso de responsabilidade.
+
+## 2. PostgreSQL — função (SoT autoritativo)
+
+| Responsabilidade | Exemplos no backend |
+|------------------|---------------------|
+| Transações ACID e constraints | Migrações `core/database/migrations/`, FKs em `agent_identities`, orders |
+| Idempotência e reconciliação de ordens | `order_idempotency_keys`, reconciliação `0004`/`0006` |
+| Time-series de mercado | `candles_1m`, Timescale (`0000_extensions`, `0001_market_data`) |
+| Vetores (RAG scaffold) | pgvector (`0003_vector_scaffold`) |
+| Credenciais de providers | `provider_credentials` (`0007`/`0008`) — **único** lugar para secrets |
+| Catálogo de bots | `bot_catalog_entries` |
+| Identidades de agents + audit | `agent_identities`, `agent_identity_events` |
+| Datasets de market | `market_datasets`, persistência monitor/backfill |
+
+**Regra:** qualquer decisão que altera dinheiro, idempotência, credencial, candle persistido ou identidade administrativa **commita em PG** (ou memória já espelhada ao PG no fluxo atual). O grafo **nunca** contradiz PG.
+
+## 3. Neo4j — função (grafo único complementar)
+
+| Responsabilidade | Exemplos alvo |
+|------------------|---------------|
+| Hierarquia e supervisão de agents | Nós `:Agent`, arestas `SUPERVISES` / `MEMBER_OF` |
+| Relações bot ↔ strategy ↔ symbol ↔ módulo | `:Bot` — `IMPLEMENTS` → `:Strategy`, ligação a `:Module` / `:Symbol` |
+| Linhagem de código (Graphify) | `:CodeEntity`, `CALLS`/`IMPORTS`; push via `sync-code-graph-neo4j.sh` |
+| Caminhos de impacto e queries relacionais | “Quem supervisiona X?”, “Que código afeta `orders`?” |
+| Espelho derivado de eventos PG | MERGE idempotente após outbox — **não** write path autoritativo |
+
+**Proibido no Neo4j como SoT:** ledger de ordens, OHLCV primário, saldos paper autoritativos, payloads exchange completos, API keys, `DATABASE_URL`, tokens admin.
+
+## 4. Operação conjunta — dual-store sem overlap
+
+### 4.1 Contrato em `AppDatabases`
+
+- **Hoje (F0):** `bootstrap_runtime` / `bootstrap_http_api` conecta PG se `DATABASE_URL` e Neo4j se `BOT_AGENTS_ENABLED` + `BOT_NEO4J_*` (`core/database/bundle.rs`).
+- **Alvo produção:** **postgres + neo4j sempre pareados** no mesmo composition root; `readiness_databases` reporta **ambos** (`postgres`, `postgres_extensions`, `neo4j`).
+- Módulos de domínio **não** importam `neo4rs`; projeção e leitura passam por seams em `core::database` (evolução: `GraphProjectionPort`, `GraphQueryPort` — §7).
+
+### 4.2 Fluxos
+
+| Direção | Uso |
+|---------|-----|
+| **PG write → projeção Neo4j** | Mutação validada → COMMIT PG → outbox/job → MERGE idempotente (`graph_domain` + chave PG) |
+| **Leitura crítica** | Orders, market persist, credenciais, idempotência → **só PG** |
+| **Leitura analítica / governança / caminhos** | Neo4j (e Graphify subgrafo `code`) |
+| **Runtime fail-closed por domínio** | Ex.: submit de ordem **nunca** depende de nó no grafo |
+
+### 4.3 Degradação
+
+| Falha | Comportamento |
+|-------|----------------|
+| **Neo4j down** | Trading e mutações PG seguem; projeção enfileira/retry; features só-grafo (navegação governança, impacto código unificado) pausam; Graphify push falha até Bolt voltar. **Alvo produção:** `readyz` não ready sem Neo4j. |
+| **PG down** | Fail-closed global onde já existe (`order_store_unavailable`, boot sem migrate, sem hydrate). Neo4j **não** reidrata transações nem credenciais. |
+
+### 4.4 Matriz módulo × store (papéis, não fases)
+
+| Módulo | PG only | Neo4j only (read) | PG write + Neo4j project |
+|--------|---------|-------------------|---------------------------|
+| `core::database` | Migrações, pool PG | — | Health + futuro worker outbox → MERGE |
+| `core::health` | Probes PG | Probe Neo4j | Readiness dual |
+| `modules/market` | Candles, datasets | — | Metadados `:Symbol` (opcional F2+) |
+| `modules/strategy` | Avaliação em Rust | Travessia versão→bots (futuro) | `:Strategy` / versão derivada do catálogo |
+| `modules/risk` | Gates numéricos | — | — |
+| `modules/portfolio` | Ledger paper | Snapshot explicativo (futuro) | — |
+| `modules/agents` | Identidades + eventos | Cadeia `SUPERVISES` | **F1:** após PG OK |
+| `modules/bots` | Catálogo | Grafo catálogo/runtime links | **F1–F2:** bot + `PROMOTED_BY` |
+| `modules/orders` | Idempotência, reconciliação | Linhagem read-only (futuro) | Eventos redigidos `OrderIntent` (F2) |
+| `modules/monitor` | Persist candles opcional | — | Links observabilidade (posterior) |
+| `modules/exchanges` | REST/WS, creds env | — | `:Venue` sem secret (opcional) |
+| `core::providers` | `provider_credentials` | `:Provider` id-only | Metadados provider |
+| `presentation/http` | Todas mutações | — | Sem Bolt no handler |
+| Dev Graphify | — | Queries código | **S** MERGE `graph_domain=code` |
+
+### 4.5 Anti-patterns (overlap / SoT duplicado)
+
+| Anti-pattern | Correção |
+|--------------|----------|
+| Dois SoT para a mesma entidade (ex. hierarquia só no Neo4j) | PG (ou memória+PG) autoriza; Neo4j deriva |
+| Autorizar HTTP/promoção/ordem lendo só Cypher | Checagem em PG + código; grafo consultivo |
+| Secrets ou OHLCV bulk no grafo | Proibido; só ids e metadados redigidos |
+| Grafo em memória “se Neo4j cair” | Fail-closed ou fila; não simular SoT |
+| `graphify-out/graph.json` como runtime SoT | Git/artefato local; Neo4j `code` via job |
+| Dois clusters Neo4j (domínio vs código) | Um cluster, `graph_domain` separa subgrafos |
+
+Integração operacional: [postgres-and-graph-dev.md](../operations/postgres-and-graph-dev.md), `scripts/sync-code-graph-neo4j.sh`, monitor/agents via PG write-through existente → ganchos de projeção futuros.
+
+```mermaid
+flowchart LR
+  subgraph write [Escrita autoritativa]
+    MOD[modules]
+    PG[(PostgreSQL SoT)]
+    MOD --> PG
+  end
+  subgraph project [Projeção async]
+    OB[outbox / job]
+    NEO[(Neo4j grafo único)]
+    PG --> OB --> NEO
+  end
+  subgraph read [Leituras]
+    MOD -->|crítico| PG
+    MOD -.->|governança caminhos| NEO
+    GFY[graphify sync] --> NEO
+  end
+  ADS[AppDatabases] --> PG
+  ADS --> NEO
+```
+
+## 5. Estado atual (F0) — inventário verificado
 
 | Área | Uso do grafo hoje | SoT / evidência |
 |------|-------------------|-----------------|
@@ -49,11 +155,11 @@ O produto trata **governança** (owner → CEO → … → workers), **bots exec
 
 `AgentsStackConfig` / `load_agents_stack_from_env` **não é código morto**: acopla `BOT_AGENTS_ENABLED` à conexão Neo4j ([core-database-sdd](../sdd/core-database-sdd.md)). O nome sugere “stack de agentes”, mas hoje significa **“grafo habilitado para o processo”**, sem espelhar identidades. Risco de confusão operacional: ops pode assumir que agentes “vivem” no Neo4j quando vivem em memória + PG.
 
-## 3. Visão — um grafo, namespaces canônicos
+## 6. Visão — um grafo, namespaces canônicos
 
 Um grafo por ambiente. Distinção por **labels**, **propriedades estáveis** e **`graph_domain`** (string) — não por bancos Neo4j separados.
 
-### 3.1 Nós canônicos (evolução)
+### 6.1 Nós canônicos (evolução)
 
 | Label | `graph_domain` | Chave estável | Origem | Notas |
 |-------|----------------|---------------|--------|-------|
@@ -67,7 +173,7 @@ Um grafo por ambiente. Distinção por **labels**, **propriedades estáveis** e 
 | `Provider` | `integrations` | `provider_id` | config + PG metadata | **Sem** `secret` |
 | `OrgUnit` / `Position` | `org` | TBD | futuro [org-module-sdd](../sdd/org-module-sdd.md) | Após SDD org |
 
-### 3.2 Arestas canônicas
+### 6.2 Arestas canônicas
 
 | Tipo | De → Para | Significado |
 |------|-----------|-------------|
@@ -82,7 +188,7 @@ Um grafo por ambiente. Distinção por **labels**, **propriedades estáveis** e 
 | `USES_PROVIDER` | Agent → Provider | `consult_jev` / capability flags |
 | `AFFECTS` | CodeEntity → Module | impacto de mudança de código |
 
-## 4. Matriz módulo × papel no grafo
+## 7. Matriz módulo × papel no grafo (por fase F0–F3)
 
 Legenda: **R** read (travessia), **W** write (projeção), **S** sync batch (graphify/job), **E** evento (outbox/stream), **—** fora do grafo nesta fase.
 
@@ -104,7 +210,7 @@ Legenda: **R** read (travessia), **W** write (projeção), **S** sync batch (gra
 | Dev: graphify | **S** | **S** | **S** | **S** |
 | CI (opcional) | — | **S** push em job dedicado | — | — |
 
-## 5. PostgreSQL vs Neo4j — source of truth
+## 8. PostgreSQL vs Neo4j — tabela de SoT (referência)
 
 | Domínio | SoT | Neo4j |
 |---------|-----|-------|
@@ -118,21 +224,21 @@ Legenda: **R** read (travessia), **W** write (projeção), **S** sync batch (gra
 
 **Regra:** escrita de negócio **sempre** PG (ou memória com espelho PG) primeiro; Neo4j **nunca** decide ordem, auth ou promoção sozinho.
 
-## 6. Seams públicos propostos (`core`)
+## 9. Seams públicos propostos (`core`)
 
 Evitar que cada módulo importe `neo4rs`. Concentrar em `core::database` ou submódulo `core::graph` (nome a fixar em SDD de implementação).
 
 | Seam | Responsabilidade | Consumidores |
 |------|------------------|--------------|
 | `Neo4jGraph` (existente) | Conexão, `ping`, execução parametrizada interna | health, adapters graph |
-| `GraphRuntimeConfig` | Renomear/evoluir `AgentsStackConfig`: `enabled`, URI, database; **desacoplar** semântica “agents” do flag de grafo (alias de migração: `load_graph_runtime_from_env`) | `AppDatabases` |
+| `GraphRuntimeConfig` | Renomear/evoluir `AgentsStackConfig`: `enabled`, URI, database; **desacoplar** semântica “agents” do flag de grafo (alias de migração: `load_graph_runtime_from_env`) | `AppDatabases` (ver §4.1) |
 | `GraphProjectionPort` | `upsert_agent_subgraph`, `upsert_bot_subgraph`, `mark_order_intent` — idempotente MERGE | adapters em `modules/*/adapters/graph_*` |
 | `GraphQueryPort` (read) | Travessias limitadas: `supervision_chain`, `bots_for_agent`, `code_impact_for_module` | advisory futuro, ops, HTTP read-only gated |
 | `GraphSyncJob` (offline) | Invoca graphify push ou import Cypher; não no hot path HTTP | scripts, CI |
 
 **Fail-closed:** se `enabled` e conexão falha → `neo4j: None` (como hoje), módulos **não** simulam grafo em memória. Features que **exigem** grafo (futuro) retornam erro explícito, não degradam silenciosamente para PG.
 
-## 7. Fases de rollout
+## 10. Fases de rollout
 
 ```mermaid
 flowchart LR
@@ -155,7 +261,7 @@ flowchart LR
 
 **Rollback F1+:** desabilitar projeção (flag); truncar subgrafo `graph_domain='governance'` via job; PG intacto.
 
-## 8. Anti-patterns
+## 11. Anti-patterns (técnicos e ops)
 
 | Anti-pattern | Por quê evitar |
 |--------------|----------------|
@@ -167,7 +273,7 @@ flowchart LR
 | `neo4rs` direto em `modules::*` | Quebra import-direction e testabilidade |
 | Reconciliação bidirecional PG ↔ Neo4j em tempo real | Complexidade; preferir outbox unidirecional |
 
-## 9. Diagrama — fluxo de dados alvo (F1+)
+## 12. Diagrama — fluxo de dados alvo (F1+)
 
 ```mermaid
 flowchart TB
@@ -202,13 +308,13 @@ flowchart TB
   Exec -->|PROMOTED_BY| Gov
 ```
 
-## 10. Integração com operações existentes
+## 13. Integração com operações existentes
 
 - Compose: serviço `graph` em `docker-compose.bot.yml` (Bolt `7688`, Browser `7475`).
 - Env: [postgres-and-graph-dev.md](../operations/postgres-and-graph-dev.md) — `BOT_AGENTS_ENABLED`, `BOT_NEO4J_*`.
 - SDDs relacionados: [core-database-sdd](../sdd/core-database-sdd.md), [database-module-integration-sdd](../sdd/database-module-integration-sdd.md), [agents-module-sdd](../sdd/agents-module-sdd.md), [agents-pg-registry-sdd](../sdd/agents-pg-registry-sdd.md).
 
-## 11. Próximo passo implementável (fatia vertical recomendada)
+## 14. Próximo passo implementável (fatia vertical recomendada)
 
 **F1 — espelho de hierarquia de agentes (write-only, best-effort):**
 
@@ -219,7 +325,7 @@ flowchart TB
 
 Gate: `./scripts/verify-backend-gates.sh` se tocar código; doc-only não exige.
 
-## 12. Referências
+## 15. Referências
 
 - [layer-mapping.md](./layer-mapping.md) — composition root e infra.
 - [module-catalog.md](./module-catalog.md) — contratos por módulo.
