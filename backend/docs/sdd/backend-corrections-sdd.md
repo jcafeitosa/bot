@@ -61,7 +61,7 @@ O teste de persistência `persistence::integration_tests::persist_dataset_round_
 
 O usuário aprovou explicitamente as sete interfaces propostas neste SDD na resposta “Aprovo as 7 interfaces propostas (recomendado)”. Esse acordo autoriza os seams para os testes correspondentes, mas não fornece evidência verificável de aprovação histórica de G1 nem, por si só, comprova a conclusão ou revisão de C0–C8. A implementação C0–C8 não incluiu remoção de arquivos legados, e este documento não declara os gates de C0–C8 aprovados; G1 permanece pendente de comprovação ou revisão própria. A remoção posterior é registrada separadamente como T-13 abaixo.
 
-Os arquivos legados `backend/exchanges/config/binance.toml`, `backend/migrations/0001_market_data.sql` e `backend/src/config/profiles.toml` foram removidos na entrega T-13, com design aprovado em `backend/docs/legacy-file-cleanup-sdd.md`. Permanecem como fontes ativas `backend/src/config/exchanges/binance.toml`, `backend/src/persistence/migrations/0001_market_data.sql` e os presets definidos em Rust. A limpeza documental não altera o estado dos demais gates deste SDD.
+Os arquivos legados `backend/exchanges/config/binance.toml`, `backend/migrations/0001_market_data.sql` e `backend/src/config/profiles.toml` foram removidos na entrega T-13, com design aprovado em `backend/docs/sdd/legacy-file-cleanup-sdd.md`. Permanecem como fontes ativas `backend/src/config/exchanges/binance.toml`, `backend/src/persistence/migrations/0001_market_data.sql` e os presets definidos em Rust. A limpeza documental não altera o estado dos demais gates deste SDD.
 
 ## Entregas possíveis após revisão
 

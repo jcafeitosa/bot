@@ -27,7 +27,7 @@ Antes da limpeza T-13, três arquivos versionados permaneciam em locais que não
 | `exchanges/config/binance.toml` | `load_registry` em `src/exchanges/bootstrap.rs` enumera apenas `src/config/exchanges`, ancorado em `CARGO_MANIFEST_DIR`. Testes de `account_file.rs` leem a mesma fonte ativa. O arquivo legado usa `[exchange]`, `[spot]` e `[futures]`, enquanto `ExchangeConfigFile` exige `exchange` e `[accounts.spot]`/`[accounts.futures]`. | Remover o arquivo legado; preservar `src/config/exchanges/binance.toml` e o carregamento fail-closed. |
 | `src/config/profiles.toml` | Nenhum caminho de produção carrega este TOML. `OperationMode::supported_timeframes` e `strategy::periods_for_mode` definem os presets em Rust; `Config::validate_operation_profile` os aplica. O teste em `config/mod.rs` até exige que o erro de preset não mencione `profiles.toml`. README já afirma que Rust é a fonte dos presets. | Remover o arquivo ilustrativo; preservar enums, períodos e validação atuais. |
 
-A busca textual recursiva no baseline anterior à remoção, em código, testes, `.github/workflows/backend-ci.yml`, `docker-compose.bot.yml`, README e docs, encontrou somente as referências acima e a menção dos três candidatos em `docs/backend-corrections-sdd.md`. O README então afirmava que `migrations/` não existia, mas o diretório ainda estava presente. A análise do repositório não prova que ferramentas externas não versionadas nunca usem esses caminhos; este é o risco residual para operadores.
+A busca textual recursiva no baseline anterior à remoção, em código, testes, `.github/workflows/backend-ci.yml`, `docker-compose.bot.yml`, README e docs, encontrou somente as referências acima e a menção dos três candidatos no atual `docs/sdd/backend-corrections-sdd.md`. O README então afirmava que `migrations/` não existia, mas o diretório ainda estava presente. A análise do repositório não prova que ferramentas externas não versionadas nunca usem esses caminhos; este é o risco residual para operadores.
 
 ## Seams públicos e comportamento preservado
 
@@ -56,7 +56,7 @@ Jev: não aplicável — a decisão é determinada por referências locais e com
 
 ## Validação proporcional e plano de CL
 
-**CL único e pequeno:** excluir os três arquivos legados e atualizar `backend/README.md` (incluindo a instrução SQLx) e `backend/docs/backend-corrections-sdd.md` para registrar a limpeza concluída. Preservar os três arquivos ativos citados e evitar refatorações adjacentes.
+**CL único e pequeno:** excluir os três arquivos legados e atualizar `backend/README.md` (incluindo a instrução SQLx) e o atual `backend/docs/sdd/backend-corrections-sdd.md` para registrar a limpeza concluída. Preservar os três arquivos ativos citados e evitar refatorações adjacentes.
 
 1. Antes da edição, registrar `git status --short`, comparação byte a byte das duas migrações e baseline de `cargo test`/comportamentos de configuração e registro. A remoção não introduz comportamento novo capaz de produzir um ciclo red/green útil; para este artefato não-code, a validação observável é comparar os comportamentos públicos antes e depois, além de verificar que a documentação aponta somente às fontes ativas. Se um novo teste de comportamento for necessário por achado do Critic, acordar primeiro o seam com o usuário e executar red/green.
 2. Remover os candidatos. Confirmar por `rg` que não restam referências operacionais aos caminhos removidos; permitir apenas registro histórico explícito em SDD/ADR. Confirmar que os arquivos ativos existem e estão inalterados.

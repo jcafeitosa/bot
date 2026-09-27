@@ -11,7 +11,7 @@ tags:
 
 - **Autor:** Builder de documentação `/root/docs_links_builder`
 - **Crítico:** `/root/docs_links_critic`, instância independente
-- **Estado:** G1 pendente
+- **Estado:** G1 aprovado por `/root/docs_links_critic`; G3 em revisão
 - **Data:** 2026-09-26
 
 ## Contexto e objetivo
