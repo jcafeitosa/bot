@@ -2,7 +2,7 @@
 
 Backend-only Rust trading bot operated through a terminal UI (Ratatui). There is no web frontend. The initial executable slice reads Binance Spot Test Network market data, calculates configurable SMA crossover signals, optionally asks Jev/TypeSafe for advisory evaluations, and renders state/logs in the terminal.
 
-> **Trading safety:** the current version does not submit orders. Production startup and testnet order mode are deliberately blocked pending adapter verification, risk controls, and order-idempotency/reconciliation tests. Do not interpret a displayed signal as a trading recommendation.
+> **Trading safety:** production order submission remains disabled. Testnet Spot orders are opt-in (`BOT_ORDERS_EXECUTION=live_exchange`, `BOT_ORDERS_EXCHANGE_SUBMIT=testnet`, `BINANCE_TESTNET_*`) and still require risk gates, idempotency, and reconciliation before any production use. Do not interpret a displayed signal as a trading recommendation.
 
 ## Initial modes and profiles
 
@@ -72,14 +72,16 @@ The REST adapter validates every completed candle in a returned window before th
 
 Monitor persistence is off when `PERSIST_MARKET_DATA` is absent, `0`, or `false`; `DATABASE_URL` is not read or used for monitor startup in that case. Set `PERSIST_MARKET_DATA=1` or `true` to require a dedicated `trading_bot` PostgreSQL database and a `1m` timeframe. Missing or invalid URL, wrong database, failed connection/health check, or failed migration stops the monitor before market connections or the TUI start. Startup errors omit the URL and credentials. Any other flag value is a configuration error. `backtest --persist` is independent of this flag. When enabled, 1m candles from REST windows (`monitor-rest`) and WS closes (`monitor-ws`) use the same `persist_dataset` path. The TUI shows archive `DEGRADED` until the first contiguous REST window is committed; `HEALTHY` means no known gap since that session baseline, not a complete historical archive. Failed or uncertain writes, pause, WS overflow or disconnection stay `DEGRADED` until a later contiguous REST window covers the suspect minute through the latest observed close and commits. A recovery window that starts after the suspect minute sets sticky `GAP`; inspect PostgreSQL and reconcile history externally before trusting the archive. A successful later WS candle or recent REST window does not repair `GAP`. The strategy and paper evaluation continue during archive degradation. A write times out after five seconds; Quit cancels an in-flight write. The current schema ignores conflicting OHLCV for an existing `(symbol,time_ms)`, so a successful commit does not prove byte-for-byte agreement with a prior row.
 
-### PostgreSQL integration test (ignored by default)
+### PostgreSQL integration tests (ignored by default)
+
+Stack local recomendado: TimescaleDB HA (`docker-compose.bot.yml`); banco **`trading_bot`**. Ver [docs/operations/postgres-and-graph-dev.md](docs/operations/postgres-and-graph-dev.md).
 
 ```sh
 DATABASE_URL='postgresql://user:pass@localhost:5432/trading_bot' \
-  cargo test persist_dataset_round_trip -- --ignored --nocapture
+  ./scripts/run-pg-integration-tests.sh
 ```
 
-CI (`.github/workflows/backend-ci.yml`) runs the same test in its PostgreSQL integration job with `DATABASE_URL` pointing at database `trading_bot`.
+Executa **14** testes `#[ignore]` de PG (scaffold, market persist, agents/bots/orders adapters, HTTP `state.rs` incl. boot espelhando `serve`). CI (`.github/workflows/backend-ci.yml`) usa `timescale/timescaledb-ha:pg16` e o mesmo script.
 
 Migrations load from `src/core/database/migrations/` (PostgreSQL 18+, TimescaleDB + pgvector via `0000_extensions.sql`). Optional Neo4j: set `BOT_AGENTS_ENABLED=true` and `BOT_NEO4J_*`; see `docker-compose.bot.yml` service `graph`. HTTP `POST /api/v1/bots/catalog/persist` writes to PostgreSQL when `DATABASE_URL` is healthy, otherwise in-memory.
 
@@ -94,20 +96,23 @@ cargo run -- serve --bind 127.0.0.1:8080 --config src/core/config/bot.toml
 # Optional: --with-monitor attaches a headless monitor for /api/v1/monitor/*
 ```
 
-Routes include agents, bots catalog/ranking, risk, strategy, backtest, portfolio, and `POST /api/v1/orders/submit` (fail-closed: 503 after risk passes). See [docs/index.md](docs/index.md).
+Mutating routes (agents lifecycle, bots catalog persist, bots runtime promote/demote, orders submit, `POST /api/v1/orders/reconciliation/poll`, monitor commands) honor optional `BOT_HTTP_ADMIN_TOKEN` when set; optional `BOT_HTTP_OWNER_ID` and `BOT_HTTP_AGENCY_ID` further restrict agent registration and agency-scoped agent routes. `GET /api/v1/meta` returns read-only `http_seams` (execution mode, admin/binding flags, bot runtime, live exchange wired). Orders: `GET /api/v1/orders/execution-status`, `GET /api/v1/orders/reconciliation/{client_order_id}`, `POST /api/v1/orders/submit` — default **503** `execution_disabled` after risk; **200** with `BOT_ORDERS_EXECUTION=paper`/`dev_accept` or wired `live_exchange` (see `.env.example` / [cli-and-config](docs/reference/cli-and-config.md)). See [docs/index.md](docs/index.md) and [module completeness audit](docs/planning/modules-completeness-audit.md).
 
 TUI: Space pauses/resumes market evaluation; `q` or Esc quits. Logs are structured to stderr and daily-rotated JSON files under `logs/`.
 
 ## Verify
 
 ```sh
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test
-./scripts/check-import-direction.sh
+./scripts/verify-backend-gates.sh
+# Gates + PG (when DATABASE_URL → trading_bot):
+./scripts/verify-backend-full.sh
 ```
 
+Runs `fmt`, `clippy` (`--bin bot`, `-D warnings`), import-direction check (incl. HTTP routes → `ApiState`/`http_bridge`, sem domínio direto), `cargo test --locked --bin bot -- --test-threads=1`, then five workspace integration suites (`backtest_fixture`, `config_cli`, `monitor_startup_cli`, `redirect_origin_test`, `redirect_policy_test`) — does **not** re-run the full workspace `cargo test --locked` (would parallelize bin `bot` again and flake). A mensagem final inclui o resumo `test result:` do bin `bot`. CI (`.github/workflows/backend-ci.yml`): job `rust` executa este script; job `postgres-integration` executa `run-pg-integration-tests.sh` (**14/14** PG). As of 2026-09-27: **339** unit tests in `bot`, **16** ignored (PostgreSQL×14 via `run-pg-integration-tests.sh` **14/14** — agents/bots/orders em `http_bridge` + `state.rs`; Neo4j + manual testnet fora do script). Module completeness audit: [docs/planning/modules-completeness-audit.md](docs/planning/modules-completeness-audit.md). Test matrix (incl. [bots runtime vs `serve` G2](docs/reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial)): [docs/reference/test-matrix.md](docs/reference/test-matrix.md). Checklists de itens ainda abertos: [agents G1](docs/sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist), [orders G2](docs/sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](docs/sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist). HTTP admin seam (não substitui auth owner): [docs/sdd/http-admin-auth-seam-sdd.md](docs/sdd/http-admin-auth-seam-sdd.md).
+
 ## Architecture
+
+Layer mapping (domain / application / infrastructure / presentation): [docs/architecture/layer-mapping.md](docs/architecture/layer-mapping.md). Module inventory and HTTP facades: [docs/architecture/module-catalog.md](docs/architecture/module-catalog.md) (§3d `http_bridge`, §3e `presentation::http`), [docs/architecture/integrations.md](docs/architecture/integrations.md).
 
 [main.rs](src/main.rs) is the composition root (`core`, `modules`, `presentation`). The monitor path loads [core::config](src/core/config/mod.rs), bootstraps persistence via [modules::monitor::controllers::startup](src/modules/monitor/controllers/startup.rs), then runs [modules::monitor::controllers::supervisor](src/modules/monitor/controllers/supervisor.rs). Exchange wiring lives under [modules::exchanges](src/modules/exchanges/mod.rs) (Binance REST, optional `1m` WS via [adapters/live](src/modules/exchanges/adapters/live.rs)). [modules::market](src/modules/market/mod.rs) merges hybrid candles; [modules::strategy](src/modules/strategy/mod.rs), [modules::risk](src/modules/risk/mod.rs), and optional [`core::providers::jev`](src/core/providers/jev/mod.rs) advisory notes. [presentation::terminal](src/presentation/terminal/mod.rs) renders the TUI. Opt-in [core::persistence](src/core/persistence/mod.rs) stores validated 1m datasets; [persistence_health](src/modules/monitor/controllers/persistence_health.rs) tracks session baseline/gaps.
 
@@ -118,12 +123,12 @@ For `backtest`, [modules::backtest::cli](src/modules/backtest/cli.rs) drives syn
 | Module | Responsibility |
 |---|---|
 | [core](src/core/mod.rs) | Shared `config`, `error`, `health`, `logging`, `notifications`, `persistence`, and `providers` (OpenAI-compatible clients + Jev). |
-| [modules](src/modules/mod.rs) | Domain modules: `market`, `monitor`, `exchanges`, `strategy`, `risk`, `portfolio`, `backtest`, `agents`, `bots`, `orders`; shared seams in [application_contracts](src/modules/application_contracts.rs). |
+| [modules](src/modules/mod.rs) | Domain modules: `market`, `monitor`, `exchanges`, `strategy`, `risk`, `portfolio`, `backtest`, `agents`, `bots`, `orders`; HTTP application facades in [http_bridge](src/modules/http_bridge/mod.rs); shared seams in [application_contracts](src/modules/application_contracts.rs). |
 | [presentation](src/presentation/mod.rs) | Terminal UI (`presentation::terminal`). |
 
 ### `modules::agents` (IdentityOnly foundation)
 
-Administrative agent identities live under [modules/agents](src/modules/agents/mod.rs): in-memory `AgentRegistry`, hierarchy validation (owner → CEO → Level B → Level A → specialist/worker), lifecycle transitions (pause/resume/retire) with an audit trail, and `run_advisory_step` delegating to [`core::providers::jev`](src/core/providers/jev/mod.rs) only when `AgentCapabilities.consult_jev` is set. Registering an agent does not start workers, tools, or LLM calls. Design: [docs/sdd/agents-module-sdd.md](docs/sdd/agents-module-sdd.md). PostgreSQL persistence and owner authentication remain blocked per [agents capability research](docs/research/agents-capability-research.md).
+Administrative agent identities live under [modules/agents](src/modules/agents/mod.rs): in-memory `AgentRegistry`, hierarchy validation (owner → CEO → Level B → Level A → specialist/worker), lifecycle transitions (pause/resume/retire) with an audit trail, and `run_advisory_step` delegating to [`core::providers::jev`](src/core/providers/jev/mod.rs) only when `AgentCapabilities.consult_jev` is set. Registering an agent does not start workers, tools, or LLM calls. Design: [docs/sdd/agents-module-sdd.md](docs/sdd/agents-module-sdd.md). Optional PostgreSQL mirror + cold-start hydrate when `DATABASE_URL` points at `trading_bot`; **owner authentication on HTTP remains blocked** per [agents capability research](docs/research/agents-capability-research.md).
 
 **Agents ≠ bots:** `modules/agents` is product **identity and governance** only. [`modules/bots`](src/modules/bots/mod.rs) holds versioned strategy×timeframe executors (catalog, ranking, HTTP); live runtime remains gated; catalog persist uses PostgreSQL when `DATABASE_URL` is healthy (see `PgBotCatalogStore`). [`modules/orders`](src/modules/orders/mod.rs) is a fail-closed order seam (`submit_order` validates risk then returns `ExecutionDisabled`). Do not confuse `bots`/`backtest::BotId` with [`modules/agents`](src/modules/agents/mod.rs) administrative identity. See [bots-module-sdd.md](docs/sdd/bots-module-sdd.md) and [agents-module-sdd.md](docs/sdd/agents-module-sdd.md).
 ### `modules::bots` and `modules::orders`

@@ -36,6 +36,21 @@ pub struct Position {
     pub average_entry_price: Decimal,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaperFillSide {
+    Buy,
+    Sell,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PaperFillLine {
+    pub symbol: String,
+    pub side: PaperFillSide,
+    pub quote_amount: f64,
+    /// Quote per one base unit; when set, contributes to `positions` in paper snapshots.
+    pub fill_unit_price: Option<f64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortfolioSnapshot {
     pub balances: Vec<WalletBalance>,

@@ -6,15 +6,17 @@ pub use crate::modules::bots::models::{
     BotDefinition, BotId, BotMetrics, BotRanking, EvaluationWindow, RunId, StrategyId,
     StrategyVersion,
 };
-use crate::modules::bots::models::{BotsError, StrategySpec};
+use crate::modules::bots::models::{BotsError, MonitorEvaluatorKind, StrategySpec};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StrategyDefinition {
     pub id: StrategyId,
     pub version: StrategyVersion,
     pub name: String,
     pub fast_period: usize,
     pub slow_period: usize,
+    #[serde(default)]
+    pub evaluator: MonitorEvaluatorKind,
 }
 
 impl StrategySpec for StrategyDefinition {
@@ -181,6 +183,8 @@ pub enum DomainError {
     IncompatibleRanking,
     CatalogStore(String),
     AggregateOverflow,
+    RuntimeDisabled,
+    RuntimeNotPromoted,
 }
 
 impl From<BotsError> for DomainError {
@@ -202,6 +206,8 @@ impl From<BotsError> for DomainError {
             BotsError::DuplicateRun => Self::DuplicateRun,
             BotsError::IncompatibleRanking => Self::IncompatibleRanking,
             BotsError::CatalogStore(message) => Self::CatalogStore(message),
+            BotsError::RuntimeDisabled => Self::RuntimeDisabled,
+            BotsError::RuntimeNotPromoted => Self::RuntimeNotPromoted,
         }
     }
 }

@@ -18,52 +18,66 @@ pub struct BinanceMarketData {
     exchange: Binance,
 }
 
+pub fn build_dev_spot_binance(
+    credentials: Credentials,
+    account: &AccountRegistration,
+) -> BotResult<Binance> {
+    if account.id.environment != Environment::Dev || account.id.market != MarketType::Spot {
+        return Err(BotError::Configuration(
+            "Binance dev Spot account required".into(),
+        ));
+    }
+    let rest_base = account
+        .rest_base_url
+        .as_deref()
+        .ok_or_else(|| BotError::Configuration("missing Spot REST endpoint".into()))?;
+    require_exact_spot_endpoint(Some(rest_base), "https", "/")
+        .map_err(|e| BotError::Configuration(e.to_string()))?;
+    let origin = reqwest::Url::parse(rest_base)
+        .map_err(|e| BotError::Configuration(format!("invalid Spot REST endpoint: {e}")))?
+        .origin()
+        .ascii_serialization();
+    let api_url = format!("{origin}/api/v3");
+    let mut builder = BinanceBuilder::new()
+        .sandbox(true)
+        .default_type("spot")
+        .timeout_secs(15)
+        .enable_rate_limit(true);
+    if let Some(key) = credentials.api_key {
+        builder = builder.api_key(key);
+    }
+    if let Some(secret) = credentials.secret {
+        builder = builder.secret(secret);
+    }
+    let mut exchange = builder.build().map_err(|e| {
+        BotError::Exchange(format!(
+            "cannot configure Binance {} adapter: {e}",
+            account.id.environment
+        ))
+    })?;
+    exchange
+        .base_mut()
+        .config
+        .url_overrides
+        .insert("public".into(), api_url.clone());
+    exchange
+        .base_mut()
+        .config
+        .url_overrides
+        .insert("private".into(), api_url.clone());
+    if exchange.get_rest_url_public() != api_url {
+        return Err(BotError::Configuration(
+            "Binance public REST endpoint does not match configured testnet origin".into(),
+        ));
+    }
+    Ok(exchange)
+}
+
 impl BinanceMarketData {
     pub fn new(credentials: Credentials, account: &AccountRegistration) -> BotResult<Self> {
-        if account.id.environment != Environment::Dev || account.id.market != MarketType::Spot {
-            return Err(BotError::Configuration(
-                "Binance market data requires a dev Spot account".into(),
-            ));
-        }
-        let rest_base = account
-            .rest_base_url
-            .as_deref()
-            .ok_or_else(|| BotError::Configuration("missing Spot REST endpoint".into()))?;
-        require_exact_spot_endpoint(Some(rest_base), "https", "/")
-            .map_err(|e| BotError::Configuration(e.to_string()))?;
-        let origin = reqwest::Url::parse(rest_base)
-            .map_err(|e| BotError::Configuration(format!("invalid Spot REST endpoint: {e}")))?
-            .origin()
-            .ascii_serialization();
-        let public_url = format!("{origin}/api/v3");
-        let mut builder = BinanceBuilder::new()
-            .sandbox(true)
-            .default_type("spot")
-            .timeout_secs(15)
-            .enable_rate_limit(true);
-        if let Some(key) = credentials.api_key {
-            builder = builder.api_key(key);
-        }
-        if let Some(secret) = credentials.secret {
-            builder = builder.secret(secret);
-        }
-        let mut exchange = builder.build().map_err(|e| {
-            BotError::Exchange(format!(
-                "cannot configure Binance {} adapter: {e}",
-                account.id.environment
-            ))
-        })?;
-        exchange
-            .base_mut()
-            .config
-            .url_overrides
-            .insert("public".into(), public_url.clone());
-        if exchange.get_rest_url_public() != public_url {
-            return Err(BotError::Configuration(
-                "Binance public REST endpoint does not match configured testnet origin".into(),
-            ));
-        }
-        Ok(Self { exchange })
+        Ok(Self {
+            exchange: build_dev_spot_binance(credentials, account)?,
+        })
     }
 }
 

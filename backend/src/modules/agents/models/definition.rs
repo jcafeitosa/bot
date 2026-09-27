@@ -12,6 +12,8 @@ pub enum AgentLifecycleState {
 pub struct AgentCapabilities {
     /// Explicit opt-in for Jev advisory; IdentityOnly agents keep this false.
     pub consult_jev: bool,
+    /// Explicit opt-in to authorize bot runtime promotion (`promoted_by` must match this agent).
+    pub promote_runtime_bot: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

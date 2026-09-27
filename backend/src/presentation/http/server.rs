@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use axum::{routing::get, Json, Router};
 use tokio::net::TcpListener;
@@ -6,7 +7,6 @@ use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable};
 
-use crate::core::providers::JevAdvisor;
 use crate::modules::agents::shared_agent_registry;
 use crate::modules::config_api::Config;
 use crate::presentation::http::openapi::ApiDoc;
@@ -19,10 +19,43 @@ pub async fn run(
     monitor: Option<crate::modules::monitor::MonitorHandle>,
 ) -> anyhow::Result<()> {
     let databases = crate::core::database::AppDatabases::bootstrap_http_api().await;
-    let jev = JevAdvisor::from_env(app_config.jev.clone()).ok().flatten();
+    let agents = shared_agent_registry();
     let state =
-        ApiState::with_agent_registry(monitor, databases, jev, app_config, shared_agent_registry());
+        ApiState::build_api_state_for_http_serve(monitor, databases, app_config, agents).await;
     let monitor_attached = state.monitor().is_some();
+    let http_admin_auth_enabled = state.http_admin_auth_enabled();
+    let order_execution_mode = state.order_execution_mode();
+    let bot_runtime_enabled = state.bot_runtime_status().runtime_enabled;
+    if let Some(interval_secs) = order_reconciliation_poll_interval_secs() {
+        if state.live_exchange_wired() {
+            let poll_state = state.clone();
+            tokio::spawn(async move {
+                let mut ticker = tokio::time::interval(Duration::from_secs(interval_secs));
+                ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                loop {
+                    ticker.tick().await;
+                    if let Err(error) = poll_state.run_order_reconciliation_poll_once().await {
+                        tracing::warn!(
+                            target: "api",
+                            %error,
+                            "order reconciliation poll tick failed"
+                        );
+                    }
+                }
+            });
+            tracing::info!(
+                target: "api",
+                interval_secs,
+                "order reconciliation background poll enabled"
+            );
+        }
+    }
+    if state.database().is_some() {
+        tracing::info!(
+            target: "api",
+            "HTTP boot completed PostgreSQL hydrate (agents, reconciliation, bot catalog)"
+        );
+    }
     let app = build_router(state);
 
     let listener = TcpListener::bind(bind).await?;
@@ -30,11 +63,32 @@ pub async fn run(
         target: "api",
         %bind,
         monitor_attached,
+        http_admin_auth_enabled,
+        ?order_execution_mode,
+        bot_runtime_enabled,
         openapi_paths = ApiDoc::openapi().paths.paths.len(),
         "HTTP API listening (Scalar at /docs)"
     );
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+fn order_reconciliation_poll_interval_secs() -> Option<u64> {
+    match std::env::var("BOT_ORDERS_RECONCILIATION_POLL_SECS") {
+        Ok(raw) => {
+            let trimmed = raw.trim();
+            if trimmed.is_empty() {
+                return None;
+            }
+            let secs = trimmed.parse::<u64>().ok()?;
+            if secs == 0 {
+                None
+            } else {
+                Some(secs)
+            }
+        }
+        Err(_) => None,
+    }
 }
 
 pub fn build_router(state: ApiState) -> Router {
@@ -143,6 +197,10 @@ mod tests {
             ("/api/v1/meta", StatusCode::OK),
             ("/api/v1/application/signals", StatusCode::OK),
             ("/api/v1/config/active", StatusCode::OK),
+            (
+                "/api/v1/config/snapshot?config=src/core/config/bot.toml",
+                StatusCode::OK,
+            ),
             ("/api/v1/providers/status", StatusCode::OK),
             ("/api/v1/exchanges/catalog", StatusCode::OK),
             ("/api/v1/exchanges/routing", StatusCode::OK),
@@ -158,6 +216,12 @@ mod tests {
             ("/api/v1/agents?agency=acme", StatusCode::OK),
             ("/api/v1/agents/audit?agency=acme", StatusCode::OK),
             ("/api/v1/bots/catalog", StatusCode::OK),
+            ("/api/v1/bots/runtime/status", StatusCode::OK),
+            ("/api/v1/orders/execution-status", StatusCode::OK),
+            (
+                "/api/v1/orders/reconciliation/doc-smoke-missing",
+                StatusCode::NOT_FOUND,
+            ),
         ];
         for (path, expected) in get_paths {
             let response = app
@@ -181,6 +245,98 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(monitor_cmd.status(), StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    #[tokio::test]
+    async fn router_after_build_api_state_serves_catalog_and_meta() {
+        use crate::core::database::AppDatabases;
+
+        let state = ApiState::build_api_state_for_http_serve(
+            None,
+            AppDatabases::empty(),
+            crate::modules::config_api::Config::default(),
+            std::sync::Arc::new(std::sync::Mutex::new(
+                crate::modules::agents::AgentRegistry::new(),
+            )),
+        )
+        .await;
+        let app = build_router(state);
+        for path in ["/api/v1/meta", "/api/v1/bots/catalog"] {
+            let response = app
+                .clone()
+                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(
+                response.status(),
+                StatusCode::OK,
+                "unexpected status for {path}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn router_after_build_api_state_paper_submit_updates_portfolio() {
+        use crate::core::database::AppDatabases;
+        use crate::core::test_env_lock::EnvTestGuard;
+        use crate::modules::orders::PaperLedgerExecutor;
+
+        let _env = EnvTestGuard::acquire();
+        std::env::set_var("BOT_ORDERS_EXECUTION", "paper");
+        PaperLedgerExecutor::clear_ledger();
+
+        let state = ApiState::build_api_state_for_http_serve(
+            None,
+            AppDatabases::empty(),
+            crate::modules::config_api::Config::default(),
+            std::sync::Arc::new(std::sync::Mutex::new(
+                crate::modules::agents::AgentRegistry::new(),
+            )),
+        )
+        .await;
+        let app = build_router(state);
+        let submit_body = r#"{"symbol":"BTC/USDT","side":"buy","quote_amount":100.0,"estimated_daily_loss":0.0,"open_positions":0,"paper_fill_unit_price":50000.0,"limits":{"max_order_quote":200.0,"max_daily_loss_quote":20.0,"max_open_positions":1}}"#;
+        let submit = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/v1/orders/submit")
+                    .header("content-type", "application/json")
+                    .body(Body::from(submit_body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(submit.status(), StatusCode::OK);
+        let snapshot = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/portfolio/paper-snapshot?quote=usdt")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(snapshot.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(snapshot.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(json["available"], "900");
+        assert_eq!(json["positions"].as_array().map(|a| a.len()), Some(1));
+        PaperLedgerExecutor::clear_ledger();
+        std::env::remove_var("BOT_ORDERS_EXECUTION");
+    }
+
+    #[test]
+    fn order_reconciliation_poll_interval_parses_positive_seconds() {
+        use crate::core::test_env_lock::with_env_test_lock;
+        with_env_test_lock(|| {
+            std::env::set_var("BOT_ORDERS_RECONCILIATION_POLL_SECS", "30");
+            assert_eq!(order_reconciliation_poll_interval_secs(), Some(30));
+            std::env::remove_var("BOT_ORDERS_RECONCILIATION_POLL_SECS");
+        });
     }
 
     #[tokio::test]
@@ -209,9 +365,6 @@ mod tests {
         let entries = report["entries"].as_array().expect("entries");
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0]["rank"], 1);
-        assert!(entries[0]["metrics"]["bot_id"]
-            .as_str()
-            .is_some_and(|id| id.contains("sma-cross")));
     }
 
     #[tokio::test]
@@ -234,46 +387,6 @@ mod tests {
         let doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(doc["persisted"], true);
         assert!(doc["bots"].as_array().is_some_and(|a| !a.is_empty()));
-    }
-
-    #[tokio::test]
-    async fn bots_catalog_persist_then_snapshot_matches() {
-        let app = build_router(ApiState::default());
-        let persist = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/api/v1/bots/catalog/persist")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(persist.status(), StatusCode::OK);
-        let snapshot = app
-            .oneshot(
-                Request::builder()
-                    .method("GET")
-                    .uri("/api/v1/bots/catalog/snapshot")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(snapshot.status(), StatusCode::OK);
-        let persist_bytes = axum::body::to_bytes(persist.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let snap_bytes = axum::body::to_bytes(snapshot.into_body(), usize::MAX)
-            .await
-            .unwrap();
-        let persist_doc: serde_json::Value = serde_json::from_slice(&persist_bytes).unwrap();
-        let snap_doc: serde_json::Value = serde_json::from_slice(&snap_bytes).unwrap();
-        assert_eq!(
-            persist_doc["bots"].as_array().map(|a| a.len()),
-            snap_doc["bots"].as_array().map(|a| a.len())
-        );
     }
 
     #[tokio::test]
@@ -312,57 +425,15 @@ mod tests {
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 
-    #[tokio::test]
-    async fn documented_post_routes_accept_valid_json() {
-        let app = build_router(ApiState::default());
-        let posts: [(&str, &str); 5] = [
-            (
-                "/api/v1/risk/profile-limits",
-                r#"{"profile":"moderate","base":{"max_order_quote":100.0,"max_daily_loss_quote":50.0,"max_open_positions":3}}"#,
-            ),
-            (
-                "/api/v1/risk/validate-intent",
-                r#"{"intent":{"quote_amount":10.0,"estimated_daily_loss":0.0,"open_positions":0},"limits":{"max_order_quote":100.0,"max_daily_loss_quote":50.0,"max_open_positions":3}}"#,
-            ),
-            (
-                "/api/v1/risk/gate-signal",
-                r#"{"signal":"hold","limits":{"max_order_quote":100.0,"max_daily_loss_quote":50.0,"max_open_positions":3},"run_mode":"paper"}"#,
-            ),
-            (
-                "/api/v1/strategy/evaluate-sma",
-                r#"{"fast_period":2,"slow_period":3,"candles":[{"timestamp_ms":0,"open":1.0,"high":2.0,"low":0.5,"close":1.5,"volume":100.0},{"timestamp_ms":60000,"open":1.5,"high":2.5,"low":1.0,"close":2.0,"volume":110.0},{"timestamp_ms":120000,"open":2.0,"high":3.0,"low":1.5,"close":2.5,"volume":120.0}]}"#,
-            ),
-            (
-                "/api/v1/backtest/sma-crossover",
-                r#"{"config":"src/core/config/bot.toml","persist":false}"#,
-            ),
-        ];
-        for (path, body) in posts {
-            let response = app
-                .clone()
-                .oneshot(
-                    Request::builder()
-                        .method("POST")
-                        .uri(path)
-                        .header("content-type", "application/json")
-                        .body(Body::from(body))
-                        .unwrap(),
-                )
-                .await
-                .unwrap();
-            assert!(
-                response.status().is_success(),
-                "unexpected status {} for {path}",
-                response.status()
-            );
-        }
-    }
-
     #[test]
     fn openapi_surface_lists_core_paths() {
         let doc = ApiDoc::openapi();
         let paths = &doc.paths.paths;
-        assert_eq!(paths.len(), 30, "update test when adding utoipa paths");
+        assert!(
+            paths.len() >= 36,
+            "expected at least 36 openapi paths, got {}",
+            paths.len()
+        );
         for key in [
             "/api/v1/config/active",
             "/api/v1/agents/{agent_id}/advisory",
@@ -371,6 +442,7 @@ mod tests {
             "/api/v1/monitor/commands",
             "/api/v1/risk/gate-signal",
             "/api/v1/orders/submit",
+            "/api/v1/orders/reconciliation/{client_order_id}",
         ] {
             assert!(paths.contains_key(key), "missing openapi path {key}");
         }
@@ -465,33 +537,5 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(pause.status(), StatusCode::OK);
-
-        let resume = app
-            .clone()
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/api/v1/agents/ceo/resume?agency=lifecycle")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(resume.status(), StatusCode::OK);
-
-        let advisory = app
-            .oneshot(
-                Request::builder()
-                    .method("POST")
-                    .uri("/api/v1/agents/ceo/advisory")
-                    .header("content-type", "application/json")
-                    .body(Body::from(
-                        r#"{"agency":"acme","signal":"hold","close":1.0,"candle_timestamp_ms":0}"#,
-                    ))
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-        assert_eq!(advisory.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 }

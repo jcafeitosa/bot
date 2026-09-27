@@ -139,6 +139,7 @@ mod tests {
     async fn pg_catalog_store_round_trip() {
         use crate::core::persistence::Database;
         use crate::modules::backtest::models::StrategyDefinition;
+        use crate::modules::bots::models::MonitorEvaluatorKind;
         use crate::modules::bots::{build_catalog_from_config, persist_catalog_snapshot};
 
         let db = Database::connect_from_env().await.expect("DATABASE_URL");
@@ -150,6 +151,7 @@ mod tests {
             name: "SMA".into(),
             fast_period: 5,
             slow_period: 20,
+            evaluator: MonitorEvaluatorKind::default(),
         };
         let mut config = crate::core::config::Config {
             operation: OperationMode::DayTrader,
@@ -162,6 +164,16 @@ mod tests {
             .expect("persist snapshot");
         let loaded = store.load_catalog().await.expect("load");
         assert_eq!(built.len(), loaded.len());
-        assert_eq!(built[0].id, loaded[0].id);
+        for entry in &built {
+            let round_tripped = loaded
+                .iter()
+                .find(|row| row.id == entry.id)
+                .expect("load_catalog missing bot_id present in snapshot");
+            assert_eq!(entry.strategy_id, round_tripped.strategy_id);
+            assert_eq!(entry.strategy_version, round_tripped.strategy_version);
+            assert_eq!(entry.timeframe, round_tripped.timeframe);
+            assert_eq!(entry.symbol, round_tripped.symbol);
+            assert_eq!(entry.operation, round_tripped.operation);
+        }
     }
 }

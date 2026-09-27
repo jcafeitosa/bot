@@ -36,6 +36,8 @@ pub struct RegisterAgentRequest {
     pub supervisor: SupervisorRefBody,
     #[serde(default)]
     pub consult_jev: bool,
+    #[serde(default)]
+    pub promote_runtime_bot: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema)]
@@ -57,6 +59,7 @@ pub struct AgentResponse {
     pub role: String,
     pub state: String,
     pub consult_jev: bool,
+    pub promote_runtime_bot: bool,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
 }
@@ -143,6 +146,7 @@ fn map_agent(def: &crate::modules::agents::AgentDefinition) -> AgentResponse {
         role: def.role.to_string(),
         state: format!("{:?}", def.state),
         consult_jev: def.capabilities.consult_jev,
+        promote_runtime_bot: def.capabilities.promote_runtime_bot,
         created_at_ms: def.created_at_ms,
         updated_at_ms: def.updated_at_ms,
     }
@@ -161,6 +165,7 @@ pub fn register_agent(
         supervisor: parse_supervisor(body.supervisor)?,
         capabilities: AgentCapabilities {
             consult_jev: body.consult_jev,
+            promote_runtime_bot: body.promote_runtime_bot,
         },
     };
     let at_ms = Utc::now().timestamp_millis();
@@ -337,4 +342,230 @@ pub async fn persist_identity_rows(
         .await
         .map_err(AgentsError::Persistence)?;
     Ok(())
+}
+
+pub async fn write_through_agent_identity(
+    registry: &AgentRegistry,
+    postgres: Option<&PostgresDatabase>,
+    agency_raw: &str,
+    agent_raw: &str,
+) -> Result<(), AgentsError> {
+    let Some(postgres) = postgres else {
+        return Ok(());
+    };
+    let (definition, event) = snapshot_for_persist(registry, agency_raw, agent_raw)?;
+    persist_identity_rows(postgres, &definition, &event).await
+}
+
+pub async fn load_agent_identity_snapshot(
+    postgres: &PostgresDatabase,
+) -> Result<
+    (
+        Vec<crate::modules::agents::AgentDefinition>,
+        Vec<crate::modules::agents::IdentityAuditEvent>,
+    ),
+    AgentsError,
+> {
+    let store = PgAgentIdentityStore::new(postgres);
+    store
+        .load_snapshot()
+        .await
+        .map_err(AgentsError::Persistence)
+}
+
+pub fn apply_agent_identity_snapshot(
+    registry: &mut AgentRegistry,
+    agents: Vec<crate::modules::agents::AgentDefinition>,
+    audit: Vec<crate::modules::agents::IdentityAuditEvent>,
+) -> Result<(), AgentsError> {
+    if agents.is_empty() || !registry.is_empty() {
+        return Ok(());
+    }
+    registry.restore_from_snapshot(agents, audit)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod apply_snapshot_tests {
+    use super::*;
+    use crate::modules::agents::{
+        AgencyId, AgentCapabilities, AgentDefinition, AgentId, AgentLifecycleState, AgentRegistry,
+        AgentRole, NewAgentSpec, OwnerId, SupervisorRef,
+    };
+
+    fn agency() -> AgencyId {
+        AgencyId::new("acme").unwrap()
+    }
+
+    fn owner() -> OwnerId {
+        OwnerId::new("owner-1").unwrap()
+    }
+
+    #[test]
+    fn apply_snapshot_noops_on_empty_agents() {
+        let mut registry = AgentRegistry::new();
+        assert!(apply_agent_identity_snapshot(&mut registry, vec![], vec![]).is_ok());
+        assert!(registry.is_empty());
+    }
+
+    #[test]
+    fn apply_snapshot_skips_when_registry_not_empty() {
+        let mut registry = AgentRegistry::new();
+        let spec = NewAgentSpec {
+            id: AgentId::new("ceo").unwrap(),
+            agency: agency(),
+            owner: owner(),
+            display_name: "CEO".into(),
+            role: AgentRole::Ceo,
+            supervisor: SupervisorRef::Owner(owner()),
+            capabilities: AgentCapabilities::default(),
+        };
+        registry.register(spec, 1).unwrap();
+        let from_pg = AgentDefinition {
+            id: AgentId::new("from-pg").unwrap(),
+            agency: agency(),
+            owner: owner(),
+            display_name: "PG".into(),
+            role: AgentRole::Ceo,
+            supervisor: SupervisorRef::Owner(owner()),
+            state: AgentLifecycleState::Active,
+            capabilities: AgentCapabilities::default(),
+            created_at_ms: 0,
+            updated_at_ms: 0,
+        };
+        assert!(apply_agent_identity_snapshot(&mut registry, vec![from_pg], vec![]).is_ok());
+        assert!(registry
+            .get(&agency(), &AgentId::new("from-pg").unwrap())
+            .is_err());
+    }
+}
+
+#[cfg(test)]
+mod register_tests {
+    use super::*;
+    use crate::modules::agents::AgentRegistry;
+
+    #[test]
+    fn register_agent_maps_promote_runtime_bot_capability() {
+        let mut registry = AgentRegistry::new();
+        let response = register_agent(
+            &mut registry,
+            RegisterAgentRequest {
+                agency: "acme".into(),
+                owner_id: "owner-1".into(),
+                agent_id: "promoter".into(),
+                display_name: "Promoter".into(),
+                role: AgentRoleBody::Ceo,
+                supervisor: SupervisorRefBody::Owner {
+                    owner_id: "owner-1".into(),
+                },
+                consult_jev: false,
+                promote_runtime_bot: true,
+            },
+        )
+        .expect("register");
+        assert!(response.promote_runtime_bot);
+    }
+}
+
+#[cfg(test)]
+mod pg_write_through_tests {
+    use super::*;
+    use crate::modules::agents::models::IdentityEventKind;
+    use crate::modules::agents::{AgentLifecycleState, AgentRegistry};
+
+    #[tokio::test]
+    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
+    async fn pg_agent_lifecycle_write_through_round_trip() {
+        use crate::core::persistence::Database;
+
+        let db = Database::connect_from_env().await.expect("DATABASE_URL");
+        db.migrate().await.expect("migrate");
+        let postgres = db.as_postgres();
+
+        let mut registry = AgentRegistry::new();
+        register_agent(
+            &mut registry,
+            RegisterAgentRequest {
+                agency: "agency-wt".into(),
+                owner_id: "owner-wt".into(),
+                agent_id: "ceo-wt".into(),
+                display_name: "CEO".into(),
+                role: AgentRoleBody::Ceo,
+                supervisor: SupervisorRefBody::Owner {
+                    owner_id: "owner-wt".into(),
+                },
+                consult_jev: false,
+                promote_runtime_bot: true,
+            },
+        )
+        .expect("register");
+        write_through_agent_identity(&registry, Some(postgres), "agency-wt", "ceo-wt")
+            .await
+            .expect("write-through register");
+
+        pause(&mut registry, "agency-wt", "ceo-wt").expect("pause");
+        write_through_agent_identity(&registry, Some(postgres), "agency-wt", "ceo-wt")
+            .await
+            .expect("write-through pause");
+
+        let (agents, audit) = load_agent_identity_snapshot(postgres)
+            .await
+            .expect("load snapshot");
+        let loaded = agents
+            .iter()
+            .find(|agent| agent.id.as_str() == "ceo-wt")
+            .expect("agent row from PG");
+        assert_eq!(loaded.state, AgentLifecycleState::Paused);
+        assert!(loaded.capabilities.promote_runtime_bot);
+        for kind in [IdentityEventKind::Registered, IdentityEventKind::Paused] {
+            assert!(
+                audit
+                    .iter()
+                    .any(|event| event.agent_id.as_str() == "ceo-wt" && event.kind == kind),
+                "expected {:?} in PG audit",
+                kind
+            );
+        }
+    }
+
+    #[tokio::test]
+    #[ignore = "requires DATABASE_URL pointing at PostgreSQL 18+ database trading_bot with migrations applied"]
+    async fn pg_cold_start_apply_snapshot_after_write_through() {
+        use crate::core::persistence::Database;
+
+        let db = Database::connect_from_env().await.expect("DATABASE_URL");
+        db.migrate().await.expect("migrate");
+        let postgres = db.as_postgres();
+
+        let mut registry = AgentRegistry::new();
+        register_agent(
+            &mut registry,
+            RegisterAgentRequest {
+                agency: "agency-cold".into(),
+                owner_id: "owner-cold".into(),
+                agent_id: "ceo-cold".into(),
+                display_name: "CEO".into(),
+                role: AgentRoleBody::Ceo,
+                supervisor: SupervisorRefBody::Owner {
+                    owner_id: "owner-cold".into(),
+                },
+                consult_jev: true,
+                promote_runtime_bot: false,
+            },
+        )
+        .expect("register");
+        write_through_agent_identity(&registry, Some(postgres), "agency-cold", "ceo-cold")
+            .await
+            .expect("write-through");
+
+        let (agents, audit) = load_agent_identity_snapshot(postgres).await.expect("load");
+        let mut cold_registry = AgentRegistry::new();
+        apply_agent_identity_snapshot(&mut cold_registry, agents, audit).expect("hydrate");
+        let listed = list_agents(&cold_registry, "agency-cold").expect("list");
+        assert_eq!(listed.agents.len(), 1);
+        assert_eq!(listed.agents[0].agent_id, "ceo-cold");
+        assert!(listed.agents[0].consult_jev);
+        assert_eq!(listed.agents[0].state, "Active");
+    }
 }

@@ -2,9 +2,9 @@ pub mod controllers;
 pub mod models;
 
 pub use crate::modules::application_contracts::Signal;
-pub use controllers::evaluate;
 #[allow(unused_imports)]
 pub use controllers::periods_for_mode;
+pub use controllers::{evaluate, evaluate_for_kind};
 pub use models::StrategySnapshot;
 
 #[cfg(test)]

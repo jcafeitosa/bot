@@ -1,5 +1,7 @@
 pub mod account_file;
 pub mod binance;
+pub mod binance_spot_testnet_reconcile;
+pub mod binance_spot_testnet_submit;
 pub mod live;
 
 #[allow(unused_imports)]

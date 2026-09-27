@@ -2,8 +2,8 @@ use crate::core::config::OperationMode;
 use crate::modules::backtest::models::StrategyDefinition;
 use crate::modules::bots::{
     build_catalog_from_config, full_ranking, persist_catalog_snapshot, rank_bots, BotCatalogStore,
-    BotId, BotIdentity, BotMetrics, BotsError, EvaluationWindow, InMemoryBotCatalogStore, RunId,
-    StrategyId, StrategyVersion,
+    BotId, BotIdentity, BotMetrics, BotsError, EvaluationWindow, InMemoryBotCatalogStore,
+    MonitorEvaluatorKind, RunId, StrategyId, StrategyVersion,
 };
 
 fn metric(strategy: &str, timeframe: &str, run: &str, pnl: f64) -> BotMetrics {
@@ -86,6 +86,7 @@ fn catalog_lists_strategy_timeframe_combos_for_mode() {
         name: "SMA".into(),
         fast_period: 5,
         slow_period: 20,
+        evaluator: MonitorEvaluatorKind::default(),
     };
     let mut config = crate::core::config::Config {
         operation: OperationMode::Scalper,
@@ -108,6 +109,7 @@ async fn in_memory_catalog_store_round_trip() {
         name: "SMA".into(),
         fast_period: 5,
         slow_period: 20,
+        evaluator: MonitorEvaluatorKind::default(),
     };
     let mut config = crate::core::config::Config {
         operation: OperationMode::DayTrader,
@@ -121,5 +123,41 @@ async fn in_memory_catalog_store_round_trip() {
         .unwrap();
     let loaded = store.load_catalog().await.unwrap();
     assert_eq!(built.len(), loaded.len());
-    assert_eq!(built[0].id, loaded[0].id);
+    for entry in &built {
+        let round_tripped = loaded
+            .iter()
+            .find(|row| row.id == entry.id)
+            .expect("load_catalog missing bot_id present in snapshot");
+        assert_eq!(entry.id, round_tripped.id);
+        assert_eq!(entry.operation, round_tripped.operation);
+    }
+}
+
+#[test]
+fn fail_closed_runtime_rejects_promotion() {
+    use crate::modules::bots::{BotRuntimePort, FailClosedBotRuntime, PromoteBotRequest};
+    let runtime = FailClosedBotRuntime;
+    assert!(!runtime.status().runtime_enabled);
+    let err = runtime
+        .promote(PromoteBotRequest {
+            bot_id: "sma-cross@1:5m:BTCUSDT".into(),
+            promoted_by: "owner-1".into(),
+        })
+        .unwrap_err();
+    assert_eq!(err, BotsError::RuntimeDisabled);
+}
+
+#[test]
+fn in_memory_runtime_promote_and_demote() {
+    use crate::modules::bots::{BotRuntimePort, InMemoryBotRuntime, PromoteBotRequest};
+    let runtime = InMemoryBotRuntime::new();
+    let record = runtime
+        .promote(PromoteBotRequest {
+            bot_id: "sma-cross@1:5m:BTCUSDT".into(),
+            promoted_by: "owner-1".into(),
+        })
+        .expect("promote");
+    assert_eq!(runtime.status().active.as_ref(), Some(&record));
+    runtime.demote().expect("demote");
+    assert!(runtime.status().active.is_none());
 }

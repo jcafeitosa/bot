@@ -88,7 +88,10 @@ mod tests {
             display_name: "Analyst".into(),
             role: AgentRole::Ceo,
             supervisor: SupervisorRef::Owner(OwnerId::new("owner-1").unwrap()),
-            capabilities: AgentCapabilities { consult_jev: true },
+            capabilities: AgentCapabilities {
+                consult_jev: true,
+                promote_runtime_bot: false,
+            },
         };
         {
             let registry = shared_agent_registry();
@@ -126,7 +129,10 @@ mod tests {
             display_name: "Analyst".into(),
             role: AgentRole::Ceo,
             supervisor: SupervisorRef::Owner(OwnerId::new("owner-1").unwrap()),
-            capabilities: AgentCapabilities { consult_jev: true },
+            capabilities: AgentCapabilities {
+                consult_jev: true,
+                promote_runtime_bot: false,
+            },
         };
         {
             let registry = shared_agent_registry();

@@ -13,6 +13,10 @@ pub struct SubmitOrderRequest<'a> {
     pub quote_amount: f64,
     pub estimated_daily_loss: f64,
     pub open_positions: usize,
+    /// Paper ledger: quote per base unit for portfolio positions (overrides `BOT_PAPER_FILL_UNIT_PRICE`).
+    pub paper_fill_unit_price: Option<f64>,
+    /// Exchange idempotency key when wired (testnet `newClientOrderId`).
+    pub client_order_id: Option<&'a str>,
 }
 
 impl<'a> SubmitOrderRequest<'a> {
@@ -29,6 +33,13 @@ impl<'a> SubmitOrderRequest<'a> {
             return Err(OrdersError::InvalidRequest(
                 "estimated_daily_loss must be finite and non-negative".into(),
             ));
+        }
+        if let Some(price) = self.paper_fill_unit_price {
+            if !price.is_finite() || price <= 0.0 {
+                return Err(OrdersError::InvalidRequest(
+                    "paper_fill_unit_price must be finite and positive when set".into(),
+                ));
+            }
         }
         Ok(())
     }

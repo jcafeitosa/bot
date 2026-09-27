@@ -5,4 +5,7 @@ use crate::modules::agents::models::{AgentDefinition, IdentityAuditEvent};
 pub trait AgentIdentityStore {
     async fn upsert_agent(&self, definition: &AgentDefinition) -> Result<(), String>;
     async fn append_event(&self, event: &IdentityAuditEvent) -> Result<(), String>;
+    async fn load_snapshot(
+        &self,
+    ) -> Result<(Vec<AgentDefinition>, Vec<IdentityAuditEvent>), String>;
 }

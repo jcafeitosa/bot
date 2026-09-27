@@ -12,6 +12,14 @@ poll_seconds = 15
 [strategy]
 sma_fast = 5
 sma_slow = 20
+# Optional extra monitor/catalog strategies:
+# [[strategy.monitor_registry]]
+# id = "sma-cross"
+# version = 2
+# name = "SMA crossover alt"
+# fast_period = 3
+# slow_period = 15
+# evaluator = "ema_cross"  # optional; default sma_cross
 
 [risk]
 max_order_quote = 25.0

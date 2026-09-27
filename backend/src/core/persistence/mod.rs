@@ -114,6 +114,39 @@ mod migration_scaffold_tests {
         }
     }
 
+    const ORDER_IDEMPOTENCY_SQL: &str =
+        include_str!("../database/migrations/0004_order_idempotency_keys.sql");
+
+    #[test]
+    fn migration_order_idempotency_sql_declares_table() {
+        assert!(
+            ORDER_IDEMPOTENCY_SQL.contains("order_idempotency_keys"),
+            "0004 must define order_idempotency_keys"
+        );
+    }
+
+    const AGENT_PROMOTE_RUNTIME_SQL: &str =
+        include_str!("../database/migrations/0005_agent_promote_runtime_bot.sql");
+
+    #[test]
+    fn migration_agent_promote_runtime_sql_adds_column() {
+        assert!(
+            AGENT_PROMOTE_RUNTIME_SQL.contains("promote_runtime_bot"),
+            "0005 must add promote_runtime_bot to agent_identities"
+        );
+    }
+
+    const ORDER_RECONCILIATION_SQL: &str =
+        include_str!("../database/migrations/0006_order_reconciliation.sql");
+
+    #[test]
+    fn migration_order_reconciliation_sql_declares_table() {
+        assert!(
+            ORDER_RECONCILIATION_SQL.contains("order_reconciliation"),
+            "0006 must define order_reconciliation"
+        );
+    }
+
     #[tokio::test]
     #[ignore = "requires DATABASE_URL pointing at PostgreSQL database trading_bot"]
     async fn postgres_scaffold_tables_exist_after_migrate() {
@@ -125,11 +158,28 @@ mod migration_scaffold_tests {
             "agent_identities",
             "agent_identity_events",
             "bot_catalog_entries",
+            "order_idempotency_keys",
+            "order_reconciliation",
         ] {
             assert!(
                 db.table_exists(table).await.expect("table_exists query"),
                 "missing table {table} after migrate"
             );
         }
+        let promote_col = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'agent_identities'
+                  AND column_name = 'promote_runtime_bot'
+            )",
+        )
+        .fetch_one(db.pool())
+        .await
+        .expect("column_exists query");
+        assert!(
+            promote_col,
+            "missing agent_identities.promote_runtime_bot after migration 0005"
+        );
     }
 }

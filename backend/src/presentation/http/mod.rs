@@ -1,7 +1,11 @@
 #![allow(dead_code)]
+pub mod admin_auth;
 pub mod cli;
 pub mod error;
+#[cfg(test)]
+mod http_integration_tests;
 pub mod openapi;
+pub mod order_execution;
 pub mod routes;
 pub mod server;
 pub mod state;

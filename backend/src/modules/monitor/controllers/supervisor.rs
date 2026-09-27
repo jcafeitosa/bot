@@ -7,12 +7,14 @@ use tokio::{
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
-use crate::modules::monitor::controllers::dashboard_mapping::{new_dashboard, terminal_market_row};
+use crate::modules::monitor::controllers::dashboard_mapping::{
+    monitor_snapshot_from_dashboard, new_dashboard, terminal_market_row,
+};
 use crate::modules::monitor::views::presentation_contract::MonitorCommand;
 use crate::modules::monitor::views::terminal_dashboard::{AppEvent, Dashboard, MonitorState};
 use crate::modules::monitor::MonitorHandle;
 use crate::{
-    core::config::Config,
+    core::config::{Config, RunMode},
     core::error::{BotError, BotResult},
     core::notifications::{LogNotifier, Notification, Notifier, Severity},
     core::persistence::Database,
@@ -36,12 +38,51 @@ use crate::{
             HybridCandleFeed,
         },
         monitor::controllers::persistence_health::{PersistenceHealth, PersistenceState},
-        orders::{submit_order, FailClosedExecutor, OrderSide, OrdersError, SubmitOrderRequest},
+        orders::{
+            live_exchange_submit_backend_enabled, submit_order, ExchangeSpotExecutor,
+            FailClosedExecutor, OrderExecutionPort, OrderSide, OrdersError, PaperLedgerExecutor,
+            SubmitOrderRequest,
+        },
         portfolio::Asset,
         risk::{gate_signal, profile_limits, ExecutionContext, RiskLimits},
-        strategy::{evaluate, Signal, StrategySnapshot},
+        strategy::{evaluate_for_kind, Signal, StrategySnapshot},
     },
 };
+
+fn monitor_spot_client_order_id(symbol: &str, candle_timestamp_ms: i64, side: OrderSide) -> String {
+    let compact = symbol.replace('/', "");
+    let side_label = match side {
+        OrderSide::Buy => "buy",
+        OrderSide::Sell => "sell",
+    };
+    format!("mon:{compact}:{candle_timestamp_ms}:{side_label}")
+}
+
+fn record_monitor_spot_submit_reconciliation(client_order_id: &str, symbol: &str, side: OrderSide) {
+    use crate::modules::orders::{
+        recording_bind_client_exchange, shared_live_order_reconciliation_ledger,
+        take_last_spot_submit_ack, try_mirror_reconciliation_upsert, OrderReconciliationLedger,
+    };
+    let ledger = shared_live_order_reconciliation_ledger();
+    if ledger.mark_pending(client_order_id, symbol, side).is_err() {
+        // duplicate client_order_id for same candle/side — keep best-effort binding only
+    }
+    if let Some(ack) = take_last_spot_submit_ack() {
+        recording_bind_client_exchange(client_order_id, &ack.exchange_order_id);
+        let _ = ledger.confirm_exchange_order(client_order_id, &ack.exchange_order_id);
+    }
+    if let Some(state) = ledger.state(client_order_id) {
+        let _ = try_mirror_reconciliation_upsert(client_order_id, symbol, side, &state);
+    }
+}
+
+fn paper_fill_unit_price_from_close(close: f64) -> Option<f64> {
+    if close.is_finite() && close > 0.0 {
+        Some(close)
+    } else {
+        None
+    }
+}
 
 async fn persist_polled_1m_window(
     db: &Database,
@@ -98,6 +139,7 @@ async fn apply_strategy_snapshot(
     snapshot: StrategySnapshot,
     note: Option<String>,
     feed_source: &str,
+    promoted_bot_id: Option<String>,
     settings: &EvaluationSettings<'_>,
     execution_ctx: &mut ExecutionContext,
     dashboard: &mut Dashboard,
@@ -119,7 +161,7 @@ async fn apply_strategy_snapshot(
         "Market candle evaluated"
     );
     let bot_signal = BotSignal {
-        bot_id: None,
+        bot_id: promoted_bot_id,
         signal: snapshot.signal,
     };
     info!(target: "strategy", bot_signal=?bot_signal, fast_sma=?snapshot.fast_sma, slow_sma=?snapshot.slow_sma, "Strategy state");
@@ -136,30 +178,61 @@ async fn apply_strategy_snapshot(
                 info!(target: "exchanges", error=%e, transport=?RestUse::OrderSubmit.transport(), "Order REST path blocked by execution policy");
             }
         }
+        let open_positions_at_intent = execution_ctx.open_positions;
         match gate_signal(snapshot.signal, *limits, config.run_mode, execution_ctx) {
             Ok(()) => {
-                warn!(
-                    target: "risk",
-                    environment=%config.environment,
-                    mode=%config.run_mode,
-                    quote_cap=limits.max_order_quote,
-                    open_positions=execution_ctx.open_positions,
-                    "Strategy intent passed risk gate; live orders remain disabled in v1"
-                );
+                let spot_seam =
+                    config.run_mode == RunMode::Testnet && live_exchange_submit_backend_enabled();
+                if config.run_mode != RunMode::Paper && !spot_seam {
+                    warn!(
+                        target: "risk",
+                        environment=%config.environment,
+                        mode=%config.run_mode,
+                        quote_cap=limits.max_order_quote,
+                        open_positions=execution_ctx.open_positions,
+                        "Strategy intent passed risk gate; order execution remains fail-closed"
+                    );
+                }
                 let side = match snapshot.signal {
                     Signal::Buy => OrderSide::Buy,
                     Signal::Sell => OrderSide::Sell,
                     _ => unreachable!("buy/sell branch only"),
                 };
+                let paper_fill_unit_price = paper_fill_unit_price_from_close(snapshot.close);
+                let monitor_client_order_id = spot_seam.then(|| {
+                    monitor_spot_client_order_id(
+                        &config.market.symbol,
+                        snapshot.candle_timestamp_ms,
+                        side,
+                    )
+                });
                 let order = SubmitOrderRequest {
                     symbol: &config.market.symbol,
                     side,
                     quote_amount: limits.max_order_quote,
                     estimated_daily_loss: execution_ctx.estimated_daily_loss_quote,
-                    open_positions: execution_ctx.open_positions,
+                    open_positions: open_positions_at_intent,
+                    paper_fill_unit_price,
+                    client_order_id: monitor_client_order_id.as_deref(),
                 };
-                match submit_order(order, *limits, &FailClosedExecutor) {
-                    Ok(()) => {}
+                static SPOT_EXECUTOR: ExchangeSpotExecutor = ExchangeSpotExecutor;
+                let executor: &dyn OrderExecutionPort = if config.run_mode == RunMode::Paper {
+                    &PaperLedgerExecutor
+                } else if spot_seam {
+                    &SPOT_EXECUTOR
+                } else {
+                    &FailClosedExecutor
+                };
+                match submit_order(order, *limits, executor) {
+                    Ok(()) => {
+                        if let Some(ref client_order_id) = monitor_client_order_id {
+                            record_monitor_spot_submit_reconciliation(
+                                client_order_id,
+                                &config.market.symbol,
+                                side,
+                            );
+                        }
+                    }
                     Err(OrdersError::ExecutionDisabled) => info!(
                         target: "orders",
                         symbol=%config.market.symbol,
@@ -260,6 +333,7 @@ struct EvaluationCandidate {
     source: &'static str,
     snapshot: StrategySnapshot,
     note: Option<String>,
+    promoted_bot_id: Option<String>,
 }
 
 fn period_ms(timeframe: &str) -> Option<i64> {
@@ -413,12 +487,15 @@ fn run_evaluation_cycle(
 ) -> JoinHandle<EvaluationCandidate> {
     let feed = feed.clone();
     let review = inputs.review.clone();
-    let fast = inputs.config.strategy.sma_fast;
-    let slow = inputs.config.strategy.sma_slow;
-    let timeframe = inputs.config.market.timeframe.clone();
+    let binding = crate::modules::bots::strategy_evaluation_binding(&inputs.config);
+    let evaluator = binding.evaluator;
+    let fast = binding.sma_fast;
+    let slow = binding.sma_slow;
+    let timeframe = binding.timeframe.clone();
+    let promoted_bot_id = binding.promoted_bot_id.clone();
     tokio::spawn(async move {
         let snapshot = if feed.ready_for_evaluation(slow, &timeframe) {
-            evaluate(feed.candles(), fast, slow)
+            evaluate_for_kind(evaluator, feed.candles(), fast, slow)
         } else {
             StrategySnapshot {
                 signal: Signal::Warmup,
@@ -439,6 +516,7 @@ fn run_evaluation_cycle(
             source,
             snapshot,
             note,
+            promoted_bot_id,
         }
     })
 }
@@ -605,8 +683,9 @@ async fn run_market_loop(mut inputs: MarketLoop) {
                 }
                 let mut candidate = feed.clone();
                 let trigger = candidate.ingest_rest_window(candles.clone());
+                let eval_binding = crate::modules::bots::strategy_evaluation_binding(&inputs.config);
                 if state == MonitorState::Resuming
-                    && !candidate.ready_for_evaluation(inputs.config.strategy.sma_slow, &inputs.config.market.timeframe)
+                    && !candidate.ready_for_evaluation(eval_binding.sma_slow, &eval_binding.timeframe)
                 {
                     dashboard.set_error("REST reconciliation lacks contiguous history".into());
                     publish_dashboard(&dashboard, &inputs.dashboard_tx, &inputs.events);
@@ -666,7 +745,7 @@ async fn run_market_loop(mut inputs: MarketLoop) {
                     event_tx: &inputs.events,
                     dashboard_tx: &inputs.dashboard_tx,
                 };
-                if !apply_strategy_snapshot(candidate.snapshot, candidate.note, candidate.source, &settings, &mut execution_ctx, &mut dashboard).await {
+                if !apply_strategy_snapshot(candidate.snapshot, candidate.note, candidate.source, candidate.promoted_bot_id.clone(), &settings, &mut execution_ctx, &mut dashboard).await {
                     break;
                 }
             },
@@ -824,8 +903,42 @@ async fn run_with_agent_hook_inner(
         let _ = tx.send(monitor_handle.clone());
     }
     let mut ui_task = if headless {
+        let monitor_pub = monitor_handle.clone();
+        let initial_dashboard = dashboard.clone();
         tokio::spawn(async move {
-            while event_rx.recv().await.is_some() {}
+            let mut revision: u64 = 0;
+            let publish = |dash: &Dashboard, rev: u64| match monitor_snapshot_from_dashboard(
+                dash, rev,
+            ) {
+                Ok(snapshot) => {
+                    if let Err(error) = monitor_pub.publish_snapshot(snapshot) {
+                        tracing::warn!(target: "api", ?error, "headless monitor snapshot publish failed");
+                    }
+                }
+                Err(error) => {
+                    tracing::warn!(target: "api", ?error, "headless monitor snapshot mapping failed");
+                }
+            };
+            revision += 1;
+            publish(&initial_dashboard, revision);
+            let mut dash_rx = dashboard_rx;
+            loop {
+                tokio::select! {
+                    changed = dash_rx.changed() => {
+                        if changed.is_err() {
+                            break;
+                        }
+                        revision += 1;
+                        let dash = dash_rx.borrow().clone();
+                        publish(&dash, revision);
+                    }
+                    msg = event_rx.recv() => {
+                        if msg.is_none() {
+                            break;
+                        }
+                    }
+                }
+            }
             Ok::<(), anyhow::Error>(())
         })
     } else {
@@ -1016,6 +1129,7 @@ mod tests {
             strategy: StrategyConfig {
                 sma_fast: 2,
                 sma_slow: 3,
+                ..Config::default().strategy
             },
             ..Config::default()
         };
@@ -2302,6 +2416,160 @@ mod tests {
         );
     }
 
+    #[test]
+    fn monitor_spot_client_order_id_formats_compact_symbol() {
+        use crate::modules::orders::OrderSide;
+        assert_eq!(
+            monitor_spot_client_order_id("BTC/USDT", 1_234, OrderSide::Sell),
+            "mon:BTCUSDT:1234:sell"
+        );
+    }
+
+    #[test]
+    fn paper_fill_unit_price_from_close_rejects_non_positive() {
+        assert_eq!(paper_fill_unit_price_from_close(0.0), None);
+        assert_eq!(paper_fill_unit_price_from_close(42.5), Some(42.5));
+    }
+
+    #[tokio::test]
+    async fn testnet_run_mode_submits_via_spot_executor_when_recording_seam() {
+        use crate::core::config::RunMode;
+        use crate::core::test_env_lock::EnvTestGuard;
+        use crate::modules::exchanges::{ExchangeId, MarketType};
+        use crate::modules::orders::{
+            lock_shared_live_order_reconciliation_ledger_for_test,
+            shared_live_order_reconciliation_ledger, OrderReconciliationLedger,
+            PaperLedgerExecutor, ReconciliationState, RecordingSpotOrderSubmitPort,
+        };
+
+        let _env = EnvTestGuard::acquire();
+        let _ledger_guard = lock_shared_live_order_reconciliation_ledger_for_test();
+        std::env::set_var("BOT_ORDERS_EXCHANGE_SUBMIT", "recording");
+        RecordingSpotOrderSubmitPort::clear();
+        PaperLedgerExecutor::clear_ledger();
+        let mut config = Config::default();
+        config.run_mode = RunMode::Testnet;
+        let limits = RiskLimits {
+            max_order_quote: 10.0,
+            max_daily_loss_quote: 20.0,
+            max_open_positions: 1,
+        };
+        let account = ExchangeAccountId::new(
+            ExchangeId::Binance,
+            MarketType::Spot,
+            "main",
+            config.environment,
+        )
+        .unwrap();
+        let (events, _event_rx) = mpsc::channel(2);
+        let (dashboard_tx, _dashboard_rx) = watch::channel(new_dashboard(&config, limits));
+        let settings = EvaluationSettings {
+            config: &config,
+            limits,
+            spot_account_id: &account,
+            event_tx: &events,
+            dashboard_tx: &dashboard_tx,
+        };
+        let mut dashboard = new_dashboard(&config, limits);
+        let snapshot = StrategySnapshot {
+            signal: Signal::Buy,
+            close: 50_000.0,
+            fast_sma: Some(1.0),
+            slow_sma: Some(0.5),
+            candle_timestamp_ms: 360_000,
+        };
+        let mut execution = ExecutionContext::default();
+        assert!(
+            apply_strategy_snapshot(
+                snapshot,
+                None,
+                "rest",
+                None,
+                &settings,
+                &mut execution,
+                &mut dashboard,
+            )
+            .await
+        );
+        assert_eq!(RecordingSpotOrderSubmitPort::call_count(), 1);
+        assert!(PaperLedgerExecutor::recorded_fills().is_empty());
+        let ledger = shared_live_order_reconciliation_ledger();
+        assert_eq!(
+            ledger.state("mon:BTCUSDT:360000:buy"),
+            Some(ReconciliationState::Reconciled {
+                exchange_order_id: "recording-1".into(),
+            })
+        );
+        RecordingSpotOrderSubmitPort::clear();
+        std::env::remove_var("BOT_ORDERS_EXCHANGE_SUBMIT");
+    }
+
+    #[tokio::test]
+    async fn paper_run_mode_records_ledger_fill_at_candle_close() {
+        use crate::core::config::RunMode;
+        use crate::modules::exchanges::{ExchangeId, MarketType};
+        use crate::modules::orders::{OrderSide, PaperLedgerExecutor};
+
+        PaperLedgerExecutor::clear_ledger();
+        let mut config = Config::default();
+        config.run_mode = RunMode::Paper;
+        let limits = RiskLimits {
+            max_order_quote: 10.0,
+            max_daily_loss_quote: 20.0,
+            max_open_positions: 1,
+        };
+        let account = ExchangeAccountId::new(
+            ExchangeId::Binance,
+            MarketType::Spot,
+            "main",
+            config.environment,
+        )
+        .unwrap();
+        let (events, _event_rx) = mpsc::channel(2);
+        let (dashboard_tx, _dashboard_rx) = watch::channel(new_dashboard(&config, limits));
+        let settings = EvaluationSettings {
+            config: &config,
+            limits,
+            spot_account_id: &account,
+            event_tx: &events,
+            dashboard_tx: &dashboard_tx,
+        };
+        let mut dashboard = new_dashboard(&config, limits);
+        let snapshot = StrategySnapshot {
+            signal: Signal::Buy,
+            close: 50_000.0,
+            fast_sma: Some(1.0),
+            slow_sma: Some(0.5),
+            candle_timestamp_ms: 360_000,
+        };
+        let mut execution = ExecutionContext::default();
+        assert!(
+            apply_strategy_snapshot(
+                snapshot,
+                None,
+                "rest",
+                None,
+                &settings,
+                &mut execution,
+                &mut dashboard,
+            )
+            .await
+        );
+        let fills = PaperLedgerExecutor::recorded_fills();
+        assert_eq!(fills.len(), 1);
+        assert_eq!(fills[0].side, OrderSide::Buy);
+        assert_eq!(fills[0].fill_unit_price, Some(50_000.0));
+        assert_eq!(execution.open_positions, 1);
+        use crate::modules::http_bridge::portfolio::{paper_wallet_snapshot, PaperSnapshotQuery};
+        let http_snap = paper_wallet_snapshot(PaperSnapshotQuery {
+            quote: "usdt".into(),
+        })
+        .expect("monitor paper fill visible via http_bridge portfolio");
+        assert_eq!(http_snap.available, "990");
+        assert_eq!(http_snap.positions.len(), 1);
+        PaperLedgerExecutor::clear_ledger();
+    }
+
     #[tokio::test]
     async fn persistence_gap_warning_survives_market_evaluation() {
         let config = Config::default();
@@ -2341,6 +2609,7 @@ mod tests {
                 snapshot,
                 None,
                 "rest",
+                None,
                 &settings,
                 &mut execution,
                 &mut dashboard

@@ -161,10 +161,25 @@ pub struct MarketConfig {
     pub candle_limit: u32,
     pub poll_seconds: u64,
 }
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct MonitorStrategyConfigEntry {
+    pub id: String,
+    pub version: u32,
+    pub name: String,
+    pub fast_period: usize,
+    pub slow_period: usize,
+    /// Monitor crossover evaluator (`sma_cross` default, or `ema_cross`).
+    #[serde(default)]
+    pub evaluator: crate::modules::bots::models::MonitorEvaluatorKind,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrategyConfig {
     pub sma_fast: usize,
     pub sma_slow: usize,
+    /// Extra `strategy@version` rows for bot catalog and monitor registry (`evaluator` per entry).
+    #[serde(default)]
+    pub monitor_registry: Vec<MonitorStrategyConfigEntry>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RiskConfig {
@@ -292,6 +307,18 @@ impl Config {
                 "poll interval and SMA periods must be positive, with fast < slow".into(),
             ));
         }
+        for entry in &self.strategy.monitor_registry {
+            if entry.id.trim().is_empty()
+                || entry.name.trim().is_empty()
+                || entry.version == 0
+                || entry.fast_period == 0
+                || entry.fast_period >= entry.slow_period
+            {
+                return Err(BotError::Configuration(
+                    "strategy.monitor_registry entries require id, name, version > 0, and 0 < fast < slow periods".into(),
+                ));
+            }
+        }
         if !self.risk.max_order_quote.is_finite()
             || self.risk.max_order_quote <= 0.0
             || !self.risk.max_daily_loss_quote.is_finite()
@@ -378,6 +405,29 @@ impl Default for Config {
 mod tests {
     use super::*;
     #[test]
+    fn rejects_invalid_monitor_registry_entry() {
+        let c = Config {
+            strategy: StrategyConfig {
+                monitor_registry: vec![MonitorStrategyConfigEntry {
+                    id: "sma-cross".into(),
+                    version: 2,
+                    name: "bad".into(),
+                    fast_period: 20,
+                    slow_period: 5,
+                    evaluator: crate::modules::bots::models::MonitorEvaluatorKind::default(),
+                }],
+                ..Config::default().strategy
+            },
+            ..Config::default()
+        };
+        assert!(c
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("monitor_registry"));
+    }
+
+    #[test]
     fn default_is_dev_observe_only() {
         let c = Config::default();
         assert_eq!(c.environment, Environment::Dev);
@@ -418,6 +468,7 @@ mod tests {
                 strategy: StrategyConfig {
                     sma_fast: fast,
                     sma_slow: slow,
+                    ..Config::default().strategy
                 },
                 ..Config::default()
             };
@@ -430,6 +481,7 @@ mod tests {
                 strategy: StrategyConfig {
                     sma_fast: fast + 1,
                     sma_slow: slow,
+                    ..accepted.strategy.clone()
                 },
                 ..accepted.clone()
             };

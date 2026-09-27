@@ -93,6 +93,8 @@ pub enum AgentsError {
     Lifecycle(String),
     #[error("advisory not permitted: {0}")]
     AdvisoryDenied(String),
+    #[error("bot runtime promotion not permitted: {0}")]
+    PromotionDenied(String),
     #[error("duplicate agent id: {0}")]
     Duplicate(String),
     #[error("identity persistence failed: {0}")]

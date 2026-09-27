@@ -1,3 +1,6 @@
+#[cfg(test)]
+pub mod test_env_lock;
+
 pub mod config;
 pub mod database;
 pub mod error;

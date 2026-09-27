@@ -22,6 +22,9 @@ check "presentation must not import strategy" 'modules::strategy' "$SRC/presenta
 check "presentation must not import risk" 'modules::risk' "$SRC/presentation"
 check "presentation must not import core::config" 'core::config' "$SRC/presentation"
 check "modules must not import presentation (except monitor supervisor spawn)" 'presentation::' "$SRC/modules" 'supervisor.rs'
+check "http routes must not touch AgentRegistry (use ApiState)" 'with_agents' "$SRC/presentation/http/routes"
+check "http routes must not import domain agents module" 'modules::agents::' "$SRC/presentation/http/routes"
+check "http routes must not read ApiState config directly (use ApiState helpers)" 'app_config\(\)' "$SRC/presentation/http/routes"
 legacy=$(find "$SRC" -maxdepth 1 -name '*.rs' ! -name main.rs 2>/dev/null || true)
 if [[ -n "$legacy" ]]; then
   echo "FAIL: legacy .rs at src root (only main.rs allowed)"

@@ -15,6 +15,7 @@ pub struct ApiErrorBody {
     pub code: Option<String>,
 }
 
+#[derive(Debug)]
 pub struct ApiError {
     status: StatusCode,
     body: ApiErrorBody,
@@ -86,6 +87,9 @@ impl ApiError {
             AgentsError::AdvisoryDenied(message) => {
                 ApiError::with_code(StatusCode::FORBIDDEN, "advisory_denied", message)
             }
+            AgentsError::PromotionDenied(message) => {
+                ApiError::with_code(StatusCode::FORBIDDEN, "promotion_denied", message)
+            }
             AgentsError::Persistence(message) => ApiError::with_code(
                 StatusCode::SERVICE_UNAVAILABLE,
                 "persistence_failed",
@@ -99,12 +103,82 @@ impl ApiError {
         }
     }
 
+    pub fn owner_mismatch() -> Self {
+        ApiError::with_code(
+            StatusCode::FORBIDDEN,
+            "owner_mismatch",
+            "owner_id does not match configured BOT_HTTP_OWNER_ID",
+        )
+    }
+
+    pub fn http_agency_mismatch() -> Self {
+        ApiError::with_code(
+            StatusCode::FORBIDDEN,
+            "http_agency_mismatch",
+            "agency does not match configured BOT_HTTP_AGENCY_ID",
+        )
+    }
+
+    pub fn unauthorized() -> Self {
+        ApiError::with_code(
+            StatusCode::UNAUTHORIZED,
+            "unauthorized",
+            "missing or invalid admin bearer token",
+        )
+    }
+
     pub fn monitor_unavailable() -> Self {
         ApiError::with_code(
             StatusCode::SERVICE_UNAVAILABLE,
             "monitor_unavailable",
             "monitor is not attached to this API process",
         )
+    }
+
+    pub fn from_bots_error(error: crate::modules::bots::BotsError) -> Self {
+        use crate::modules::bots::BotsError;
+        match error {
+            BotsError::RuntimeDisabled => ApiError::with_code(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "runtime_disabled",
+                "bot runtime promotion is disabled in this build",
+            ),
+            BotsError::RuntimeNotPromoted => ApiError::with_code(
+                StatusCode::NOT_FOUND,
+                "runtime_not_promoted",
+                "no active bot promotion to demote",
+            ),
+            BotsError::InvalidId(message)
+            | BotsError::InvalidTimeframe(message)
+            | BotsError::InvalidSymbol(message)
+            | BotsError::InvalidStrategy(message) => {
+                ApiError::with_code(StatusCode::BAD_REQUEST, "bots", message)
+            }
+            BotsError::InvalidTimeframeForMode {
+                timeframe,
+                operation,
+            } => ApiError::with_code(
+                StatusCode::BAD_REQUEST,
+                "bots",
+                format!("timeframe {timeframe} invalid for {operation:?}"),
+            ),
+            BotsError::InvalidWindow | BotsError::InvalidMetrics => ApiError::with_code(
+                StatusCode::BAD_REQUEST,
+                "bots",
+                "invalid bot metrics or evaluation window",
+            ),
+            BotsError::DuplicateRun => {
+                ApiError::with_code(StatusCode::CONFLICT, "bots", "duplicate run")
+            }
+            BotsError::IncompatibleRanking => ApiError::with_code(
+                StatusCode::BAD_REQUEST,
+                "bots",
+                "incompatible ranking batch",
+            ),
+            BotsError::CatalogStore(message) => {
+                ApiError::with_code(StatusCode::SERVICE_UNAVAILABLE, "catalog_store", message)
+            }
+        }
     }
 
     pub fn from_orders_error(error: crate::modules::orders::OrdersError) -> Self {
@@ -121,6 +195,11 @@ impl ApiError {
                 "execution_disabled",
                 "order execution is disabled in this build",
             ),
+            OrdersError::LiveExchangeNotWired => ApiError::with_code(
+                StatusCode::SERVICE_UNAVAILABLE,
+                "live_exchange_not_wired",
+                "live exchange order execution is not wired in this build",
+            ),
         }
     }
 
@@ -130,6 +209,17 @@ impl ApiError {
             "jev_unavailable",
             "Jev advisory is disabled or not configured in this API process",
         )
+    }
+}
+
+#[cfg(test)]
+impl ApiError {
+    pub fn status_code(&self) -> StatusCode {
+        self.status
+    }
+
+    pub fn error_code(&self) -> Option<&str> {
+        self.body.code.as_deref()
     }
 }
 

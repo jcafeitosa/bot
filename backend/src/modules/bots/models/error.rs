@@ -17,6 +17,8 @@ pub enum BotsError {
     DuplicateRun,
     IncompatibleRanking,
     CatalogStore(String),
+    RuntimeDisabled,
+    RuntimeNotPromoted,
 }
 
 impl fmt::Display for BotsError {

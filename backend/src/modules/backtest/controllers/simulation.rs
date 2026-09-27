@@ -6,7 +6,7 @@ use crate::modules::backtest::models::{
     BotDefinition, BotMetrics, EvaluationWindow, RunId, StrategyDefinition,
 };
 use crate::modules::market::{HistoricalDataset, MarketError, Timeframe};
-use crate::modules::strategy::evaluate;
+use crate::modules::strategy::evaluate_for_kind;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ExitPolicy {
@@ -77,6 +77,7 @@ pub struct BacktestReport {
     pub total_costs_quote: f64,
 }
 
+/// Crossover backtest driven by [`StrategyDefinition::evaluator`] (`sma_cross` or `ema_cross`).
 pub fn run_sma_crossover(
     dataset: &HistoricalDataset,
     strategy: &StrategyDefinition,
@@ -133,7 +134,13 @@ pub fn run_sma_crossover(
                     volume: c.volume,
                 })
                 .collect::<Vec<_>>();
-            let signal = evaluate(&ta_bars, strategy.fast_period, strategy.slow_period).signal;
+            let signal = evaluate_for_kind(
+                strategy.evaluator,
+                &ta_bars,
+                strategy.fast_period,
+                strategy.slow_period,
+            )
+            .signal;
             let execution_bar = bars[i];
             if signal == Signal::Buy && base_position == 0.0 {
                 let spend = config.max_position_quote.min(cash);
@@ -369,6 +376,7 @@ pub enum BacktestError {
 mod tests {
     use super::*;
     use crate::modules::backtest::models::{StrategyId, StrategyVersion};
+    use crate::modules::bots::MonitorEvaluatorKind;
     use crate::modules::market::Candle;
     fn candle(timestamp_ms: i64, close: f64) -> Candle {
         Candle {
@@ -403,6 +411,7 @@ mod tests {
             name: "SMA crossover".into(),
             fast_period: 3,
             slow_period: 8,
+            evaluator: MonitorEvaluatorKind::default(),
         };
         let report = run_sma_crossover(
             &dataset,
@@ -418,6 +427,45 @@ mod tests {
         assert_eq!(report.equity_curve.len(), 33);
         assert!(report.total_costs_quote > 0.0);
     }
+
+    #[test]
+    fn ema_crossover_backtest_uses_strategy_evaluator() {
+        let closes = (0..90)
+            .map(|i| {
+                if i < 60 {
+                    100.0 - i as f64 * 0.2
+                } else {
+                    88.0 + (i - 60) as f64 * 0.5
+                }
+            })
+            .collect::<Vec<_>>();
+        let candles = closes
+            .iter()
+            .enumerate()
+            .map(|(i, close)| candle(i as i64 * 60_000, *close))
+            .collect();
+        let dataset = HistoricalDataset::from_1m("BTC/USDT", "synthetic-ema", candles).unwrap();
+        let strategy = StrategyDefinition {
+            id: StrategyId::new("ema-cross").unwrap(),
+            version: StrategyVersion(1),
+            name: "EMA crossover".into(),
+            fast_period: 3,
+            slow_period: 8,
+            evaluator: MonitorEvaluatorKind::EmaCross,
+        };
+        let report = run_sma_crossover(
+            &dataset,
+            &strategy,
+            Timeframe::new(3).unwrap(),
+            operation_for_3m(),
+            default_config(),
+            RunId("ema-test-run".into()),
+        )
+        .unwrap();
+        assert_eq!(report.metrics.strategy_id.as_str(), "ema-cross");
+        assert!(!report.equity_curve.is_empty());
+    }
+
     fn default_config() -> BacktestConfig {
         BacktestConfig {
             initial_capital_quote: 1000.,
@@ -461,6 +509,7 @@ mod tests {
             name: "SMA cost test".into(),
             fast_period: 5,
             slow_period: 20,
+            evaluator: MonitorEvaluatorKind::default(),
         }
     }
 
@@ -613,6 +662,7 @@ mod tests {
             name: "SMA".into(),
             fast_period: 1,
             slow_period: 2,
+            evaluator: MonitorEvaluatorKind::default(),
         };
         assert!(matches!(
             run_sma_crossover(
@@ -660,6 +710,7 @@ mod tests {
             name: "trend".into(),
             fast_period: 1,
             slow_period: 2,
+            evaluator: MonitorEvaluatorKind::default(),
         };
         let no_exits = BacktestConfig {
             exits: ExitPolicy {

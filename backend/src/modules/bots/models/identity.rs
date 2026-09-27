@@ -89,7 +89,7 @@ impl BotIdentity {
         if !OperationMode::all_timeframes().contains(&timeframe.as_str()) {
             return Err(BotsError::InvalidTimeframe(timeframe));
         }
-        let symbol = normalize_symbol(&symbol.into())?;
+        let symbol = normalize_symbol_segment(&symbol.into())?;
         Ok(Self {
             strategy_id,
             strategy_version,
@@ -106,6 +106,58 @@ impl BotIdentity {
             &self.symbol,
         )
     }
+
+    /// Parses `strategy@version:timeframe:symbol` (same encoding as [`BotId::new`]).
+    pub fn parse_bot_id(value: &str) -> Result<Self, BotsError> {
+        let trimmed = value.trim();
+        let (strategy, rest) = trimmed.split_once('@').ok_or_else(|| {
+            BotsError::InvalidId("bot id must be strategy@version:timeframe:symbol".into())
+        })?;
+        let mut parts = rest.splitn(3, ':');
+        let version_raw = parts
+            .next()
+            .ok_or_else(|| BotsError::InvalidId("bot id missing version".into()))?;
+        let timeframe = parts
+            .next()
+            .ok_or_else(|| BotsError::InvalidId("bot id missing timeframe".into()))?;
+        let symbol = parts
+            .next()
+            .ok_or_else(|| BotsError::InvalidId("bot id missing symbol".into()))?;
+        let version = version_raw
+            .parse::<u32>()
+            .map_err(|_| BotsError::InvalidId("bot id version must be u32".into()))?;
+        Self::new(
+            StrategyId::new(strategy)?,
+            StrategyVersion(version),
+            timeframe,
+            symbol,
+        )
+    }
+}
+
+impl BotId {
+    /// Parses the canonical bot id string (public seam for catalog/HTTP).
+    #[allow(dead_code)]
+    pub fn parse(value: &str) -> Result<Self, BotsError> {
+        BotIdentity::parse_bot_id(value)?.bot_id()
+    }
+}
+
+pub(crate) fn normalize_symbol_segment(symbol: &str) -> Result<String, BotsError> {
+    if symbol.contains('/') {
+        return normalize_symbol(symbol);
+    }
+    let compact = symbol.trim().to_ascii_uppercase();
+    const QUOTES: &[&str] = &["USDT", "USDC", "BUSD", "FDUSD", "BTC", "ETH", "BNB"];
+    for quote in QUOTES {
+        if compact.len() > quote.len() && compact.ends_with(quote) {
+            let base = &compact[..compact.len() - quote.len()];
+            if !base.is_empty() {
+                return normalize_symbol(&format!("{}/{}", base, quote));
+            }
+        }
+    }
+    normalize_symbol(symbol)
 }
 
 pub(crate) fn normalize_symbol(symbol: &str) -> Result<String, BotsError> {
@@ -118,4 +170,33 @@ pub(crate) fn normalize_symbol(symbol: &str) -> Result<String, BotsError> {
         return Err(BotsError::InvalidSymbol(value));
     }
     Ok(value)
+}
+
+/// Compares monitor market symbol with the symbol segment of a canonical `BotId` string.
+pub fn market_symbols_equivalent(bot_id_symbol: &str, market_symbol: &str) -> bool {
+    fn compact(symbol: &str) -> String {
+        symbol.trim().to_ascii_uppercase().replace('/', "")
+    }
+    if compact(bot_id_symbol) == compact(market_symbol) {
+        return true;
+    }
+    match (
+        normalize_symbol(bot_id_symbol),
+        normalize_symbol(market_symbol),
+    ) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => false,
+    }
+}
+
+/// Returns true when `bot_id` is `strategy@version:timeframe:symbol` and tail matches market.
+pub fn bot_id_matches_market(bot_id: &str, market_symbol: &str, market_timeframe: &str) -> bool {
+    let Some(tail) = bot_id.split('@').nth(1) else {
+        return false;
+    };
+    let parts: Vec<&str> = tail.splitn(3, ':').collect();
+    if parts.len() != 3 {
+        return false;
+    }
+    parts[1] == market_timeframe && market_symbols_equivalent(parts[2], market_symbol)
 }

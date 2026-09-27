@@ -4,6 +4,7 @@ pub mod controllers;
 pub use adapters::binance;
 pub mod bootstrap;
 pub mod capabilities;
+pub mod credentials_env;
 pub use adapters::live;
 pub mod market_data;
 pub mod models;

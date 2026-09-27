@@ -22,19 +22,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - name: fmt
-        run: cargo fmt --check
-      - name: clippy
-        run: cargo clippy --all-targets -- -D warnings
-      - name: test
-        run: cargo test
+      - name: verify backend gates
+        run: bash scripts/verify-backend-gates.sh
 
   postgres-integration:
     runs-on: ubuntu-latest
     needs: rust
     services:
       postgres:
-        image: postgres:16
+        image: timescale/timescaledb-ha:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -49,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: persist_dataset_round_trip (ignored locally by default)
+      - name: PostgreSQL integration (ignored in default cargo test)
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trading_bot
-        run: cargo test persist_dataset_round_trip -- --ignored --nocapture
+        run: bash scripts/run-pg-integration-tests.sh

@@ -12,7 +12,7 @@ status: draft
 
 # SDD — Scaffold PostgreSQL `agents` / `bots`
 
-- **Estado:** draft — fatia pós-objetivo literal; **não** habilita Gate 1 auth, **não** conecta `AgentRegistry` ao banco; catálogo bots via `PgBotCatalogStore` é fatia posterior.
+- **Estado:** draft — schema aplicável via `Database::migrate`; **`PgAgentIdentityStore`** + espelho HTTP/hidratação ([agents-pg-registry-sdd](./agents-pg-registry-sdd.md)); **não** habilita Gate 1 auth owner; catálogo: [Gate 1](./bots-catalog-persistence-gate1-sdd.md).
 - **Referências:** [agents-module-sdd](./agents-module-sdd.md), [bots-module-sdd](./bots-module-sdd.md), [unimplemented-modules-analysis](../planning/unimplemented-modules-analysis.md) § V18 / Gate 1.
 
 ## 1. Contexto

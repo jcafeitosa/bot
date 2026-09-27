@@ -1,6 +1,6 @@
 use axum::{extract::Query, extract::State, Json};
 
-use crate::modules::http_bridge::config::{self, ConfigSnapshotQuery, ConfigSnapshotResponse};
+use crate::modules::http_bridge::config::{ConfigSnapshotQuery, ConfigSnapshotResponse};
 use crate::presentation::http::{error::ApiError, state::ApiState};
 
 #[utoipa::path(
@@ -14,9 +14,11 @@ use crate::presentation::http::{error::ApiError, state::ApiState};
     )
 )]
 pub async fn config_snapshot(
+    State(state): State<ApiState>,
     Query(query): Query<ConfigSnapshotQuery>,
 ) -> Result<Json<ConfigSnapshotResponse>, ApiError> {
-    config::load_config_snapshot(query)
+    state
+        .config_snapshot_from_path(query)
         .map_err(ApiError::from_bot_error)
         .map(Json)
 }
@@ -28,5 +30,5 @@ pub async fn config_snapshot(
     responses((status = 200, description = "Config loaded at API startup", body = ConfigSnapshotResponse))
 )]
 pub async fn config_active(State(state): State<ApiState>) -> Json<ConfigSnapshotResponse> {
-    Json(config::map_config(state.app_config()))
+    Json(state.active_config_snapshot())
 }

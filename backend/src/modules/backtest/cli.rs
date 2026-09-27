@@ -39,6 +39,7 @@ pub async fn execute_backtest(cli: &BacktestCli) -> BotResult<serde_json::Value>
         name: "SMA crossover".into(),
         fast_period: config.strategy.sma_fast,
         slow_period: config.strategy.sma_slow,
+        evaluator: crate::modules::bots::MonitorEvaluatorKind::default(),
     };
     let dataset = synthetic_dataset(
         &config.market.symbol,
@@ -245,6 +246,7 @@ mod tests {
             name: "SMA crossover".into(),
             fast_period: 5,
             slow_period: 20,
+            evaluator: crate::modules::bots::MonitorEvaluatorKind::default(),
         };
         let config = BacktestConfig {
             initial_capital_quote: 1_000.0,

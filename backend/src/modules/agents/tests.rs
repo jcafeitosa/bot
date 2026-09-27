@@ -22,7 +22,10 @@ fn ceo_spec() -> NewAgentSpec {
         display_name: "Chief Executive".into(),
         role: AgentRole::Ceo,
         supervisor: SupervisorRef::Owner(owner()),
-        capabilities: AgentCapabilities::default(),
+        capabilities: AgentCapabilities {
+            consult_jev: false,
+            promote_runtime_bot: false,
+        },
     }
 }
 
@@ -46,7 +49,10 @@ fn rejects_level_b_without_ceo() {
         display_name: "Ops".into(),
         role: AgentRole::LevelB,
         supervisor: SupervisorRef::Agent(AgentId::new("ceo").unwrap()),
-        capabilities: AgentCapabilities::default(),
+        capabilities: AgentCapabilities {
+            consult_jev: false,
+            promote_runtime_bot: false,
+        },
     };
     let definition = AgentDefinition {
         id: spec.id.clone(),
@@ -78,7 +84,10 @@ fn builds_hierarchy_chain() {
         display_name: "Level B".into(),
         role: AgentRole::LevelB,
         supervisor: SupervisorRef::Agent(AgentId::new("ceo").unwrap()),
-        capabilities: AgentCapabilities::default(),
+        capabilities: AgentCapabilities {
+            consult_jev: false,
+            promote_runtime_bot: false,
+        },
     };
     registry.register(level_b, 2).unwrap();
     assert_eq!(registry.list_agency(&agency()).len(), 2);
@@ -132,7 +141,10 @@ fn advisory_allowed_when_capability_enabled() {
         display_name: "Analyst".into(),
         role: AgentRole::Ceo,
         supervisor: SupervisorRef::Owner(owner()),
-        capabilities: AgentCapabilities { consult_jev: true },
+        capabilities: AgentCapabilities {
+            consult_jev: true,
+            promote_runtime_bot: false,
+        },
     };
     registry.register(spec, 1).unwrap();
     let id = AgentId::new("analyst").unwrap();
@@ -167,11 +179,47 @@ fn registry_hook_lists_jev_consultants_only() {
         display_name: "Analyst".into(),
         role: AgentRole::Ceo,
         supervisor: SupervisorRef::Owner(owner()),
-        capabilities: AgentCapabilities { consult_jev: true },
+        capabilities: AgentCapabilities {
+            consult_jev: true,
+            promote_runtime_bot: false,
+        },
     };
     registry.register(analyst, 2).unwrap();
     let hook = RegistryMonitorAgentHook::new(Arc::new(Mutex::new(registry)), agency());
     let ids = hook.evaluation_agents();
     assert_eq!(ids.len(), 1);
     assert_eq!(ids[0].as_str(), "analyst");
+}
+
+#[test]
+fn restore_from_snapshot_replays_cold_start() {
+    let mut registry = AgentRegistry::new();
+    registry.register(ceo_spec(), 1).unwrap();
+    let agents: Vec<AgentDefinition> = registry
+        .list_agency(&agency())
+        .into_iter()
+        .cloned()
+        .collect();
+    let audit = registry.audit_log().to_vec();
+    let mut empty = AgentRegistry::new();
+    empty.restore_from_snapshot(agents, audit).expect("restore");
+    assert_eq!(empty.list_agency(&agency()).len(), 1);
+}
+
+#[test]
+fn restore_from_snapshot_skips_when_registry_nonempty() {
+    let mut registry = AgentRegistry::new();
+    registry.register(ceo_spec(), 1).unwrap();
+    let mut other = AgentRegistry::new();
+    other.register(ceo_spec(), 2).unwrap();
+    let snapshot_agents: Vec<AgentDefinition> = registry
+        .list_agency(&agency())
+        .into_iter()
+        .cloned()
+        .collect();
+    let audit = registry.audit_log().to_vec();
+    other
+        .restore_from_snapshot(snapshot_agents, audit)
+        .expect("no-op restore");
+    assert_eq!(other.audit_log().len(), 1);
 }

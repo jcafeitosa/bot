@@ -169,6 +169,9 @@ pub struct MonitorSnapshot {
     pub advisory: Option<String>,
     pub last_error: Option<String>,
     pub logs: Vec<MonitorLogEntry>,
+    pub bot_runtime_enabled: bool,
+    pub promoted_bot_id: Option<String>,
+    pub promoted_by: Option<String>,
 }
 
 impl MonitorSnapshot {
@@ -193,6 +196,9 @@ impl MonitorSnapshot {
             advisory: None,
             last_error: None,
             logs: Vec::new(),
+            bot_runtime_enabled: false,
+            promoted_bot_id: None,
+            promoted_by: None,
         }
     }
 }

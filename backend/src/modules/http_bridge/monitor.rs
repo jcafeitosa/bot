@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+use crate::modules::bots::BotRuntimeStatus;
 use crate::modules::monitor::{MonitorCommand, MonitorHandle, MonitorSendError, MonitorSnapshot};
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -14,6 +15,12 @@ pub struct MonitorSnapshotResponse {
     pub signal: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_error: Option<String>,
+    /// Active bot promotion from `BotRuntimePort` (HTTP API process); supervisor sets `BotSignal::bot_id` when promotion matches market.
+    pub bot_runtime_enabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub promoted_bot_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub promoted_by: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -62,6 +69,23 @@ pub fn snapshot_from_domain(snapshot: MonitorSnapshot) -> MonitorSnapshotRespons
             .market
             .and_then(|market| market.signal.map(|value| format!("{:?}", value))),
         last_error: snapshot.last_error,
+        bot_runtime_enabled: snapshot.bot_runtime_enabled,
+        promoted_bot_id: snapshot.promoted_bot_id.clone(),
+        promoted_by: snapshot.promoted_by.clone(),
+    }
+}
+
+pub fn attach_bot_runtime_status(
+    response: MonitorSnapshotResponse,
+    runtime: BotRuntimeStatus,
+) -> MonitorSnapshotResponse {
+    let promoted_bot_id = runtime.active.as_ref().map(|r| r.bot_id.clone());
+    let promoted_by = runtime.active.as_ref().map(|r| r.promoted_by.clone());
+    MonitorSnapshotResponse {
+        bot_runtime_enabled: runtime.runtime_enabled,
+        promoted_bot_id,
+        promoted_by,
+        ..response
     }
 }
 
@@ -86,5 +110,58 @@ impl From<MonitorSendError> for MonitorCommandHttpError {
             MonitorSendError::Full => Self::ChannelFull,
             MonitorSendError::Closed => Self::ChannelClosed,
         }
+    }
+}
+
+#[cfg(test)]
+mod monitor_bridge_tests {
+    use super::*;
+    use crate::modules::bots::{BotPromotionRecord, BotPromotionState, BotRuntimeStatus};
+    use crate::modules::monitor::MonitorSnapshot;
+
+    #[test]
+    fn attach_bot_runtime_status_enriches_snapshot_fields() {
+        let base = snapshot_from_domain(MonitorSnapshot::initial());
+        assert!(!base.bot_runtime_enabled);
+        assert!(base.promoted_bot_id.is_none());
+
+        let enriched = attach_bot_runtime_status(
+            base,
+            BotRuntimeStatus {
+                runtime_enabled: true,
+                active: Some(BotPromotionRecord {
+                    bot_id: "sma-cross@1:5m:BTC/USDT".into(),
+                    promoted_by: "owner-1".into(),
+                    promoted_at_unix_ms: 42,
+                    state: BotPromotionState::Active,
+                }),
+            },
+        );
+        assert!(enriched.bot_runtime_enabled);
+        assert_eq!(
+            enriched.promoted_bot_id.as_deref(),
+            Some("sma-cross@1:5m:BTC/USDT")
+        );
+        assert_eq!(enriched.promoted_by.as_deref(), Some("owner-1"));
+    }
+
+    #[test]
+    fn attach_bot_runtime_status_preserves_registry_v2_bot_id() {
+        let enriched = attach_bot_runtime_status(
+            snapshot_from_domain(MonitorSnapshot::initial()),
+            BotRuntimeStatus {
+                runtime_enabled: true,
+                active: Some(BotPromotionRecord {
+                    bot_id: "sma-cross@2:15m:BTCUSDT".into(),
+                    promoted_by: "owner-1".into(),
+                    promoted_at_unix_ms: 1,
+                    state: BotPromotionState::Active,
+                }),
+            },
+        );
+        assert_eq!(
+            enriched.promoted_bot_id.as_deref(),
+            Some("sma-cross@2:15m:BTCUSDT")
+        );
     }
 }

@@ -68,6 +68,8 @@ impl MonitorHandle {
 
     /// Publishes the authoritative snapshot, then emits a wake-up event (watch before broadcast).
     pub fn publish_snapshot(&self, snapshot: MonitorSnapshot) -> Result<(), SnapshotPublishError> {
+        let mut snapshot = snapshot;
+        crate::modules::bots::enrich_monitor_snapshot_from_shared_runtime(&mut snapshot);
         validate_snapshot(&snapshot).map_err(SnapshotPublishError::Validation)?;
         let revision = snapshot.revision;
         self.snapshots
@@ -154,5 +156,22 @@ mod tests {
             events.recv().await,
             Ok(MonitorEvent::StateChanged { revision: 1 })
         ));
+    }
+
+    #[tokio::test]
+    async fn publish_snapshot_enriches_bot_runtime_seam_on_publish() {
+        let (handle, _, _) = MonitorHandle::channel(4, 8);
+        let mut snapshots = handle.latest_snapshot();
+        let _events = handle.subscribe();
+        let mut next = MonitorSnapshot::initial();
+        next.revision = 99;
+        next.symbol = "ETH/USDT".into();
+        handle.publish_snapshot(next).unwrap();
+        let got = snapshots.borrow_and_update().clone();
+        assert_eq!(got.revision, 99);
+        assert_eq!(got.symbol, "ETH/USDT");
+        // Fail-closed shared runtime unless BOT_RUNTIME_ENABLED was set before process init.
+        assert!(!got.bot_runtime_enabled);
+        assert!(got.promoted_bot_id.is_none());
     }
 }

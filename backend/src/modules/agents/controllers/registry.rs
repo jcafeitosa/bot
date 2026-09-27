@@ -69,6 +69,35 @@ impl AgentRegistry {
         &self.audit
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.agents.is_empty()
+    }
+
+    /// Cold-start restore from PostgreSQL scaffold (skips when registry already has agents).
+    pub fn restore_from_snapshot(
+        &mut self,
+        agents: Vec<AgentDefinition>,
+        audit: Vec<IdentityAuditEvent>,
+    ) -> Result<(), AgentsError> {
+        if !self.is_empty() {
+            return Ok(());
+        }
+        for definition in &agents {
+            let existing: Vec<AgentDefinition> = agents
+                .iter()
+                .filter(|candidate| candidate.id != definition.id)
+                .cloned()
+                .collect();
+            validate_hierarchy(definition, &existing)?;
+        }
+        self.agents = agents
+            .into_iter()
+            .map(|definition| (definition.id.clone(), definition))
+            .collect();
+        self.audit = audit;
+        Ok(())
+    }
+
     pub(crate) fn update_agent(
         &mut self,
         id: &AgentId,

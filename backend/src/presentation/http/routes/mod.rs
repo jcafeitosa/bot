@@ -49,7 +49,19 @@ pub fn v1_routes() -> Router<ApiState> {
         .route("/bots/catalog/persist", post(bots::bot_catalog_persist))
         .route("/bots/catalog/snapshot", get(bots::bot_catalog_snapshot))
         .route("/bots/ranking", post(bots::bot_ranking))
+        .route("/bots/runtime/status", get(bots::bot_runtime_status))
+        .route("/bots/runtime/promote", post(bots::bot_runtime_promote))
+        .route("/bots/runtime/demote", post(bots::bot_runtime_demote))
         .route("/backtest/sma-crossover", post(backtest::run_sma_backtest))
+        .route("/orders/execution-status", get(orders::execution_status))
+        .route(
+            "/orders/reconciliation/{client_order_id}",
+            get(orders::reconciliation_status),
+        )
+        .route(
+            "/orders/reconciliation/poll",
+            post(orders::reconciliation_poll),
+        )
         .route("/orders/submit", post(orders::submit_order))
         .route("/monitor/snapshot", get(monitor::snapshot))
         .route("/monitor/commands", post(monitor::post_command))

@@ -1,4 +1,5 @@
 mod advisory;
+mod bot_promotion;
 mod lifecycle;
 mod registry;
 mod runtime;
@@ -7,6 +8,7 @@ mod supervisor_hook;
 pub use advisory::{
     assert_advisory_eligible, run_advisory_step, AdvisoryStepInput, AdvisoryStepResult,
 };
+pub use bot_promotion::assert_runtime_promotion_authorized;
 pub use lifecycle::{pause_agent, resume_agent, retire_agent};
 pub use registry::AgentRegistry;
 pub use runtime::{monitor_agent_hook_from_env, shared_agent_registry};

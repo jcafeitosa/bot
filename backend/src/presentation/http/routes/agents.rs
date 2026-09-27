@@ -1,32 +1,14 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     Json,
 };
 
 use crate::modules::http_bridge::agents::{
-    self, AdvisoryRequest, AdvisoryResponse, AgencyQuery, AgentListResponse, AgentResponse,
+    AdvisoryRequest, AdvisoryResponse, AgencyQuery, AgentListResponse, AgentResponse,
     AuditLogResponse, LifecycleResponse, RegisterAgentRequest,
 };
 use crate::presentation::http::{error::ApiError, state::ApiState};
-
-async fn persist_agent_after_mutation(
-    state: &ApiState,
-    agency: &str,
-    agent_id: &str,
-) -> Result<(), ApiError> {
-    let postgres = state.database().map(|db| db.as_postgres());
-    if postgres.is_none() {
-        return Ok(());
-    }
-    let (definition, event) = state
-        .with_agents(|registry| agents::snapshot_for_persist(registry, agency, agent_id))
-        .await
-        .map_err(ApiError::from_agents_error)?;
-    agents::persist_identity_rows(postgres.expect("checked"), &definition, &event)
-        .await
-        .map_err(ApiError::from_agents_error)
-}
 
 #[utoipa::path(
     get,
@@ -39,11 +21,8 @@ pub async fn list_agents(
     State(state): State<ApiState>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<AgentListResponse>, ApiError> {
-    state
-        .with_agents(|registry| agents::list_agents(registry, &query.agency))
-        .await
-        .map(Json)
-        .map_err(ApiError::from_agents_error)
+    state.require_bound_agency(&query.agency)?;
+    state.list_agents_in_agency(&query.agency).await.map(Json)
 }
 
 #[utoipa::path(
@@ -58,15 +37,13 @@ pub async fn list_agents(
 )]
 pub async fn register_agent(
     State(state): State<ApiState>,
+    headers: HeaderMap,
     Json(body): Json<RegisterAgentRequest>,
 ) -> Result<(StatusCode, Json<AgentResponse>), ApiError> {
-    let agency = body.agency.clone();
-    let agent_id = body.agent_id.clone();
-    let response = state
-        .with_agents(|registry| agents::register_agent(registry, body))
-        .await
-        .map_err(ApiError::from_agents_error)?;
-    persist_agent_after_mutation(&state, &agency, &agent_id).await?;
+    state.require_http_admin(&headers)?;
+    state.require_register_owner_id(&body.owner_id)?;
+    state.require_bound_agency(&body.agency)?;
+    let response = state.register_agent_and_persist(body).await?;
     Ok((StatusCode::CREATED, Json(response)))
 }
 
@@ -81,11 +58,8 @@ pub async fn audit_log(
     State(state): State<ApiState>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<AuditLogResponse>, ApiError> {
-    state
-        .with_agents(|registry| agents::audit_log(registry, &query.agency))
-        .await
-        .map(Json)
-        .map_err(ApiError::from_agents_error)
+    state.require_bound_agency(&query.agency)?;
+    state.agents_audit_log(&query.agency).await.map(Json)
 }
 
 #[utoipa::path(
@@ -103,11 +77,11 @@ pub async fn get_agent(
     Path(agent_id): Path<String>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<AgentResponse>, ApiError> {
+    state.require_bound_agency(&query.agency)?;
     state
-        .with_agents(|registry| agents::get_agent(registry, &query.agency, &agent_id))
+        .get_agent_in_agency(&query.agency, &agent_id)
         .await
         .map(Json)
-        .map_err(ApiError::from_agents_error)
 }
 
 #[utoipa::path(
@@ -119,15 +93,15 @@ pub async fn get_agent(
 )]
 pub async fn pause_agent(
     State(state): State<ApiState>,
+    headers: HeaderMap,
     Path(agent_id): Path<String>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<LifecycleResponse>, ApiError> {
-    let agency = query.agency.clone();
+    state.require_http_admin(&headers)?;
+    state.require_bound_agency(&query.agency)?;
     let response = state
-        .with_agents(|registry| agents::pause(registry, &agency, &agent_id))
-        .await
-        .map_err(ApiError::from_agents_error)?;
-    persist_agent_after_mutation(&state, &agency, &agent_id).await?;
+        .pause_agent_and_persist(&query.agency, &agent_id)
+        .await?;
     Ok(Json(response))
 }
 
@@ -140,15 +114,15 @@ pub async fn pause_agent(
 )]
 pub async fn resume_agent(
     State(state): State<ApiState>,
+    headers: HeaderMap,
     Path(agent_id): Path<String>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<LifecycleResponse>, ApiError> {
-    let agency = query.agency.clone();
+    state.require_http_admin(&headers)?;
+    state.require_bound_agency(&query.agency)?;
     let response = state
-        .with_agents(|registry| agents::resume(registry, &agency, &agent_id))
-        .await
-        .map_err(ApiError::from_agents_error)?;
-    persist_agent_after_mutation(&state, &agency, &agent_id).await?;
+        .resume_agent_and_persist(&query.agency, &agent_id)
+        .await?;
     Ok(Json(response))
 }
 
@@ -161,15 +135,15 @@ pub async fn resume_agent(
 )]
 pub async fn retire_agent(
     State(state): State<ApiState>,
+    headers: HeaderMap,
     Path(agent_id): Path<String>,
     Query(query): Query<AgencyQuery>,
 ) -> Result<Json<LifecycleResponse>, ApiError> {
-    let agency = query.agency.clone();
+    state.require_http_admin(&headers)?;
+    state.require_bound_agency(&query.agency)?;
     let response = state
-        .with_agents(|registry| agents::retire(registry, &agency, &agent_id))
-        .await
-        .map_err(ApiError::from_agents_error)?;
-    persist_agent_after_mutation(&state, &agency, &agent_id).await?;
+        .retire_agent_and_persist(&query.agency, &agent_id)
+        .await?;
     Ok(Json(response))
 }
 
@@ -185,16 +159,11 @@ pub async fn retire_agent(
 )]
 pub async fn run_advisory(
     State(state): State<ApiState>,
+    headers: HeaderMap,
     Path(agent_id): Path<String>,
     Json(body): Json<AdvisoryRequest>,
 ) -> Result<Json<AdvisoryResponse>, ApiError> {
-    let advisor = state.jev().cloned().ok_or_else(ApiError::jev_unavailable)?;
-    let step = state
-        .with_agents(|registry| agents::advisory_prepare(registry, &agent_id, body))
-        .await
-        .map_err(ApiError::from_agents_error)?;
-    agents::advisory_finish(&advisor, step)
-        .await
-        .map_err(ApiError::from_bot_error)
-        .map(Json)
+    state.require_http_admin(&headers)?;
+    state.require_bound_agency(&body.agency)?;
+    state.run_agent_advisory(&agent_id, body).await.map(Json)
 }
