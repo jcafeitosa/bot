@@ -51,7 +51,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **378** testes bin `bot` (incl. reconciliação poll, `live_query_*`, supervisor `record_monitor_spot_submit_reconciliation`).
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **379** testes bin `bot` (incl. reconciliação poll, `live_query_*`, supervisor `record_monitor_spot_submit_reconciliation`).
 
 ## Rollback
 
