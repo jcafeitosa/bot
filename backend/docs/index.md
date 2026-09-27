@@ -1,6 +1,6 @@
 ---
 title: Documentação do backend
-description: Índice da documentação técnica, pesquisas, planos e SDDs do backend
+description: Índice da documentação técnica, operacional e de design do backend
 tags:
   - backend
   - documentation
@@ -8,7 +8,13 @@ tags:
 ---
 # Documentação do backend
 
-Esta é a entrada principal da documentação do backend. Os documentos estão agrupados por função: pesquisa, planejamento e design técnico.
+Esta é a entrada principal da documentação do backend. Use as referências por tipo para encontrar operação, configuração, pesquisa, planejamento e design técnico.
+
+## Comece aqui
+
+- [Guia de execução e operação](./operations/runbook.md) — pré-requisitos, inicialização, modos suportados, persistência e diagnóstico.
+- [Referência de CLI e configuração](./reference/cli-and-config.md) — comandos, opções, variáveis de ambiente e validações.
+- [README do backend](../README.md) — visão geral, arquitetura e comandos rápidos.
 
 ## Pesquisa
 
@@ -27,11 +33,12 @@ Esta é a entrada principal da documentação do backend. Os documentos estão a
 - [SDD T-13 — Remoção de arquivos legados de configuração e migração](./sdd/legacy-file-cleanup-sdd.md)
 - [SDD T-15 — Política de persistência opcional do monitor](./sdd/monitor-persistence-policy-sdd.md)
 - [SDD T-16 — Mapa de módulos do backend no README](./sdd/backend-module-map-sdd.md)
-- [SDD D19 — Referências locais após reorganização da documentação](./sdd/docs-links-sdd.md)
 
 ## Convenções
 
 - Pesquisas ficam em `research/`.
 - Planos e acompanhamento ficam em `planning/`.
+- Runbooks ficam em `operations/`.
+- Referências estáveis ficam em `reference/`.
 - SDDs e designs técnicos ficam em `sdd/`.
 - O estado de cada entrega continua registrado no próprio documento; o plano consolida a ordem de execução e os bloqueios.
