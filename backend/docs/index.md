@@ -41,6 +41,8 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 
 ## Design técnico
 
+- [SDD — Contrato de apresentação do monitor e tolerância zero](./sdd/monitor-presentation-contract-sdd.md) — snapshot completo, recuperação após lag e shutdown verificável.
+
 - [Proposta 0001 — Separação entre core, módulos e MVC no backend](./proposals/0001-backend-core-modules-mvc.md) — proposta `draft`; seam TUI–monitor confirmado pelo owner.
 
 - [Proposta 0001 — Separação entre core, módulos e MVC no backend](./proposals/0001-backend-core-modules-mvc.md) — proposta `draft`, aguardando revisão e decisão humana.
