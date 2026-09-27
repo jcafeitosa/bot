@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: execução de orders (exchange)
 
-- **Estado:** **parcial** — G1 + `HttpOrderExecutor` (`paper`, `recording`, `testnet`+credenciais); submit testnet ccxt; reconciliação memória/PG + `POST /orders/reconciliation/poll` + `LiveExchangeSpotOrderReconciliationQuery` (binding + `observe_testnet_spot_order_by_client_id`); dedupe `client_order_id` (memória + PG `0004`). Pendente: threat model fechado, Critic, prod REST.
+- **Estado:** **parcial** — G1 + `HttpOrderExecutor` (`paper`, `recording`, `testnet`+credenciais); submit testnet ccxt; reconciliação memória/PG + `POST /orders/reconciliation/poll` + `LiveExchangeSpotOrderReconciliationQuery` (binding + `observe_testnet_spot_order_by_client_id`); dedupe `client_order_id` (memória + PG `0004`). Pendente: LGTM **Critic** (threat model ops doc + redação credenciais); prod REST bloqueado.
 - **Referências:** [SDD orders G1](./orders-module-sdd.md), [auditoria de completude](../planning/modules-completeness-audit.md), `modules/exchanges/rest`, `modules/risk`.
 
 ## Contexto
@@ -55,7 +55,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **387** testes bin `bot`, **8** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_paper_executor_returns_200` (+ snapshot portfolio **995**), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
+Evidência G1 (2026-09-27): **387** testes bin `bot`, **9** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `orders_submit_live_exchange_reserved_returns_503_with_code`, `orders_submit_live_exchange_wired_returns_200`, `orders_submit_paper_executor_returns_200` (+ snapshot portfolio **995**), `meta_and_orders_execution_status_live_exchange_wired_true`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION` (`paper` → ledger; `live_exchange`+recording → `ExchangeSpotExecutor`), `duplicate_client_order_id_replays_without_second_execute`, `GET /orders/execution-status`.
 
 ## Validação Gate 2 (quando implementado)
 
