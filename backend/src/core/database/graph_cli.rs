@@ -34,6 +34,8 @@ pub enum GraphQueryCommand {
     SupervisionChain(GraphQuerySupervisionChainCli),
     /// Bots promoted by the agent (`PROMOTED_BY` in the bots subgraph).
     BotsForAgent(GraphQueryBotsForAgentCli),
+    /// Code entities linked to a platform module (`AFFECTS` / `DOCUMENTS` or path prefix).
+    CodeImpact(GraphQueryCodeImpactCli),
 }
 
 #[derive(Debug, Parser)]
@@ -62,6 +64,16 @@ pub struct GraphQueryBotsForAgentCli {
     pub limit: u32,
 }
 
+#[derive(Debug, Parser)]
+pub struct GraphQueryCodeImpactCli {
+    /// Module path or id (e.g. `modules/orders` or `orders`).
+    #[arg(long)]
+    pub module_path: String,
+    /// Maximum entity rows to return (1–500).
+    #[arg(long, default_value_t = 32)]
+    pub limit: u32,
+}
+
 pub async fn run(cli: &GraphCli) -> Result<()> {
     match &cli.command {
         GraphCommand::Query(args) => run_query(args).await,
@@ -73,6 +85,7 @@ async fn run_query(cli: &GraphQueryCli) -> Result<()> {
         GraphQueryCommand::Agents(args) => run_query_agents(args).await,
         GraphQueryCommand::SupervisionChain(args) => run_query_supervision_chain(args).await,
         GraphQueryCommand::BotsForAgent(args) => run_query_bots_for_agent(args).await,
+        GraphQueryCommand::CodeImpact(args) => run_query_code_impact(args).await,
     }
 }
 
@@ -116,6 +129,26 @@ async fn run_query_bots_for_agent(args: &GraphQueryBotsForAgentCli) -> Result<()
             "agency_id": bots.agency_id,
             "agent_id": bots.agent_id,
             "bots": bots.bots,
+            "limit": limit,
+        })
+    );
+    Ok(())
+}
+
+async fn run_query_code_impact(args: &GraphQueryCodeImpactCli) -> Result<()> {
+    let neo4j = connect_neo4j_for_query().await?;
+    let port = Neo4jGraphQuery::new(neo4j);
+    let limit = args.limit.clamp(1, 500);
+    let impact = port
+        .code_impact_for_module(&args.module_path, limit)
+        .await
+        .map_err(map_query_error)?;
+    println!(
+        "{}",
+        json!({
+            "module_path": impact.module_path,
+            "module_id": impact.module_id,
+            "entities": impact.entities,
             "limit": limit,
         })
     );
@@ -213,6 +246,29 @@ mod tests {
                 assert_eq!(args.limit, 5);
             }
             _ => panic!("expected bots-for-agent"),
+        }
+    }
+
+    #[test]
+    fn graph_cli_parses_query_code_impact() {
+        let cli = GraphCli::try_parse_from([
+            "graph",
+            "query",
+            "code-impact",
+            "--module-path",
+            "modules/orders",
+            "--limit",
+            "8",
+        ])
+        .expect("parse");
+        match cli.command {
+            GraphCommand::Query(GraphQueryCli {
+                command: GraphQueryCommand::CodeImpact(args),
+            }) => {
+                assert_eq!(args.module_path, "modules/orders");
+                assert_eq!(args.limit, 8);
+            }
+            _ => panic!("expected code-impact"),
         }
     }
 

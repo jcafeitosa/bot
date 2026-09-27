@@ -19,7 +19,7 @@ O binário tem dois caminhos principais:
 | Backtest | `cargo run -- backtest --config <arquivo>`; gera candles sintéticos e imprime um resumo JSON. |
 | HTTP API | `cargo run -- --config src/core/config/bot.toml serve --bind 127.0.0.1:8080`; OpenAPI em `/openapi.json`, UI Scalar em `/docs`. |
 | Graph query (supervision chain) | `cargo run -- graph query supervision-chain --agency-id <id> --agent-id <id>` — read-only; mesmo pré-requisito Neo4j que agents list; [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). |
-| Graph query (read-only) | `cargo run -- graph query agents --limit 32`; `graph query supervision-chain` / `bots-for-agent` — requer `BOT_AGENTS_ENABLED` + Neo4j; ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). |
+| Graph query (read-only) | `cargo run -- graph query agents --limit 32`; `graph query supervision-chain` / `bots-for-agent` / `code-impact --module-path modules/orders` — requer `BOT_AGENTS_ENABLED` + Neo4j; ver [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md). |
 | Graph projection drain | `cargo run -- graph-projection drain --limit 32` — requer `DATABASE_URL` + `BOT_AGENTS_ENABLED` + Neo4j; ver [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md) F2.1.3. |
 
 Exemplo do monitor:
@@ -180,6 +180,7 @@ cd backend
 bot graph query agents --limit 32   # read-only Neo4j (fail-closed sem stack)
 bot graph query supervision-chain --agency-id agency-a --agent-id worker-1
 bot graph query bots-for-agent --agency-id agency-a --agent-id agent-promoter --limit 32
+bot graph query code-impact --module-path modules/orders --limit 32
 ```
 
 Matriz e manifesto PG: [test-matrix](../reference/test-matrix.md). Auditoria do goal: [modules-completeness-audit](../planning/modules-completeness-audit.md).

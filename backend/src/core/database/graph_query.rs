@@ -1,4 +1,4 @@
-//! Read-only graph query seam (F3: agents list, supervision chain, bots for agent).
+//! Read-only graph query seam (F3: agents list, supervision chain, bots for agent, code impact).
 
 use async_trait::async_trait;
 use neo4rs::query;
@@ -6,6 +6,12 @@ use serde::{Deserialize, Serialize};
 
 use super::graph_projection::{AGENTS_GRAPH_DOMAIN, BOTS_GRAPH_DOMAIN};
 use super::neo4j::Neo4jGraph;
+
+/// Subgraph namespace for graphify `CodeEntity` nodes (strategy §6).
+pub const CODE_GRAPH_DOMAIN: &str = "code";
+
+/// Subgraph namespace for platform `Module` bridge nodes (strategy §6).
+pub const PLATFORM_GRAPH_DOMAIN: &str = "platform";
 
 fn validate_agency_agent_ids(agency_id: &str, agent_id: &str) -> Result<(), GraphQueryError> {
     if agency_id.trim().is_empty() || agent_id.trim().is_empty() {
@@ -56,6 +62,55 @@ ORDER BY bot_id
 LIMIT $limit
 ";
 
+const CODE_IMPACT_FOR_MODULE: &str = r"
+MATCH (ce:CodeEntity)
+WHERE ce.graph_domain = $code_domain
+OPTIONAL MATCH (m:Module {module_id: $module_id, graph_domain: $platform_domain})<-[rel:AFFECTS|DOCUMENTS]-(ce)
+WITH ce, rel,
+     coalesce(ce.source_file, ce.path, '') AS source_file,
+     $path_fragment AS path_fragment
+WHERE rel IS NOT NULL OR source_file CONTAINS path_fragment
+RETURN DISTINCT
+       coalesce(ce.source_id, '') AS source_id,
+       source_file,
+       coalesce(ce.entity_kind, ce.file_type, 'code') AS entity_kind,
+       CASE WHEN rel IS NOT NULL THEN toLower(type(rel)) ELSE 'path_prefix' END AS link_kind
+ORDER BY source_id
+LIMIT $limit
+";
+
+/// Normalizes CLI/API `module_path` into `(module_id, path_fragment)` for graph queries.
+pub fn normalize_module_path(module_path: &str) -> Result<(String, String), GraphQueryError> {
+    let trimmed = module_path.trim();
+    if trimmed.is_empty() {
+        return Err(GraphQueryError::Invalid("module_path is required".into()));
+    }
+    let mut normalized = trimmed.replace('\\', "/");
+    while normalized.starts_with("./") {
+        normalized = normalized[2..].to_string();
+    }
+    if let Some(stripped) = normalized.strip_prefix("backend/") {
+        normalized = stripped.to_string();
+    }
+    let module_id = if let Some(idx) = normalized.find("modules/") {
+        let rest = &normalized[idx + "modules/".len()..];
+        rest.split('/').next().unwrap_or(rest).to_string()
+    } else {
+        normalized
+            .split('/')
+            .next_back()
+            .unwrap_or(normalized.as_str())
+            .to_string()
+    };
+    if module_id.is_empty() {
+        return Err(GraphQueryError::Invalid(
+            "could not derive module_id from module_path".into(),
+        ));
+    }
+    let path_fragment = format!("modules/{module_id}");
+    Ok((module_id, path_fragment))
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProjectedAgentNode {
     pub agent_id: String,
@@ -98,6 +153,21 @@ pub struct ProjectedBotsForAgent {
     pub bots: Vec<ProjectedBotForAgent>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectedCodeImpactEntity {
+    pub source_id: String,
+    pub source_file: String,
+    pub entity_kind: String,
+    pub link_kind: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectedCodeImpactForModule {
+    pub module_path: String,
+    pub module_id: String,
+    pub entities: Vec<ProjectedCodeImpactEntity>,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum GraphQueryError {
     #[error("neo4j unavailable: {0}")]
@@ -124,6 +194,12 @@ pub trait GraphQueryPort: Send + Sync {
         agent_id: &str,
         limit: u32,
     ) -> Result<ProjectedBotsForAgent, GraphQueryError>;
+
+    async fn code_impact_for_module(
+        &self,
+        module_path: &str,
+        limit: u32,
+    ) -> Result<ProjectedCodeImpactForModule, GraphQueryError>;
 }
 
 #[derive(Clone)]
@@ -284,6 +360,47 @@ impl GraphQueryPort for Neo4jGraphQuery {
             bots,
         })
     }
+
+    async fn code_impact_for_module(
+        &self,
+        module_path: &str,
+        limit: u32,
+    ) -> Result<ProjectedCodeImpactForModule, GraphQueryError> {
+        let (module_id, path_fragment) = normalize_module_path(module_path)?;
+        let limit = limit.clamp(1, 500);
+        let mut rows = self
+            .graph
+            .inner_graph()
+            .execute(
+                query(CODE_IMPACT_FOR_MODULE)
+                    .param("code_domain", CODE_GRAPH_DOMAIN)
+                    .param("platform_domain", PLATFORM_GRAPH_DOMAIN)
+                    .param("module_id", module_id.as_str())
+                    .param("path_fragment", path_fragment.as_str())
+                    .param("limit", i64::from(limit)),
+            )
+            .await
+            .map_err(map_driver_error)?;
+
+        let mut entities = Vec::new();
+        while let Some(row) = rows.next().await.map_err(map_driver_error)? {
+            let source_id = row_get_string(&row, "source_id")?;
+            if source_id.is_empty() {
+                continue;
+            }
+            entities.push(ProjectedCodeImpactEntity {
+                source_id,
+                source_file: row_get_string(&row, "source_file")?,
+                entity_kind: row_get_string(&row, "entity_kind")?,
+                link_kind: row_get_string(&row, "link_kind")?,
+            });
+        }
+        Ok(ProjectedCodeImpactForModule {
+            module_path: module_path.trim().to_string(),
+            module_id,
+            entities,
+        })
+    }
 }
 
 fn row_get_optional_string(
@@ -370,6 +487,50 @@ mod tests {
                 }],
             })
         }
+
+        async fn code_impact_for_module(
+            &self,
+            module_path: &str,
+            limit: u32,
+        ) -> Result<ProjectedCodeImpactForModule, GraphQueryError> {
+            let (module_id, _) = normalize_module_path(module_path)?;
+            assert_eq!(limit, self.limit);
+            Ok(ProjectedCodeImpactForModule {
+                module_path: module_path.trim().to_string(),
+                module_id,
+                entities: vec![ProjectedCodeImpactEntity {
+                    source_id: "src-orders-1".into(),
+                    source_file: "src/modules/orders/mod.rs".into(),
+                    entity_kind: "code".into(),
+                    link_kind: "path_prefix".into(),
+                }],
+            })
+        }
+    }
+
+    #[test]
+    fn normalize_module_path_derives_module_id_and_fragment() {
+        let (id, frag) =
+            normalize_module_path("backend/src/modules/orders/adapters").expect("normalize");
+        assert_eq!(id, "orders");
+        assert_eq!(frag, "modules/orders");
+    }
+
+    #[test]
+    fn normalize_module_path_rejects_empty() {
+        assert!(normalize_module_path("  ").is_err());
+    }
+
+    #[tokio::test]
+    async fn graph_query_port_code_impact_for_module_returns_entities() {
+        let port = StubPort { limit: 10 };
+        let impact = port
+            .code_impact_for_module("modules/orders", 10)
+            .await
+            .expect("impact");
+        assert_eq!(impact.module_id, "orders");
+        assert_eq!(impact.entities.len(), 1);
+        assert_eq!(impact.entities[0].link_kind, "path_prefix");
     }
 
     #[tokio::test]
@@ -556,5 +717,48 @@ mod neo4j_integration_tests {
         assert_eq!(bots.bots.len(), 1);
         assert_eq!(bots.bots[0].bot_id, catalog.bot_id);
         assert_eq!(bots.bots[0].strategy_id, "ema_cross");
+    }
+
+    #[tokio::test]
+    async fn neo4j_code_impact_for_module_after_seed() {
+        if !crate::core::persistence::pg_integration::neo4j_stack_enabled() {
+            return;
+        }
+        let config = load_agents_stack_from_env().expect("config");
+        let graph = Neo4jGraph::connect(&config.neo4j).await.expect("connect");
+        let port = Neo4jGraphQuery::new(graph.clone());
+        let suffix = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let module_id = format!("orders-impact-{suffix}");
+        let source_id = format!("code-entity-impact-{suffix}");
+        let source_file = format!("src/modules/{module_id}/adapters/pg_idempotency.rs");
+        let _ = graph
+            .inner_graph()
+            .execute(
+                query(
+                    "MERGE (m:Module {module_id: $module_id, graph_domain: $platform_domain})
+                     MERGE (ce:CodeEntity {source_id: $source_id, graph_domain: $code_domain})
+                     SET ce.source_file = $source_file, ce.entity_kind = 'code'
+                     MERGE (ce)-[:AFFECTS]->(m)",
+                )
+                .param("module_id", module_id.as_str())
+                .param("platform_domain", PLATFORM_GRAPH_DOMAIN)
+                .param("source_id", source_id.as_str())
+                .param("code_domain", CODE_GRAPH_DOMAIN)
+                .param("source_file", source_file.as_str()),
+            )
+            .await
+            .expect("seed code impact graph");
+        let impact = port
+            .code_impact_for_module(&format!("modules/{module_id}"), 10)
+            .await
+            .expect("code impact");
+        assert_eq!(impact.module_id, module_id);
+        assert!(impact
+            .entities
+            .iter()
+            .any(|entity| entity.source_id == source_id && entity.link_kind == "affects"));
     }
 }

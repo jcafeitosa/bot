@@ -81,7 +81,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**21/21** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **464** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **469** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **21/21** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -120,6 +120,10 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 | `ping_and_node_count_against_local_graph` | `core/database/neo4j.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `graph_query_port_bots_for_agent_returns_projected_bots` | `core/database/graph_query.rs` | F3 port stub |
 | `graph_cli_parses_query_bots_for_agent` | `core/database/graph_cli.rs` | F3 CLI parse |
+| `graph_query_port_code_impact_for_module_returns_entities` | `core/database/graph_query.rs` | F3 port stub |
+| `normalize_module_path_derives_module_id_and_fragment` | `core/database/graph_query.rs` | F3 module path normalize |
+| `graph_cli_parses_query_code_impact` | `core/database/graph_cli.rs` | F3 CLI parse |
+| `neo4j_code_impact_for_module_after_seed` | `core/database/graph_query.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `neo4j_bots_for_agent_after_catalog_and_promotion_projection` | `core/database/graph_query.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `neo4j_agent_supervision_chain_after_projection` | `modules/agents/adapters/graph_projection.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `neo4j_bot_promoted_by_after_catalog_and_promotion_projection` | `modules/bots/adapters/graph_projection.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
