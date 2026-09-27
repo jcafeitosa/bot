@@ -17,6 +17,7 @@ tags:
 | Arquivo | Comportamento coberto | Dependências | Estado |
 |---|---|---|---|
 | `tests/config_cli.rs` | Arquivo padrão, caminho explícito, ausência e arquivo ilegível; precedência de CLI. | Sistema de arquivos local. | Passa. |
+| `tests/monitor_startup_cli.rs` | Binário `bot` com `PERSIST_MARKET_DATA` inválido, ou `PERSIST_MARKET_DATA=1` sem `DATABASE_URL`, falha na entrada da CLI antes de iniciar mercado/TUI, sem vazar a URL. | Binário `bot` (`CARGO_BIN_EXE_bot`); sem rede. | Passa. |
 | `tests/backtest_fixture.rs` | Presets/timeframes produzem fixture determinística e ao menos um trade fechado. | Nenhuma. | Passa. |
 | `tests/redirect_origin_test.rs` | Origem, porta efetiva, downgrade, userinfo, histórico vazio e limite de redirects. | Nenhuma. | Passa. |
 | `tests/redirect_policy_test.rs` | Redirect same-origin aceito e cross-origin rejeitado antes do contato com o segundo listener. | Loopback local. | Passa fora do sandbox; pode falhar em sandbox sem permissão de listener. |
@@ -58,7 +59,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | OpenAPI **39** paths; orders OpenAPI **503** `order_store_unavailable` (`routes/orders.rs`); `store_unavailable_maps_to_service_unavailable` (`error.rs`); `router_after_build_api_state_*`; `GET /meta` + `meta_and_*` (`server.rs`); admin bearer + orders + F3 graph admin (`http_integration_tests.rs` — [rotas mutantes](#rotas-mutantes-com-bot_http_admin_token)); portfolio HTTP; PG em `state.rs` via `pg_integration` + script PG **26/26**. | `server.rs`, `http_integration_tests.rs`, `state.rs`, `routes/*`, `error.rs`, `admin_auth.rs`, `order_execution.rs`, `routes/graph_admin.rs`. |
+| `presentation/http` | OpenAPI **42** paths; orders OpenAPI **503** `order_store_unavailable` (`routes/orders.rs`); `store_unavailable_maps_to_service_unavailable` (`error.rs`); `router_after_build_api_state_*`; `GET /meta` + `meta_and_*` (`server.rs`); admin bearer + orders + F3 graph admin (`http_integration_tests.rs` — [rotas mutantes](#rotas-mutantes-com-bot_http_admin_token)); portfolio HTTP; PG em `state.rs` via `pg_integration` + script PG **26/26**. | `server.rs`, `http_integration_tests.rs`, `state.rs`, `routes/*`, `error.rs`, `admin_auth.rs`, `order_execution.rs`, `routes/graph_admin.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
@@ -77,17 +78,17 @@ cargo test --locked --test redirect_origin_test
 cargo test --locked --test redirect_policy_test
 ```
 
-O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS` = **22**), depois `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default), depois as cinco suítes acima — **não** `cargo test --locked` completo (reexecutaria o bin `bot` em paralelo e pode flake). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
+O gate canônico executa `assert-pg-integration-manifest.sh` (contagem `PG_TESTS` = **26**), depois `cargo test --locked --bin bot -- --test-threads=1` (locks de env + ledger compartilhado não podem atravessar `.await` com paralelismo default), depois as cinco suítes acima — **não** `cargo test --locked` completo (reexecutaria o bin `bot` em paralelo e pode flake). A linha final de `./scripts/verify-backend-gates.sh` inclui o resumo `test result:` do bin `bot` para alinhar docs com evidência.
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**26/26** testes de domínio com `DATABASE_URL`).
 
-Evidência típica (atualizar após mudanças de teste): **492** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **26/26** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência típica (atualizar após mudanças de teste): **496** aprovados, **0** ignorados no bin `bot` (gate `./scripts/verify-backend-gates.sh`); integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **26/26** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
-### Integração opcional no bin `bot` (script PG **22** + Neo4j/testnet **3** = **25** casos; 0 `#[ignore]`)
+### Integração opcional no bin `bot` (script PG **26** + Neo4j/testnet **10** fora do script; 0 `#[ignore]`)
 
-**22** casos da tabela espelham `PG_TESTS` em `scripts/run-pg-integration-tests.sh` (validado por `assert-pg-integration-manifest.sh` no gate). Os **3** restantes (`ping_and_node_count_against_local_graph`, `neo4j_order_intent_after_redacted_projection`, `integration_submits_minimal_market_buy_on_testnet`) ficam fora do script CI; no gate passam com skip via `pg_integration` sem stack Neo4j ou credenciais testnet.
+**26** casos da tabela espelham `PG_TESTS` em `scripts/run-pg-integration-tests.sh` (validado por `assert-pg-integration-manifest.sh` no gate). Os **10** Neo4j/testnet (`ping_and_node_count_against_local_graph`; `neo4j_*` em `core/database/graph_query.rs` (4) e nos adapters `graph_projection.rs` de agents (1), bots (1) e orders (2); `integration_submits_minimal_market_buy_on_testnet`) ficam fora do script CI; a tabela também lista testes unitários F2.1/F3 relacionados (sem dependência externa); no gate passam com skip via `pg_integration` sem stack Neo4j ou credenciais testnet.
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|
@@ -189,9 +190,12 @@ Seam admin bearer (sem IdP); ver [http-admin-auth-seam-sdd.md](../sdd/http-admin
 
 
 
-## Admin provider credentials (HTTP)
+## Admin graph read-only (HTTP, F3)
 
+Testes em `http_integration_tests.rs` (incluídos nos **60** `http_integration`); ver [graph-query-port-f3-sdd.md](../sdd/graph-query-port-f3-sdd.md).
 
+| Teste | Arquivo | Comportamento |
+|---|---|---|
 | `graph_admin_list_returns_503_without_postgres` | `http_integration_tests.rs` | F3 HTTP admin graph agents fail-closed sem PG |
 | `graph_admin_list_returns_503_without_neo4j_when_postgres_wired` | `http_integration_tests.rs` | F3 HTTP admin graph agents fail-closed sem Neo4j |
 | `graph_admin_list_requires_admin_bearer_when_enabled` | `http_integration_tests.rs` | Bearer admin em `/admin/graph/agents` |
@@ -204,6 +208,8 @@ Seam admin bearer (sem IdP); ver [http-admin-auth-seam-sdd.md](../sdd/http-admin
 | `graph_admin_code_impact_returns_503_without_postgres` | `http_integration_tests.rs` | F3 HTTP admin code-impact fail-closed sem PG |
 | `graph_admin_code_impact_returns_503_without_neo4j_when_postgres_wired` | `http_integration_tests.rs` | F3 HTTP admin code-impact fail-closed sem Neo4j |
 | `graph_admin_code_impact_requires_admin_bearer_when_enabled` | `http_integration_tests.rs` | Bearer admin em `/admin/graph/code-impact` |
+
+## Admin provider credentials (HTTP)
 
 [provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md). Incluídos nos **60** testes `http_integration`.
 

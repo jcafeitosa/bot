@@ -11,7 +11,7 @@ tags:
 
 ## Comandos
 
-O binário tem dois caminhos principais:
+O binário tem o caminho padrão do monitor (sem subcomando) e os subcomandos `backtest`, `serve`, `graph` e `graph-projection`:
 
 | Caminho | Uso |
 |---|---|
@@ -40,6 +40,8 @@ Sem `--config`, o processo procura `src/core/config/bot.toml` relativo ao diret�
 | `src/core/config/exchanges/*.toml` | Contas/endpoints exchange (`binance.toml`); `load_registry` ignora `credentials.toml` (só documenta env `BINANCE_TESTNET_*`). |
 | PostgreSQL `provider_credentials` | API keys LLM (primary); env `TYPESAFE_*` / `OPENAI_*` = bootstrap deprecated. |
 
+Fallbacks de `system.toml` (usados quando a env correspondente não está definida; a env vence quando definida — leitura em `src/core/config/*/file.rs`): `[orders]` `execution` (`BOT_ORDERS_EXECUTION`), `exchange_submit` (`BOT_ORDERS_EXCHANGE_SUBMIT`), `paper_fill_unit_price` (`BOT_PAPER_FILL_UNIT_PRICE`; `0` = desligado), `reconciliation_poll_secs` (`BOT_ORDERS_RECONCILIATION_POLL_SECS`; `0` = desligado); `[bots]` `runtime_enabled` (`BOT_RUNTIME_ENABLED`); `[agents]` `enabled` (`BOT_AGENTS_ENABLED`), `monitor_agency` (`BOT_AGENCY`); `[monitor]` `persist_market_data` (`PERSIST_MARKET_DATA`); `[neo4j]` `uri` / `user` / `database` (`BOT_NEO4J_URI` / `BOT_NEO4J_USER` / `BOT_NEO4J_DATABASE`), `graph_projection_outbox_drain_secs` (`BOT_GRAPH_PROJECTION_OUTBOX_DRAIN_SECS`; `0` = desligado); `[providers]` `typesafe_endpoint` (`TYPESAFE_ENDPOINT`), `openai_base_url` (`NINE_ROUTER_BASE_URL` / `OPENAI_BASE_URL`), `nim_base_url` (`NVIDIA_NIM_BASE_URL`).
+
 Ordem de bootstrap: `ensure_dotenv_loaded()` → `system.toml` → `bot.toml`. Detalhes: [SDD configuração centralizada](../sdd/centralized-config-sdd.md), [provider credentials](../sdd/provider-credentials-db-sdd.md).
 
 ## Subcomando `serve` (HTTP)
@@ -64,12 +66,13 @@ Rotas principais dos módulos alvo do goal (prefixo `/api/v1`):
 
 | Grupo | Rotas | Notas |  |
 |---|---|---| - |
-| `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem autenticação do owner (Gate 1 pendente). |  |
+| `agents` | `GET/POST /agents`, lifecycle, `POST …/advisory` | Sem IdP/autenticação do owner humano (pendente). Seams: `BOT_HTTP_ADMIN_TOKEN` + `BOT_HTTP_OWNER_ID`/`BOT_HTTP_AGENCY_ID`; com owner bootstrap PG (`VerifiedProductOwner`), registro com `owner_id` divergente → **403** `owner_mismatch`. |  |
 | `bots` | `GET /bots/catalog`, persist/snapshot, ranking; `GET /bots/runtime/status`, `POST /bots/runtime/promote|demote` (mutações exigem admin quando token ativo) | Runtime default fail-closed; `BOT_RUNTIME_ENABLED=true` + `shared_bot_runtime`. Promote: `assert_bot_promotion_allowed` (catálogo + mercado do config). Com `BOT_HTTP_AGENCY_ID`, agente com `promote_runtime_bot`. Supervisor: `MonitorStrategyRegistry` + `strategy_evaluation_binding` + `BotSignal.bot_id`. Catálogo HTTP inclui `monitor_fast_period` / `monitor_slow_period` / `monitor_evaluator` (`sma_cross` ou `ema_cross` via `[[strategy.monitor_registry]]`). |
-| `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit` | Status: `mode` + `live_exchange_wired` (`recording` ou `testnet`+credenciais). Submit: fail-closed **503**; `paper`/`dev_accept` **200** após risco; `client_order_id` dedupe; corpo opcional `paper_fill_unit_price` (modo paper → portfolio `positions`). |  |
+| `orders` | `GET /orders/execution-status` (somente leitura), `POST /orders/submit`, `GET /orders/reconciliation/{client_order_id}`, `POST /orders/reconciliation/poll` | Status: `mode` + `live_exchange_wired` (`recording` ou `testnet`+credenciais). Submit: fail-closed **503**; `paper`/`dev_accept` **200** após risco; `client_order_id` dedupe; corpo opcional `paper_fill_unit_price` (modo paper → portfolio `positions`). |  |
 | `portfolio` | `GET /portfolio/paper-snapshot?quote=…` | Saldo paper + `positions[]` quando fills têm preço (`paper_fill_unit_price` no submit ou `BOT_PAPER_FILL_UNIT_PRICE`); baseline 1000 na quote. |  |
+| `admin` | `GET/POST /admin/provider-credentials`, `PUT/DELETE /admin/provider-credentials/{provider_id}/{key_name}`; `GET /admin/graph/agents`, `GET /admin/graph/supervision-chain`, `GET /admin/graph/bots-for-agent`, `GET /admin/graph/code-impact` | Bearer quando `BOT_HTTP_ADMIN_TOKEN` ativo. Credentials: **503** sem PG ([provider-credentials-db-sdd](../sdd/provider-credentials-db-sdd.md)). Graph: leitura advisory do Neo4j (PG é SoT); **503** sem PG/Neo4j wired ([graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md)). |  |
 
-Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
+Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md). Rotas de sistema `GET /healthz` e `GET /readyz` ficam fora de `/api/v1`; lista das rotas documentadas em `/openapi.json`.
 
 
 ## Opções do monitor
@@ -81,6 +84,7 @@ Detalhes: [auditoria de completude](../planning/modules-completeness-audit.md).
 | `--risk-profile` | `conservative`, `moderate`, `aggressive`, `auto` |
 | `--mode` | `observe`, `paper`, `testnet` |
 | `--config` | caminho para TOML, padrão `src/core/config/bot.toml` |
+| `--system-config` | caminho para `system.toml` (defaults não sensíveis), padrão `src/core/config/system.toml` |
 
 O modo `hft` é explicitamente rejeitado pelo backend atual. `testnet` não habilita ordens na versão atual.
 
@@ -108,7 +112,7 @@ fast_period = 3
 slow_period = 15
 ```
 
-Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O supervisor ainda só avalia estratégias registradas com evaluator SMA; ids desconhecidos na promoção caem em fallback com log.
+Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O supervisor avalia a estratégia vinculada (`strategy_evaluation_binding`) com o evaluator da entrada via `evaluate_for_kind` (`sma_cross` padrão ou `ema_cross`); ids desconhecidos na promoção caem em fallback com log.
 
 `GET /api/v1/config/active` e `GET /api/v1/config/snapshot` incluem o array `monitor_registry` (somente entradas extras do TOML; cada item pode definir `evaluator` = `sma_cross` ou `ema_cross`; `sma-cross@1` continua refletido em `sma_fast` / `sma_slow`).
 
@@ -129,7 +133,7 @@ Cada linha deve ter `0 < fast_period < slow_period` e `version > 0`. O superviso
 | `BOT_AGENCY` | Quando definida, `serve --with-monitor` usa `RegistryMonitorAgentHook` para a agência (registry compartilhado com HTTP agents). |
 | `BOT_HTTP_OWNER_ID` | Com `BOT_HTTP_ADMIN_TOKEN`, restringe `owner_id` no registro de agentes ao valor configurado. |
 | `BOT_PRODUCT_OWNER_BOOTSTRAP_ID` | Com `DATABASE_URL` e `BOT_PRODUCT_OWNER_BOOTSTRAP_ACK`, grava owner singleton em PG (`0010_product_owner_bootstrap`); boot HTTP carrega `VerifiedProductOwner` e `GET /meta` → `product_owner_bootstrap_active`. |
-| `BOT_PRODUCT_OWNER_BOOTSTRAP_ACK` | Deve ser `1`/`true`/`yes` junto com `BOT_PRODUCT_OWNER_BOOTSTRAP_ID` para mutar PG (fail-closed sem ACK). |
+| `BOT_PRODUCT_OWNER_BOOTSTRAP_ACK` | Deve ser `1`/`true`/`yes`/`on` junto com `BOT_PRODUCT_OWNER_BOOTSTRAP_ID` para mutar PG (fail-closed sem ACK). |
 | `BOT_HTTP_AGENCY_ID` | Restringe rotas `/api/v1/agents*` ao `agency` configurado (query ou body); falha **403** `http_agency_mismatch`. `GET /meta` → `http_agency_binding_active` (booleano, sem expor o ID). |
 | `BOT_HTTP_ADMIN_TOKEN` | Quando não vazio, rotas HTTP mutantes exigem `Authorization: Bearer <token>` (fail-closed; não substitui auth do owner). |
 | `BOT_RUNTIME_ENABLED` | `true` ativa `InMemoryBotRuntime` (promoção/demote em processo); default/false fail-closed (**503** em promote). |
@@ -176,8 +180,8 @@ Detalhes e threat model: [orders-live-execution-gate2-sdd.md](../sdd/orders-live
 
 ```sh
 cd backend
-./scripts/verify-backend-gates.sh          # → 464 passed, 0 ignored (bin bot); assert-completeness-evidence.sh
-./scripts/verify-backend-full.sh         # gates + PG 22/22 quando DATABASE_URL → trading_bot
+./scripts/verify-backend-gates.sh          # → 496 passed, 0 ignored (bin bot); assert-completeness-evidence.sh
+./scripts/verify-backend-full.sh         # gates + PG 26/26 quando DATABASE_URL → trading_bot
 bot graph query agents --limit 32   # read-only Neo4j (fail-closed sem stack)
 bot graph query supervision-chain --agency-id agency-a --agent-id worker-1
 bot graph query bots-for-agent --agency-id agency-a --agent-id agent-promoter --limit 32
@@ -188,4 +192,4 @@ Matriz e manifesto PG: [test-matrix](../reference/test-matrix.md). Auditoria do 
 
 ## Contratos de segurança
 
-O backend trabalha com dados públicos e não envia ordens no fluxo atual. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).
+O monitor trabalha com dados públicos de mercado e não envia ordens (`--mode testnet` é rejeitado na validação). Na API HTTP, `POST /api/v1/orders/submit` é fail-closed por padrão; envio só com opt-in explícito (`paper`/`dev_accept` locais, `live_exchange` + `recording` sem rede, ou `live_exchange` + `testnet` + `BINANCE_TESTNET_*` na Spot testnet); produção permanece bloqueada. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).

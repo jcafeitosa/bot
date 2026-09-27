@@ -238,6 +238,30 @@ mod catalog_gate_tests {
         assert_eq!(ema.monitor_fast_period, 4);
     }
 
+    #[test]
+    fn catalog_for_config_exposes_ema_evaluator_on_registry_v2_row() {
+        let mut config = Config::default();
+        config
+            .strategy
+            .monitor_registry
+            .push(crate::core::config::MonitorStrategyConfigEntry {
+                id: "sma-cross".into(),
+                version: 2,
+                name: "SMA id v2 EMA evaluator".into(),
+                fast_period: 8,
+                slow_period: 22,
+                evaluator: crate::modules::bots::MonitorEvaluatorKind::EmaCross,
+            });
+        let catalog = catalog_for_config(&config).expect("catalog");
+        let v2 = catalog
+            .bots
+            .iter()
+            .find(|entry| entry.strategy_version == 2)
+            .expect("sma-cross@2 row");
+        assert_eq!(v2.monitor_evaluator, "ema_cross");
+        assert_eq!(v2.monitor_fast_period, 8);
+    }
+
     #[tokio::test]
     async fn assert_catalog_contains_bot_accepts_config_materialized_id() {
         let config = Config::default();

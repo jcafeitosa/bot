@@ -15,6 +15,17 @@ pub fn verify_register_owner_id(
     http_admin.verify_register_owner_id(owner_id)
 }
 
+/// Fail-closed when PostgreSQL is wired: runtime promotion requires bootstrapped product owner.
+pub fn verify_runtime_promotion_postgres_owner_bootstrap(
+    postgres_connected: bool,
+    verified: Option<&VerifiedProductOwner>,
+) -> Result<(), ApiError> {
+    if postgres_connected && verified.is_none() {
+        return Err(ApiError::owner_bootstrap_required());
+    }
+    Ok(())
+}
+
 /// When product owner was bootstrapped in PostgreSQL, runtime promotion must trace to that owner.
 /// Without agency bind, `promoted_by` must equal the verified owner id; with agency bind, pass the
 /// promoting agent's `owner_id` after `assert_runtime_promotion_authorized`.
@@ -73,5 +84,13 @@ mod tests {
             verify_promoted_by_product_owner(Some(&verified), "agent-1", Some("other-owner"))
                 .is_err()
         );
+    }
+
+    #[test]
+    fn runtime_promotion_requires_owner_bootstrap_when_postgres_connected() {
+        let verified = VerifiedProductOwner::for_test("owner-bootstrapped");
+        assert!(verify_runtime_promotion_postgres_owner_bootstrap(true, None).is_err());
+        verify_runtime_promotion_postgres_owner_bootstrap(true, Some(&verified)).unwrap();
+        verify_runtime_promotion_postgres_owner_bootstrap(false, None).unwrap();
     }
 }

@@ -360,6 +360,10 @@ impl ApiState {
         request: PromoteBotRequest,
     ) -> Result<BotPromotionRecord, ApiError> {
         request.validate().map_err(ApiError::from_bots_error)?;
+        crate::presentation::http::register_owner::verify_runtime_promotion_postgres_owner_bootstrap(
+            self.database().is_some(),
+            self.inner.verified_product_owner.as_ref(),
+        )?;
         if let Some(agency_raw) = self.inner.http_admin_auth.bound_agency_id_opt() {
             let agency = crate::modules::agents::AgencyId::new(agency_raw)
                 .map_err(ApiError::from_agents_error)?;
@@ -1480,6 +1484,106 @@ mod state_tests {
             .expect_err("promoted_by must match bootstrapped owner");
         assert_eq!(err.status_code(), axum::http::StatusCode::FORBIDDEN);
         assert_eq!(err.error_code(), Some("owner_mismatch"));
+    }
+
+    #[tokio::test]
+    async fn promote_bot_http_mutates_same_runtime_arc_used_by_strategy_binding() {
+        use crate::modules::agents::AgentRegistry;
+        use crate::modules::bots::{
+            strategy_evaluation_binding_with_runtime, InMemoryBotRuntime, PromoteBotRequest,
+        };
+        use std::sync::Arc;
+
+        let config = crate::modules::config_api::Config::default();
+        let active_tf = config.market.timeframe.clone();
+        let runtime: Arc<dyn BotRuntimePort> = Arc::new(InMemoryBotRuntime::new());
+        let state = ApiState::with_stores(
+            None,
+            AppDatabases::empty(),
+            None,
+            config.clone(),
+            Arc::new(std::sync::Mutex::new(AgentRegistry::new())),
+            Arc::new(tokio::sync::Mutex::new(
+                crate::modules::bots::BotCatalogBackend::from_databases(&AppDatabases::empty()),
+            )),
+            HttpApiSeams::with_bot_runtime(HttpAdminAuth::disabled(), runtime.clone()),
+            None,
+        );
+        let persisted = state.persist_bot_catalog().await.expect("catalog");
+        let bot_id = persisted
+            .bots
+            .iter()
+            .find(|entry| entry.timeframe == active_tf)
+            .map(|entry| entry.bot_id.clone())
+            .expect("bot for timeframe");
+        state
+            .promote_bot_http(PromoteBotRequest {
+                bot_id: bot_id.clone(),
+                promoted_by: "owner-1".into(),
+            })
+            .await
+            .expect("promote");
+        assert_eq!(
+            runtime.status().active.as_ref().map(|r| r.bot_id.as_str()),
+            Some(bot_id.as_str())
+        );
+        let binding =
+            strategy_evaluation_binding_with_runtime(state.app_config(), runtime.as_ref());
+        assert_eq!(binding.promoted_bot_id.as_deref(), Some(bot_id.as_str()));
+        assert!(std::sync::Arc::ptr_eq(
+            &state.bot_runtime_arc_for_test(),
+            &runtime
+        ));
+    }
+
+    #[tokio::test]
+    async fn promote_bot_http_rejects_when_postgres_without_owner_bootstrap() {
+        use crate::modules::agents::AgentRegistry;
+        use crate::modules::bots::{InMemoryBotRuntime, PromoteBotRequest};
+        use std::sync::Arc;
+
+        let Some(db) =
+            crate::core::persistence::pg_integration::database_for_integration_test().await
+        else {
+            return;
+        };
+        let config = crate::modules::config_api::Config::default();
+        let active_tf = config.market.timeframe.clone();
+        let databases = AppDatabases {
+            postgres: Some(db),
+            neo4j: None,
+        };
+        let state = ApiState::with_stores(
+            None,
+            databases.clone(),
+            None,
+            config,
+            Arc::new(std::sync::Mutex::new(AgentRegistry::new())),
+            Arc::new(tokio::sync::Mutex::new(
+                crate::modules::bots::BotCatalogBackend::from_databases(&databases),
+            )),
+            HttpApiSeams::with_bot_runtime(
+                HttpAdminAuth::disabled(),
+                Arc::new(InMemoryBotRuntime::new()),
+            ),
+            None,
+        );
+        let persisted = state.persist_bot_catalog().await.expect("catalog");
+        let bot_id = persisted
+            .bots
+            .iter()
+            .find(|entry| entry.timeframe == active_tf)
+            .map(|entry| entry.bot_id.clone())
+            .expect("bot for timeframe");
+        let err = state
+            .promote_bot_http(PromoteBotRequest {
+                bot_id,
+                promoted_by: "owner-1".into(),
+            })
+            .await
+            .expect_err("PG without bootstrap must fail closed");
+        assert_eq!(err.status_code(), axum::http::StatusCode::FORBIDDEN);
+        assert_eq!(err.error_code(), Some("owner_bootstrap_required"));
     }
 
     #[tokio::test]

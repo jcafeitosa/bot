@@ -111,6 +111,14 @@ impl ApiError {
         )
     }
 
+    pub fn owner_bootstrap_required() -> Self {
+        ApiError::with_code(
+            StatusCode::FORBIDDEN,
+            "owner_bootstrap_required",
+            "product owner bootstrap is required before runtime promotion when PostgreSQL is active",
+        )
+    }
+
     pub fn http_agency_mismatch() -> Self {
         ApiError::with_code(
             StatusCode::FORBIDDEN,
