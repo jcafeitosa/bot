@@ -85,7 +85,7 @@ Evidência típica (atualizar após mudanças de teste): **385** aprovados + **1
 
 Bin `bot`: **385** aprovados, **17** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
-### Testes `#[ignore]` no bin `bot` (16)
+### Testes `#[ignore]` no bin `bot` (17)
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|
@@ -103,6 +103,7 @@ Bin `bot`: **385** aprovados, **17** ignorados (incl. `integration_submits_minim
 | `pg_hydrate_order_reconciliation_from_pg_after_durable_write` | `presentation/http/state.rs` | boot `serve`: `hydrate_order_reconciliation_from_pg` após linhas só em PG |
 | `pg_order_reconciliation_lookup_reads_pg_when_memory_empty` | `presentation/http/state.rs` | `GET /orders/reconciliation/{id}` fallback PG sem hydrate |
 | `pg_http_boot_sequence_mirrors_serve_wiring` | `presentation/http/state.rs` | cold-start agents + `for_http_server` + hydrate orders/catálogo (espelha `server::run`) |
+| `loads_credentials_from_postgres` | `core/providers/credentials/pg_integration.rs` | `DATABASE_URL` + migração `0007`; `cargo test -- --ignored loads_credentials_from_postgres` (fora de `run-pg-integration-tests.sh`) |
 | `ping_and_node_count_against_local_graph` | `core/database/neo4j.rs` | compose `graph` + `BOT_AGENTS_ENABLED=true`; fora do script PG |
 | `integration_submits_minimal_market_buy_on_testnet` | `exchanges/adapters/binance_spot_testnet_submit.rs` | credenciais testnet + rede; `cargo test -- --ignored integration_submits` |
 

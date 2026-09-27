@@ -130,7 +130,7 @@ modules/agents/
 - Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `http_integration_tests.rs`).
 - `GET /api/v1/meta` → `http_seams` (bindings owner/agency booleanos; ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
 - `assert_runtime_promotion_authorized`: capability, lifecycle, `promotion_rejects_invalid_bot_id` (`bot_promotion.rs`).
-- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **385** testes (**17** ignorados: PG×14, Neo4j, testnet manual); PG domínio **14/14** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.
+- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **385** testes (**17** ignorados: PG×14 no script, `loads_credentials_from_postgres` (0007), Neo4j, testnet manual); PG domínio **14/14** via `./scripts/verify-backend-full.sh` ou `run-pg-integration-tests.sh`.
 - **Gap Gate 1 produto:** autenticação/autorização do owner humano além de `BOT_HTTP_*` — ver [pesquisa de capacidades](../research/agents-capability-research.md); bloqueia fechamento do goal de completude de módulos.
 
 ## Critérios de fechamento G1 (checklist)
