@@ -32,7 +32,7 @@ tags:
 | `risk` | Limite conservador/agressivo, tamanho, stop/take profit e incompatibilidade de modo. |
 | `agents` | Registry, lifecycle, `assert_runtime_promotion_authorized` (capability + not-active), PG snapshot (ciclo lifecycle); HTTP `agents_register_promote_runtime_bot_visible_via_http_get`, `agents_audit_lists_lifecycle_events_*`. |
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado; `register_agent_maps_promote_runtime_bot_capability`; `agent_lifecycle_snapshot_for_persist_reflects_latest_audit_kind` (em `mod.rs`); PG ignorados `pg_agent_lifecycle_write_through_round_trip`, `pg_cold_start_apply_snapshot_after_write_through`. |
-| `http_bridge/config` | `map_config` expõe `monitor_registry` com `evaluator` (`map_config_preserves_ema_evaluator_on_registry_entry`). |
+| `http_bridge/config` | `map_config` expõe `monitor_registry` com `evaluator`; HTTP `GET /config/active` + `GET /config/snapshot` via `ApiState` (`config_snapshot_from_path_loads_bundled_default_toml`, smoke em `documented_get_routes_respond`). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP (incl. `sma-cross@2`). |
 | `http_bridge/orders` | `submit_order_http_records_execution_with_recording_executor`; dedupe `client_order_id`; HTTP `orders_submit_*` (paper, live_exchange wired/recording, reserved) em `server.rs`. |
 | `modules/orders` reconciliation | `reconciliation_pending_to_reconciled`, `reconciliation_mark_divergent_from_pending`, `reconciliation_seed_entry_restores_pending_count`, `reconciliation_poll_confirms_pending_when_recording_binding_exists`, `reconciliation_seed_hydrated_row_preserves_symbol_for_poll`; `recording_submit_returns_deterministic_exchange_order_id`. |
@@ -81,7 +81,7 @@ O gate canônico executa `cargo test --locked --bin bot -- --test-threads=1` (lo
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (**13/13** testes `#[ignore]` de domínio).
 
-Evidência típica (atualizar após mudanças de teste): **390** aprovados no bin `bot`, **15** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **13/13** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (ou pipeline `postgres-integration`).
+Evidência típica (atualizar após mudanças de teste): **390** aprovados no bin `bot`, **15** ignorados; integração workspace (redirect, config CLI, backtest fixture, etc.) além do bin; PG **13/13** via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (CI `postgres-integration` ou compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
 
 Bin `bot`: **390** aprovados, **15** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
