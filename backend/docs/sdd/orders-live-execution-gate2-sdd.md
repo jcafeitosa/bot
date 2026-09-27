@@ -111,7 +111,7 @@ Revisão Critic e hardening de produção permanecem **pendentes** antes de fech
 3. `confirm_exchange_order` ou `mark_divergent` (memória + `upsert_state` PG).
 4. Job opcional no `serve` (intervalo configurável; default desligado).
 
-Implementado (recording): `run_reconciliation_poll_once`, `SpotOrderReconciliationQuery` + `recording_bind_client_exchange` no submit HTTP wired; job periódico no `serve` (`BOT_ORDERS_RECONCILIATION_POLL_SECS`); `LiveExchangeSpotOrderReconciliationQuery` (recording + testnet via binding map); consulta REST testnet por `client_order_id` **pendente**.
+Implementado (recording): `run_reconciliation_poll_once`, `SpotOrderReconciliationQuery` + `recording_bind_client_exchange` no submit HTTP wired; job periódico no `serve` (`BOT_ORDERS_RECONCILIATION_POLL_SECS`); `LiveExchangeSpotOrderReconciliationQuery` (recording + testnet via binding map); `observe_testnet_spot_order_by_client_id` no adapter testnet (unitário local; poll testnet fora de CI sem credenciais).
 
 ### Critérios para sair de “rascunho” (threat model)
 
