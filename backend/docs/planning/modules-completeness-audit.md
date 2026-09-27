@@ -16,7 +16,7 @@ tags:
 
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
-| `modules/bots` | Fundação + ranking + `PgBotCatalogStore` + `BotCatalogBackend` + HTTP catalog/persist/snapshot | `modules/bots/tests.rs`, `pg_catalog.rs`, `server.rs` | [Gate 2 runtime](../sdd/bots-runtime-live-gate2-sdd.md), auth owner |
+| `modules/bots` | Fundação + ranking + PG + `BotRuntimePort` + HTTP catalog e `/bots/runtime/*` | `modules/bots/tests.rs`, `http_bridge/bots_runtime`, `server.rs` | [Gate 2 runtime](../sdd/bots-runtime-live-gate2-sdd.md), auth owner |
 | `modules/orders` | Seam fail-closed + HTTP 503 após risco; `ApiState::submit_order_http` | `modules/orders/tests.rs`, `server.rs`, `state.rs` | Adapter exchange, idempotência, auth |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hydrate no `serve` + `require_bound_agency` | `modules/agents/tests.rs`, `server.rs`, rotas agents | Auth owner produto (fora do seam `HttpAdminAuth`) |
 | `presentation/http` | OpenAPI ~33 paths, Scalar `/docs`, `HttpAdminAuth` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |

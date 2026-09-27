@@ -10,7 +10,7 @@ status: draft
 ---
 # SDD — Módulo `modules/bots`
 
-- **Estado:** fundação G1 — catálogo/ranking/HTTP; `BotCatalogBackend` com `PgBotCatalogStore` quando `DATABASE_URL` conecta (scaffold `0002_agents_bots_scaffold.sql`); runtime live pendente — [Gate 2 runtime draft](./bots-runtime-live-gate2-sdd.md).
+- **Estado:** G1 + seam Gate 2 parcial — catálogo/ranking/HTTP; `BotRuntimePort` + rotas `/bots/runtime/*`; snapshot HTTP do monitor expõe promoção ativa (`promoted_bot_id`) sem acoplar o loop do supervisor — [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md).
 - **Referências:** [SDD agents — Relação com bots](./agents-module-sdd.md), [Pesquisa agents](../research/agents-capability-research.md), [Módulos não implementados §1b](../planning/unimplemented-modules-analysis.md), [Convenção MVC](./modules-mvc-convention-sdd.md).
 - **Premissas:** Bots são **variações estratégia × timeframe** (e símbolo de mercado quando aplicável), versionados, avaliados por métricas de simulação. Não são identidades administrativas (`modules/agents`).
 
@@ -32,7 +32,7 @@ O produto distingue **agentes** (governança) de **bots** (executores versionado
 
 ### Não objetivos
 
-- Runtime live de executor, promoção automática ou ordens reais.
+- Loop do monitor executando bot promovido, promoção automática ou ordens reais.
 - Substituir ou fundir com `modules/agents`.
 
 ## 2. Convenção MVC
@@ -70,5 +70,5 @@ modules/bots/
 ## 6. Pendências
 
 - Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
-- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): promoção executor e mapeamento formal executor versionado ↔ agentes autorizadores.
+- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): acoplamento supervisor ↔ `BotRuntimePort`; mapeamento formal executor versionado ↔ agentes autorizadores.
 - Auth owner verificável no transporte (fora do seam `BOT_HTTP_*`).
