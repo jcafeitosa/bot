@@ -33,9 +33,9 @@ tags:
 | `agents` | Registry, hierarquia, lifecycle, advisory, `assert_runtime_promotion_authorized`, `restore_from_snapshot`, `PgAgentIdentityStore` SQL mapping. |
 | `http_bridge/agents` | `apply_agent_identity_snapshot` no-op quando registry já populado (cold-start). |
 | `http_bridge/monitor` | `attach_bot_runtime_status` enriquece snapshot HTTP com promoção ativa. |
-| `http_bridge/orders` | `submit_order_http` com `FailClosedExecutor` → `ExecutionDisabled`; com `AcceptingExecutor` → `accepted: true`; `client_order_id` duplicado não reexecuta o port (`duplicate_client_order_id_replays_without_second_execute`). |
+| `http_bridge/orders` | `submit_order_http` fail-closed / accepting; `client_order_id` dedupe; HTTP `orders_submit_live_exchange_reserved_returns_503_with_code`. |
 | `http_bridge/bots` | `assert_catalog_contains_bot`, `assert_bot_promotion_allowed` (catálogo + `bot_id_matches_market`); `catalog_for_config_includes_monitor_strategy_periods`; testes em `catalog_gate_tests`. |
-| `orders` | `submit_order` rejeita acima do cap de risco; após risco OK retorna `ExecutionDisabled`; `AcceptingExecutor` cobre caminho aceito no port; `InMemoryOrderIdempotencyStore` + `pg_order_idempotency_round_trip` (ignorado). |
+| `orders` | `submit_order` + `ReservedLiveExchangeExecutor` (`LiveExchangeNotWired`); `InMemoryOrderIdempotencyStore` + `pg_order_idempotency_round_trip` (ignorado). |
 | `bots` | Identidade, ranking, `build_catalog_from_monitor_registry` (multi-estratégia registrada), `BotRuntimePort` + `shared_bot_runtime()`, `MonitorStrategyRegistry`, `strategy_evaluation_binding`, métricas coerentes com `BotId`. |
 | `portfolio` | Snapshot paper, ativos, posição e erro de inconsistência. |
 | `backtest` | Fees, next-open, slippage na venda, stop/take-profit, histórico insuficiente e ausência de lookahead. |

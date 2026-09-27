@@ -82,7 +82,7 @@ Evidência (2026-09-27): **273** testes no binário `bot`, **6** ignorados (`per
 |------|--------|-----|--------------|
 | G1 PG scaffold | agents + bots catálogo | [bots-catalog-persistence-gate1-sdd.md](../sdd/bots-catalog-persistence-gate1-sdd.md) | **Parcial** (código + testes `#[ignore]` PG) |
 | G1 HTTP admin seam | presentation/http | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | **Sim** (não é auth owner produto) |
-| G2 orders live | orders + idempotência HTTP `client_order_id` (memória) | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`; `client_order_id` + memória + `PgOrderIdempotencyStore` opcional; sem exchange) |
+| G2 orders live | orders + idempotência HTTP `client_order_id` (memória) | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (`HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`; `live_exchange`/`paper` → `ReservedLiveExchangeExecutor` + **503** `live_exchange_not_wired`; `client_order_id` + memória + `PgOrderIdempotencyStore` opcional; sem adapter exchange real) |
 | G2 bots runtime | bots + monitor + agents `promote_runtime_bot` quando `BOT_HTTP_AGENCY_ID` | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | **Parcial** (`MonitorStrategyRegistry` + `[[strategy.monitor_registry]]` no TOML, `build_catalog_from_monitor_registry`, HTTP promote/demote, `strategy_evaluation_binding`; evaluators não-SMA ainda ausentes) |
 | Auth owner produto | agents | [agents-capability-research.md](../research/agents-capability-research.md) | **Bloqueado** na pesquisa |
 
