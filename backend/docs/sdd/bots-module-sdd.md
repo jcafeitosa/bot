@@ -72,6 +72,6 @@ modules/bots/
 ## 6. Pendências
 
 - Evidência PG reproduzível: teste ignorado `pg_catalog_store_round_trip` (ver [Gate 1](./bots-catalog-persistence-gate1-sdd.md)).
-- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): promoção HTTP + `evaluate_for_kind` (SMA/EMA); mapeamento formal executor versionado ↔ agentes autorizadores; auth owner produto.
+- [Gate 2 runtime](./bots-runtime-live-gate2-sdd.md): checklist **Critérios de fechamento G2**; promoção HTTP + `evaluate_for_kind` (SMA/EMA) feitos; pendem auth owner, alinhamento runtime `serve` vs testes HTTP, Critic.
 - Baseline: `./scripts/verify-backend-gates.sh` verde; bin `bot` **305** testes (`promoted_sma_cross_identity_uses_config_periods` + gates).
 - Auth owner verificável no transporte (fora do seam `BOT_HTTP_*`).

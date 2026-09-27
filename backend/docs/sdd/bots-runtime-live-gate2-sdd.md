@@ -69,3 +69,18 @@ Testes de `POST /bots/runtime/promote` em `presentation/http/server.rs` usam `fr
 - Promoção por API vs apenas CLI/TUI.
 - Persistência de promoção (PG vs memória).
 - Relação com `MonitorAgentHook` existente.
+
+## Critérios de fechamento G2 (checklist)
+
+| Critério | Evidência atual | Fechado |
+|----------|-----------------|--------|
+| `BotRuntimePort` + `BOT_RUNTIME_ENABLED` | `InMemoryBotRuntime`, `shared_bot_runtime` | Sim (seam) |
+| HTTP promote/demote + catálogo | `assert_bot_promotion_allowed`, testes `bots_runtime_*` | Sim |
+| `strategy_evaluation_binding` + `BotSignal.bot_id` | `evaluation_binding.rs`, supervisor | Sim |
+| `MonitorEvaluatorKind` (SMA/EMA) monitor + backtest | `evaluate_for_kind`, catálogo/config HTTP | Sim |
+| Capability `promote_runtime_bot` com agency bind | `bot_promotion.rs`, migração `0005` | Sim (seam) |
+| Auth owner produto (não só `BOT_HTTP_*`) | [pesquisa agents](../research/agents-capability-research.md) | **Não** |
+| Runtime injetado em testes HTTP = `serve` production | documentado como pendência | **Não** |
+| Ordens reais / exchange | depende [orders G2](./orders-live-execution-gate2-sdd.md) | **Não** |
+| Revisão Critic | — | **Não** |
+| `./scripts/verify-backend-gates.sh` verde | **305** testes bin `bot` (2026-09-27) | Sim (baseline parcial) |

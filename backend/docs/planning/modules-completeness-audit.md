@@ -88,7 +88,7 @@ Evidência (2026-09-27): **305** testes no binário `bot`, **6** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **305** testes bin `bot`, **6** ignorados; OpenAPI **34** paths (`openapi_surface_lists_core_paths` em `server.rs`).
+Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist), auth owner verificável, revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **305** testes bin `bot`, **6** ignorados; OpenAPI **34** paths.
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
