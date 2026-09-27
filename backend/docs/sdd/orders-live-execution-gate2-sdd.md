@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: execução de orders (exchange)
 
-- **Estado:** **não implementado** — G1 entregue (`FailClosedExecutor`, HTTP 503 `execution_disabled`). Este SDD define o gate para substituir o executor padrão sem relaxar `authorize_rest_use` nem produção.
+- **Estado:** **parcial** — G1 + seam `HttpOrderExecutor` / `BOT_ORDERS_EXECUTION` (`disabled` default, `dev_accept` double local). Exchange live, idempotência e auth owner permanecem fora de escopo até aprovação deste gate.
 - **Referências:** [SDD orders G1](./orders-module-sdd.md), [auditoria de completude](../planning/modules-completeness-audit.md), `modules/exchanges/rest`, `modules/risk`.
 
 ## Contexto
@@ -37,8 +37,8 @@ status: draft
 |---------|----------|
 | `OrderExecutionPort::execute` | Entrada já validada por risco; retorna `OrderAck` ou erro de domínio mapeável a HTTP. |
 | `OrderIdempotencyStore` | Evita duplicata de submit com mesma chave (memória ou PG — decisão no SDD de persistência). |
-| `ApiState::order_executor` | Seleção por config/env; default `FailClosedExecutor`. |
-| `AcceptingExecutor` | Double de teste em G1 (`submit_succeeds_when_port_accepts`); não wired no HTTP. |
+| `ApiState::order_executor` | `HttpOrderExecutor` via `HttpApiSeams::from_env()` no `for_http_server`; default fail-closed. |
+| `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
 
 ## Validação (baseline G1 antes de Gate 2)
 
@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **218** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `submit_order_fail_closed_via_state_returns_execution_disabled`.
+Evidência G1 (2026-09-27): **218** testes bin `bot`, **5** ignorados; `orders_submit_fail_closed_returns_503`, `orders_submit_dev_accept_executor_returns_200`, `HttpOrderExecutor` + `BOT_ORDERS_EXECUTION`.
 
 ## Validação Gate 2 (quando implementado)
 

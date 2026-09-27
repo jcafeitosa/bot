@@ -10,7 +10,7 @@ status: draft
 
 # SDD — Módulo `modules/orders`
 
-- **Estado:** implementado (fundação G1) — `submit_order`, `FailClosedExecutor`, testes em `modules/orders/tests.rs` e HTTP fail-closed em `presentation/http/server.rs`; sem exchange live.
+- **Estado:** implementado (fundação G1) — `submit_order`, `FailClosedExecutor`, `HttpOrderExecutor` em `presentation/http/order_execution.rs` (default fail-closed; `BOT_ORDERS_EXECUTION=dev_accept` só double local); sem exchange live.
 - **Referências:** [Catálogo de módulos](../architecture/module-catalog.md), `modules/exchanges/rest` (`ExecutionDisabled`), `modules/risk` (`OrderIntent`). Próximo gate: [Gate 2 execução live](./orders-live-execution-gate2-sdd.md) (draft, não implementado).
 
 ## Contexto
@@ -27,7 +27,7 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 ## Não-objetivos
 
 - Execução live, idempotência, reconciliação ou produção.
-- HTTP que simule sucesso de envio à exchange (o endpoint `POST /api/v1/orders/submit` valida risco e responde **503** `execution_disabled` com o executor padrão; exige bearer admin quando `BOT_HTTP_ADMIN_TOKEN` está definido — ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
+- HTTP que simule sucesso de envio à exchange real (default **503** `execution_disabled`; opt-in local `BOT_ORDERS_EXECUTION=dev_accept` usa double `AcceptingExecutor`, não rede). Bearer admin quando `BOT_HTTP_ADMIN_TOKEN` — ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md).
 - Remover gates `authorize_rest_use` ou habilitar trading live.
 - Duplicar política de risco fora de `modules/risk`.
 
@@ -38,12 +38,13 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `SubmitOrderRequest` | Campos alinhados a `OrderIntent` + metadados (`symbol`, `side`) sem efeito de exchange. |
 | `OrderExecutionPort::execute` | Único caminho para “enviar” ordem. |
 | `FailClosedExecutor` | Implementação padrão; nunca chama rede. |
-| `AcceptingExecutor` | Double de teste do port (não usado em `ApiState` HTTP). |
-| `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK. |
+| `AcceptingExecutor` | Double de teste do port. |
+| `HttpOrderExecutor` | Seleção em `ApiState` (`disabled` default; `dev_accept` via `BOT_ORDERS_EXECUTION`). |
+| `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_*` em `presentation/http/server.rs`; `submit_order_fail_closed_via_state_returns_execution_disabled` em `presentation/http/state.rs` (`ApiState::submit_order_http` + `FailClosedExecutor`).
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **218** testes bin `bot`.
 
 ## Rollback
 

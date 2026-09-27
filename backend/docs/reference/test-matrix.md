@@ -52,7 +52,7 @@ tags:
 | `exchanges/ws` | Configuração e plano `1m` validado. |
 | `app` | Pause sem bloquear, resume com drain, stale REST/WS, gerações, falha de resume, cancelamento, shutdown e fila de persistência. |
 | `ui` | Comando de espaço de acordo com o estado confirmado. |
-| `presentation/http` | Rotas Axum, OpenAPI, Scalar, `serve`, `ApiState` (monitor snapshot/commands, orders fail-closed, bots persist), admin bearer 401/403; `BOT_HTTP_AGENCY_ID` em rotas agents; PG hydrate. | `server.rs`, `state.rs` (`state_tests`), `admin_auth.rs`. |
+| `presentation/http` | Rotas Axum, OpenAPI, Scalar, `serve`, `ApiState` (monitor snapshot/commands, orders fail-closed + `dev_accept`, bots persist), admin bearer 401/403; `BOT_HTTP_AGENCY_ID` em rotas agents; PG hydrate. | `server.rs`, `state.rs` (`state_tests`), `admin_auth.rs`, `order_execution.rs`. |
 | `persistence` | Round-trip de migração, gravação e contagem, condicionado a PostgreSQL. |
 
 ## Verificação executada
