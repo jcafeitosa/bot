@@ -42,7 +42,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1`, `cargo test --locked` (integração workspace). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
 
-Evidência (2026-09-27): **387** testes no binário `bot`, **9** ignorados (contagem na linha final de `verify-backend-gates.sh`: `OK: backend gates passed (bin bot: test result: …)`) (PG×7 incl. `pg_agent_lifecycle_write_through_round_trip` em `http_bridge/agents.rs`, Neo4j, testnet manual). `./scripts/verify-backend-gates.sh` verde; gate canônico usa `cargo test --locked --bin bot -- --test-threads=1` (`verify-backend-gates.sh`); stress local opcional `--test-threads=8` ~5s quando locks env→ledger respeitados. `./scripts/run-pg-integration-tests.sh` **7/7** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste; ledger partilhado de orders: `lock_shared_live_order_reconciliation_ledger_for_test()` (env antes do ledger quando ambos) — [test-matrix](../reference/test-matrix.md).
+Evidência (2026-09-27): **387** testes no binário `bot`, **10** ignorados (contagem na linha final de `verify-backend-gates.sh`: `OK: backend gates passed (bin bot: test result: …)`) (PG×8 incl. `pg_agent_lifecycle_write_through_round_trip` + `pg_cold_start_apply_snapshot_after_write_through` em `http_bridge/agents.rs`; Neo4j; testnet manual). `./scripts/verify-backend-gates.sh` verde; gate canônico usa `cargo test --locked --bin bot -- --test-threads=1` (`verify-backend-gates.sh`); stress local opcional `--test-threads=8` ~5s quando locks env→ledger respeitados. `./scripts/run-pg-integration-tests.sh` **8/8** com `DATABASE_URL`. HTTP `server.rs` usa `fresh_agent_registry()` por teste; ledger partilhado de orders: `lock_shared_live_order_reconciliation_ledger_for_test()` (env antes do ledger quando ambos) — [test-matrix](../reference/test-matrix.md).
 
 ## Documentação relacionada
 
@@ -63,7 +63,7 @@ Evidência (2026-09-27): **387** testes no binário `bot`, **9** ignorados (cont
 | Completude agents | Registry + PG; `promote_runtime_bot` capability testada (`promotion_denied_when_capability_false`); HTTP + `HttpAdminAuth` | **Parcial** (auth owner produto) |
 | Integração HTTP + camadas | OpenAPI **36** paths; `GET /meta`; `meta_and_*`; orders/bots/agents v1; paper `orders`→`portfolio` (`paper_fill_unit_price`); testnet ccxt opt-in; reconciliação GET/POST poll; PG hydrate | **Parcial** (auth owner; prod REST política) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | **387** + clippy/fmt/import; PG 7/7 opcional (`verify-backend-full.sh`; evidência local com `DATABASE_URL`) | **Feito** |
+| Build/testes verdes | **387** + clippy/fmt/import; PG 8/8 opcional (`verify-backend-full.sh`; evidência local com `DATABASE_URL`) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -89,7 +89,7 @@ Evidência (2026-09-27): **387** testes no binário `bot`, **9** ignorados (cont
 
 ## Fechamento do goal (pendente)
 
-Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **387** testes bin `bot`, **9** ignorados; OpenAPI **36** paths.
+Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `./scripts/verify-backend-gates.sh` → **387** testes bin `bot`, **10** ignorados; OpenAPI **36** paths.
 
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
 |-------------------------|-----|-----------------|
@@ -112,8 +112,8 @@ Escopo sugerido para uma instância **independente** (não substitui decisão de
 | HTTP admin seam | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md), `presentation/http/admin_auth.rs`, matriz em [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token) | `./scripts/verify-backend-gates.sh`; spot-check `agents_advisory_requires_admin_bearer_when_enabled` se flake reaparecer |
 | Orders G2 | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) (checklist + threat model), `modules/orders/`, `order_execution.rs`, `binance_spot_testnet_submit.rs` (`redact_known_testnet_credentials`) | Confirmar `authorize_rest_use` / prod REST bloqueado; retenção ops documentada; teste `map_bot_error_redacts_*`; sem credenciais em CI |
 | Bots runtime G2 | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md), `evaluation_binding.rs`, `runtime_port.rs` | Promote capability + `evaluate_for_kind`; runtime partilhado vs isolado em testes HTTP (linha checklist **Parcial**) |
-| Agents G1 | [agents-module-sdd.md](../sdd/agents-module-sdd.md), `bot_promotion.rs`, `http_bridge/agents.rs` (`pg_agent_lifecycle_write_through_round_trip`) | Itens **Não** do checklist permanecem bloqueadores de produto; PG 7/7 opcional |
+| Agents G1 | [agents-module-sdd.md](../sdd/agents-module-sdd.md), `bot_promotion.rs`, `http_bridge/agents.rs` (`pg_agent_lifecycle_write_through_round_trip`) | Itens **Não** do checklist permanecem bloqueadores de produto; PG 8/8 opcional |
 
-Comandos canônicos: `./scripts/verify-backend-gates.sh`; opcional `DATABASE_URL=… ./scripts/run-pg-integration-tests.sh` (7 testes); testnet manual `cargo test --locked integration_submits_minimal_market_buy_on_testnet -- --ignored` (fora de CI).
+Comandos canônicos: `./scripts/verify-backend-gates.sh`; opcional `DATABASE_URL=… ./scripts/run-pg-integration-tests.sh` (8 testes); testnet manual `cargo test --locked integration_submits_minimal_market_buy_on_testnet -- --ignored` (fora de CI).
 
 Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** / **REPROVADO** por SDD, com achados ligados a teste ou linha de código; autor do pacote não aprova o próprio artefato (`AGENTS.md`).

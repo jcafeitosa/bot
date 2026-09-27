@@ -130,7 +130,7 @@ modules/agents/
 - Promoção runtime: com `BOT_HTTP_AGENCY_ID`, `POST /api/v1/bots/runtime/promote` valida `promote_runtime_bot` (`bots_runtime_promote_denied_when_bound_agency_without_capable_agent`, `bots_runtime_promote_allowed_when_bound_agency_and_capable_agent` em `server.rs`).
 - `GET /api/v1/meta` → `http_seams` (bindings owner/agency booleanos; ver [SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
 - `assert_runtime_promotion_authorized`: capability, lifecycle, `promotion_rejects_invalid_bot_id` (`bot_promotion.rs`).
-- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **387** testes (**9** ignorados: PG×7, Neo4j, testnet manual).
+- Evidência reproduzível: `./scripts/verify-backend-gates.sh` verde; bin `bot` **387** testes (**10** ignorados: PG×8, Neo4j, testnet manual).
 - **Gap Gate 1 produto:** autenticação/autorização do owner humano além de `BOT_HTTP_*` — ver [pesquisa de capacidades](../research/agents-capability-research.md); bloqueia fechamento do goal de completude de módulos.
 
 ## Critérios de fechamento G1 (checklist)
@@ -139,7 +139,7 @@ modules/agents/
 |----------|-----------------|--------|
 | `AgentRegistry` + hierarquia + lifecycle | `modules/agents/tests.rs`, `http_bridge/agents.rs` | Sim |
 | `IdentityOnly` (sem tools/ordens) | SDD + invariantes de módulo | Sim |
-| Espelhamento/hidratação PG | `PgAgentIdentityStore`, boot `server.rs`; `pg_identity_snapshot_round_trip`; HTTP write-through `pg_agent_lifecycle_write_through_round_trip` (`http_bridge/agents.rs`) | **Parcial** (PG×7 em `run-pg-integration-tests.sh`; gate default ignora) |
+| Espelhamento/hidratação PG | `PgAgentIdentityStore`, boot `server.rs`; `pg_identity_snapshot_round_trip`; HTTP write-through `pg_agent_lifecycle_write_through_round_trip` (`http_bridge/agents.rs`) | **Parcial** (PG×8 em `run-pg-integration-tests.sh`; gate default ignora) |
 | Seam HTTP admin (`BOT_HTTP_*`) | [http-admin-auth-seam-sdd.md](./http-admin-auth-seam-sdd.md) | Sim (não é auth owner) |
 | Capability `promote_runtime_bot` + HTTP promote | `bot_promotion.rs`, migração `0005`, `server.rs` | Sim (seam) |
 | Autenticação verificável do owner humano | pesquisa § Etapa 1 item 4 | **Não** |

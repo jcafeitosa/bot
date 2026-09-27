@@ -77,12 +77,12 @@ exit 0; sem warnings
 cargo test --locked
 387 testes unitários passaram (bin bot) (HTTP em `presentation/http/server.rs` e `state.rs` `state_tests`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
-9 testes ignorados (PG×7, Neo4j, testnet ccxt manual; ver `#[ignore]` no código)
+10 testes ignorados (PG×8, Neo4j, testnet ccxt manual; ver `#[ignore]` no código)
 ```
 
-Bin `bot`: **387** aprovados, **9** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
+Bin `bot`: **387** aprovados, **10** ignorados (incl. `integration_submits_minimal_market_buy_on_testnet` manual testnet). PG: `./scripts/run-pg-integration-tests.sh` com `DATABASE_URL` → `trading_bot` (Timescale + pgvector). Neo4j: teste `ping_and_node_count_against_local_graph` separado (`BOT_AGENTS_ENABLED` + compose `graph`).
 
-### Testes `#[ignore]` no bin `bot` (9)
+### Testes `#[ignore]` no bin `bot` (10)
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|
@@ -90,6 +90,7 @@ Bin `bot`: **387** aprovados, **9** ignorados (incl. `integration_submits_minima
 | `persist_dataset_round_trip` | `modules/market/models.rs` | idem |
 | `pg_identity_snapshot_round_trip` | `modules/agents/adapters/pg_registry.rs` | idem |
 | `pg_agent_lifecycle_write_through_round_trip` | `modules/http_bridge/agents.rs` | idem |
+| `pg_cold_start_apply_snapshot_after_write_through` | `modules/http_bridge/agents.rs` | boot `serve`: hydrate registry vazio após PG |
 | `pg_catalog_store_round_trip` | `modules/bots/adapters/pg_catalog.rs` | idem |
 | `pg_order_idempotency_round_trip` | `modules/orders/adapters/pg_idempotency.rs` | idem |
 | `pg_order_reconciliation_round_trip` | `modules/orders/adapters/pg_reconciliation.rs` | idem |
