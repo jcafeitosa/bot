@@ -123,5 +123,6 @@ modules/agents/
 
 ## HTTP e PostgreSQL (parcial)
 
-- Mutations: `persist_agent_after_mutation` espelha em PG.
-- Boot: `presentation/http/server.rs` chama `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` quando o registry compartilhado está vazio.
+- Rotas `/api/v1/agents*`: `require_bound_agency` quando `BOT_HTTP_AGENCY_ID` está definido; mutações exigem bearer quando `BOT_HTTP_ADMIN_TOKEN` está definido ([SDD HTTP admin](./http-admin-auth-seam-sdd.md)).
+- Mutations: `ApiState::persist_agent_after_mutation` (snapshot em memória, `persist_identity_rows` em PG quando conectado).
+- Boot: `presentation/http/server.rs` chama `load_agent_identity_snapshot` + `apply_agent_identity_snapshot` quando o registry compartilhado está vazio (`apply_agent_identity_snapshot` não sobrescreve registry já populado — teste `http_bridge/agents.rs`).

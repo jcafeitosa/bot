@@ -69,8 +69,8 @@ Validadas por `./scripts/check-import-direction.sh`:
 
 | Campo | Camada | Integração |
 |---|---|---|
-| `agents` | Domain (registry) + infra (PG write-through nas rotas) | Compartilhado com monitor via `shared_agent_registry` quando `BOT_AGENCY` |
-| `bot_catalog` | Infra (`BotCatalogBackend`) | Memória ou `PgBotCatalogStore` |
+| `agents` | Domain (registry) + infra (PG write-through) | `ApiState::persist_agent_after_mutation`; `shared_agent_registry` + `BOT_AGENCY` |
+| `bot_catalog` | Infra (`BotCatalogBackend`) | `ApiState::persist_bot_catalog` / `bot_catalog_snapshot`; memória ou PG |
 | `order_executor` | Infra port | `FailClosedExecutor` até adapter exchange |
 | `http_admin_auth` | Presentation seam | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` |
 | `databases` | Infra | Postgres + Neo4j opcional para `/readyz` |

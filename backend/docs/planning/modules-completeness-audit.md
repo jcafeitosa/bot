@@ -33,15 +33,15 @@ Execução live e produção permanecem bloqueadas até gates de segurança.
 
 ## Verificação local
 
+Gate canônico (recomendado):
+
 ```text
-cargo fmt --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked
-./scripts/check-import-direction.sh
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência: **203** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
+Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace).
+
+Evidência (2026-09-27): **203** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
