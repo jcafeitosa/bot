@@ -11,7 +11,7 @@ tags:
 
 # Análise de módulos previstos ainda não desenvolvidos
 
-> Revisão: 2026-09-27 (http_bridge v1 completo; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; runtime live e promoção fora. **`modules/orders`** existe como seam fail-closed (`submit_order` + `FailClosedExecutor`); execução real permanece bloqueada.
+> Revisão: 2026-09-27 (http_bridge v1 completo; agents+monitor registry; bots catalog via `BotCatalogBackend` (memória ou PG)). Esta análise cruza os SDDs, o roadmap, o catálogo de módulos e o código atual em `backend/src`. “Não desenvolvido” significa que não existe módulo/caminho executável correspondente ou que o design ainda não chegou ao comportamento completo descrito. **`modules/agents`** — registry em memória com write-through e cold-start via PG (`load_agent_identity_snapshot`); auth owner pendente. **`modules/bots`** — catálogo/ranking/HTTP com `PgBotCatalogStore` quando PG disponível; runtime live no monitor fora; seam HTTP promote/demote e snapshot com `promoted_bot_id` feitos. **`modules/orders`** existe como seam fail-closed (`submit_order` + `FailClosedExecutor`); execução real permanece bloqueada.
 
 ## Resumo
 
@@ -36,7 +36,7 @@ Essas capacidades não devem ser tratadas como módulos parcialmente prontos só
 | Capacidade prevista | Situação no código | Evidência | Próximo gate |
 |---|---|---|---|
 | Identidade de agentes `IdentityOnly` | Módulo `modules/agents` + rotas HTTP v1; `shared_agent_registry`; write-through PG (`PgAgentIdentityStore`) e cold-start hydrate em `serve`; **sem auth owner**. | [SDD agents](../sdd/agents-module-sdd.md) draft G1; pesquisa mantém Gate 1 bloqueado para auth/bootstrap. | Revisão G1, schema PostgreSQL, persistência e autenticação verificável do owner. |
-| Módulo `bots` (executores versionados) | **Fundação** em `src/modules/bots/` + `http_bridge/bots`; HTTP catalog/ranking/persist/snapshot; `BotCatalogBackend` em `ApiState` (PG quando `DATABASE_URL` conecta). Sem runtime live ou promoção; catálogo persiste em PG quando `DATABASE_URL` conecta. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência feito; [Gate 2 runtime draft](../sdd/bots-runtime-live-gate2-sdd.md); mapeamento agentes autorizadores. |
+| Módulo `bots` (executores versionados) | **Fundação + seam runtime** — catálogo/PG, `BotRuntimePort`, HTTP `/bots/runtime/*`, snapshot monitor com promoção; supervisor ainda não executa bot promovido. | [SDD bots](../sdd/bots-module-sdd.md); [catálogo](../architecture/module-catalog.md). | Gate 1 persistência feito; [Gate 2 runtime draft](../sdd/bots-runtime-live-gate2-sdd.md); mapeamento agentes autorizadores. |
 | Seam `orders` (fail-closed) | `modules/orders` + `http_bridge/orders` + `POST /api/v1/orders/submit` (422 risk / 503 execution disabled). | [SDD orders](../sdd/orders-module-sdd.md). | Adapter exchange real, idempotência e reconciliação — somente após gates de segurança. |
 | Owner, agência e hierarquia | Não existe autenticação confiável nem autorização por agência. | A pesquisa registra que socket Unix e conta do SO não provam a identidade do owner. | Threat model, bootstrap único, autenticação verificável e revisão de segurança. |
 | Runtime de agentes | Não existe cérebro, modelo, delegação ou execução de agente. | A pesquisa exclui chamadas LLM, delegação e runtime da etapa `IdentityOnly`. | SDD próprio de runtime e limites de autoridade. |
@@ -94,7 +94,7 @@ Bots especializados como **artefatos versionados**, com limites de autoridade, m
 
 ### O que existe hoje
 
-`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, `ApiState` com `InMemoryBotCatalogStore`; rotas `GET /catalog`, `POST /ranking`, `POST /catalog/persist`, `GET /catalog/snapshot`. `backtest` delega tipos e ranking ao módulo `bots`. **Há** `PgBotCatalogStore` + tabela `bot_catalog_entries`; **ainda não há** auth owner, promoção automática nem executor em produção, promoção automática nem executor em produção.
+`src/modules/bots/` com models/controllers/adapters: `BotIdentity`, catálogo `build_catalog_from_config`, `full_ranking`/`rank_bots`, `BotCatalogStore` noop, testes em `modules/bots/tests.rs`, `ApiState` com `InMemoryBotCatalogStore`; rotas `GET /catalog`, `POST /ranking`, `POST /catalog/persist`, `GET /catalog/snapshot`. `backtest` delega tipos e ranking ao módulo `bots`. **Há** `PgBotCatalogStore` + tabela `bot_catalog_entries`; **ainda não há** auth owner, promoção automática nem executor live no monitor (seam HTTP `BotRuntimePort` + snapshot enriquecido; loop do supervisor ainda não consome promoção).
 
 ### Decisão
 

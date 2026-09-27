@@ -10,14 +10,14 @@ tags:
 
 # Auditoria de completude — bots, orders, agents e HTTP
 
-> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (225 unitários + integração).
+> Revisão: 2026-09-27. Fonte: `backend/src`, SDDs em `docs/sdd/`, verificação `cargo test --locked` (227 unitários + integração).
 
 ## Resumo executivo
 
 | Módulo / superfície | Completude | Evidência principal | Próximo gate |
 |---|---|---|---|
 | `modules/bots` | Fundação + ranking + PG + `BotRuntimePort` + HTTP catalog e `/bots/runtime/*` | `modules/bots/tests.rs`, `http_bridge/bots_runtime`, `server.rs` | [Gate 2 runtime](../sdd/bots-runtime-live-gate2-sdd.md), auth owner |
-| `modules/orders` | Seam fail-closed + HTTP 503 após risco; `ApiState::submit_order_http` | `modules/orders/tests.rs`, `server.rs`, `state.rs` | Adapter exchange, idempotência, auth |
+| `modules/orders` | Seam fail-closed + `HttpOrderExecutor` (`BOT_ORDERS_EXECUTION`); HTTP 422/503 | `modules/orders/tests.rs`, `order_execution.rs`, `server.rs` | Adapter exchange, idempotência, auth |
 | `modules/agents` | IdentityOnly + HTTP lifecycle + `PgAgentIdentityStore` (bridge persist) + hydrate no `serve` + `require_bound_agency` | `modules/agents/tests.rs`, `server.rs`, rotas agents | Auth owner produto (fora do seam `HttpAdminAuth`) |
 | `presentation/http` | OpenAPI ~33 paths, Scalar `/docs`, `HttpAdminAuth` | `openapi.rs`, `server.rs`, [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md) | Auth owner produto (Gate 1) |
 
@@ -41,7 +41,7 @@ Gate canônico (recomendado):
 
 Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot`, `cargo test --locked` (integração workspace).
 
-Evidência (2026-09-27): **225** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
+Evidência (2026-09-27): **227** testes no binário `bot`, **5** ignorados (`persist_dataset_round_trip`, `postgres_scaffold_tables_exist_after_migrate`, `pg_catalog_store_round_trip`, `pg_identity_snapshot_round_trip`, Neo4j integration).
 
 ## Documentação relacionada
 
@@ -61,7 +61,7 @@ Evidência (2026-09-27): **225** testes no binário `bot`, **5** ignorados (`per
 | Completude agents | `AgentRegistry`, PG write-through + hydrate, `HttpAdminAuth` em rotas mutantes | **Parcial** (`BOT_HTTP_ADMIN_TOKEN`; opcional `BOT_HTTP_OWNER_ID` / `BOT_HTTP_AGENCY_ID`; não substitui auth owner completo) |
 | Integração HTTP + camadas | OpenAPI 30 paths, `http_bridge`, [layer-mapping.md](../architecture/layer-mapping.md) | **Feito** |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | 225 + clippy/fmt/import (2026-09-27) | **Feito** |
+| Build/testes verdes | 227 + clippy/fmt/import (2026-09-27) | **Feito** |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -72,7 +72,7 @@ Evidência (2026-09-27): **225** testes no binário `bot`, **5** ignorados (`per
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/agents PG best-effort, HTTP orders/bots/agents | **Parcial** (auth owner de produto, orders live, runtime bots) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `cargo test --locked` → 225 ok; clippy/fmt/import check | Feito nesta revisão |
+| Build/testes verdes | `cargo test --locked` → 227 ok; clippy/fmt/import check | Feito nesta revisão |
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
@@ -87,4 +87,4 @@ Evidência (2026-09-27): **225** testes no binário `bot`, **5** ignorados (`per
 
 ## Fechamento do goal (pendente)
 
-Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **225** testes bin `bot`, **5** ignorados.
+Implementar G2 orders e/ou G2 bots (com TDD + Critic), auth owner verificável, revisão Critic AGENTS.md sobre o pacote G1 entregue. Baseline reproduzível: `./scripts/verify-backend-gates.sh` → **227** testes bin `bot`, **5** ignorados.

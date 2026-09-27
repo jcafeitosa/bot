@@ -99,7 +99,7 @@ Fundação strategy×timeframe ([SDD bots](../sdd/bots-module-sdd.md)). Tipos e 
 |---|---|
 | `models` | `BotIdentity`, `BotId`, `BotDefinition`, `BotMetrics`, erros e tipos de ranking. |
 | `controllers` | `build_catalog_from_config`, `full_ranking` / `rank_bots`. |
-| `adapters` | `BotCatalogStore`; `NoopBotCatalogStore`, `InMemoryBotCatalogStore`, `PgBotCatalogStore`; `BotCatalogBackend` (memória ou PG via `AppDatabases`). |
+| `adapters` | `BotCatalogStore`; `BotRuntimePort` (`FailClosedBotRuntime`, `InMemoryBotRuntime`); `BotCatalogBackend` (memória ou PG via `AppDatabases`). |
 | `controllers` | `persist_catalog_snapshot` grava catálogo derivado da config no store. |
 
 **HTTP:** `GET /api/v1/bots/catalog`, `POST /api/v1/bots/catalog/persist`, `GET /api/v1/bots/catalog/snapshot`, `POST /api/v1/bots/ranking`, `GET /api/v1/bots/runtime/status`, `POST /api/v1/bots/runtime/promote|demote` via `presentation/http/routes/bots.rs` (catálogo em `ApiState`; runtime via `BotRuntimePort`, default fail-closed, `BOT_RUNTIME_ENABLED=true` para promoção em memória).
@@ -122,7 +122,7 @@ Seam fail-closed ([SDD orders](../sdd/orders-module-sdd.md)).
 |---|---|
 | `admin_auth` | `BOT_HTTP_ADMIN_TOKEN` (bearer em rotas mutantes); `BOT_HTTP_OWNER_ID` opcional no registro; `BOT_HTTP_AGENCY_ID` opcional nas rotas de agentes. Ver [SDD HTTP admin](../sdd/http-admin-auth-seam-sdd.md). |
 | `server::run` | Bootstrap `AppDatabases`, hydrate agents PG, `ApiState::for_http_server` (`HttpApiSeams::from_env`), Axum + Scalar. |
-| `routes/*` | Superfície v1: agents, bots, orders, monitor (commands mutante), risk, backtest, config, health, meta. |
+| `routes/*` | Superfície v1: agents, bots (catalog + runtime), orders, monitor (snapshot com promoção bot + commands mutante), risk, backtest, config, health, meta. |
 
 Rotas mutantes cobertas pelo bearer: lifecycle agents, `bots/catalog/persist`, `bots/runtime/promote|demote`, `orders/submit`, `monitor/commands`.
 

@@ -45,7 +45,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência G1 (2026-09-27): **225** testes bin `bot`, **5** ignorados; `modules/bots/tests.rs`, HTTP bots catalog/persist, `PgBotCatalogStore` teste `#[ignore]`.
+Evidência parcial (2026-09-27): **227** testes bin `bot`, **5** ignorados; HTTP `/bots/runtime/*`, `monitor_snapshot_includes_promoted_bot_from_runtime_seam`, `attach_bot_runtime_status` em `http_bridge/monitor.rs`.
 
 ## Validação Gate 2 (quando implementado)
 
