@@ -36,7 +36,7 @@ status: draft
 | Símbolo | Contrato |
 |---------|----------|
 | `OrderExecutionPort::execute` | Entrada já validada por risco; retorna `OrderAck` ou erro de domínio mapeável a HTTP. |
-| `OrderIdempotencyStore` | Evita duplicata de submit com mesma chave (memória ou PG — decisão no SDD de persistência). |
+| `InMemoryOrderIdempotencyStore` | Dedupe em processo via `client_order_id` opcional em `POST /orders/submit` (replay retorna `accepted: true` sem re-executar). PG pendente. |
 | `ApiState::order_executor` | `HttpOrderExecutor` via `HttpApiSeams::from_env()` no `for_http_server`; default fail-closed. |
 | `AcceptingExecutor` | Usado apenas em modo `dev_accept` (não é adapter de exchange). |
 
