@@ -19,9 +19,9 @@ tags:
 | Gate | Resultado | Evidência |
 |------|-----------|-----------|
 | `cargo fmt --check` | PASS | exit 0 |
-| `cargo clippy --all-targets -- -D warnings` | PASS | exit 0 |
+| `cargo clippy --locked --bin bot -- -D warnings` | PASS | mesmo escopo que `verify-backend-gates.sh` |
 | `cargo test --locked` | PASS | 387 testes (bin `bot`); 10 ignorados (PG×8, Neo4j, testnet ccxt manual) |
-| `./scripts/verify-backend-gates.sh (fmt, clippy, import-direction, tests)` | PASS | `OK: import direction heuristics passed` |
+| `./scripts/verify-backend-gates.sh` | PASS | fmt + clippy `--bin bot` + import-direction + `cargo test --bin bot -- --test-threads=1` + workspace tests; linha `OK:` com resumo `test result:` |
 
 ## Critério de linha
 

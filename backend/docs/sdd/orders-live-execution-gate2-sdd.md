@@ -72,7 +72,7 @@ Evidência G1 (2026-09-27): **387** testes bin `bot`, **10** ignorados; `orders_
 ## Pendências de decisão
 
 - Escopo inicial: **paper ledger** implementado; testnet Spot market buy/sell via `binance_spot_testnet_submit` + reconciliação parcial (binding + observe + poll).
-- Store de idempotência: memória vs PostgreSQL (`0002` ou migração nova).
+- Idempotência: memória + PostgreSQL (`0004_order_idempotency_keys.sql`); reconciliação `0006_order_reconciliation.sql` — ver [catálogo §3c](../architecture/module-catalog.md#3c-módulo-orders-srcmodulesorders).
 - Autorização owner/agency além de `BOT_HTTP_ADMIN_TOKEN` (Gate 1 auth).
 
 ## Critérios de fechamento G2 (checklist)

@@ -68,7 +68,6 @@ cargo fmt --check
 cargo clippy --locked --bin bot -- -D warnings
 ./scripts/check-import-direction.sh
 cargo test --locked --bin bot -- --test-threads=1
-cargo test --locked
 ./scripts/verify-backend-gates.sh
 ```
 
