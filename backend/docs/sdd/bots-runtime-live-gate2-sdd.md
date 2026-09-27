@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: runtime bots (executor live)
 
-- **Estado:** **parcial** — G1 + seam `BotRuntimePort` (`FailClosedBotRuntime` default; `InMemoryBotRuntime` com `BOT_RUNTIME_ENABLED=true`), HTTP `GET /bots/runtime/status`, `POST .../promote|demote` (admin), `shared_bot_runtime()` + enrich em `MonitorHandle::publish_snapshot`, publicação headless via `monitor_snapshot_from_dashboard` no supervisor. **Parcial (loop):** `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross` default, `ema_cross` via `[[strategy.monitor_registry]]`); `strategy_evaluation_binding` + `run_evaluation_cycle` → `evaluate_for_kind`; catálogo HTTP expõe `monitor_fast_period`/`monitor_slow_period`/`monitor_evaluator`. **Parcial (auth seam):** com `BOT_HTTP_AGENCY_ID`, `promoted_by` exige agente ativo com `promote_runtime_bot` (capability persistida em PG via migração `0005`). **Pendente:** backtest/ranking para EMA; auth owner produto.
+- **Estado:** **parcial** — G1 + seam `BotRuntimePort` (`FailClosedBotRuntime` default; `InMemoryBotRuntime` com `BOT_RUNTIME_ENABLED=true`), HTTP `GET /bots/runtime/status`, `POST .../promote|demote` (admin), `shared_bot_runtime()` + enrich em `MonitorHandle::publish_snapshot`, publicação headless via `monitor_snapshot_from_dashboard` no supervisor. **Parcial (loop):** `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross` default, `ema_cross` via `[[strategy.monitor_registry]]`); `strategy_evaluation_binding` + `run_evaluation_cycle` → `evaluate_for_kind`; catálogo HTTP expõe `monitor_fast_period`/`monitor_slow_period`/`monitor_evaluator`. **Parcial (auth seam):** com `BOT_HTTP_AGENCY_ID`, `promoted_by` exige agente ativo com `promote_runtime_bot` (capability persistida em PG via migração `0005`). **Pendente:** auth owner produto.
 - **Referências:** [SDD bots G1](./bots-module-sdd.md), [Gate 1 PG](./bots-catalog-persistence-gate1-sdd.md), [auditoria](../planning/modules-completeness-audit.md), `modules/monitor`, `modules/agents` (governança).
 
 ## Contexto
@@ -46,7 +46,7 @@ status: draft
 ./scripts/verify-backend-gates.sh
 ```
 
-Evidência parcial (2026-09-27): **298** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*` com `assert_bot_promotion_allowed` (catálogo + mercado), `MonitorStrategyRegistry` + `monitor_strategy_from_config`, `strategy_evaluation_binding`; catálogo HTTP expõe `monitor_fast_period` / `monitor_slow_period` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` (incl. `bots_runtime_promote_monitor_registry_v2_bot_in_catalog` para `sma-cross@2`), `meta_and_bot_runtime_status_agree_on_runtime_enabled`, com `BOT_HTTP_AGENCY_ID` e `fresh_agent_registry()` em `server.rs`.
+Evidência parcial (2026-09-27): **302** testes bin `bot`, **6** ignorados; `shared_bot_runtime`, `enrich_monitor_snapshot_from_shared_runtime` em `MonitorHandle::publish_snapshot`, HTTP `/bots/runtime/*` com `assert_bot_promotion_allowed` (catálogo + mercado), `MonitorStrategyRegistry` + `monitor_strategy_from_config`, `strategy_evaluation_binding`; catálogo HTTP expõe `monitor_fast_period` / `monitor_slow_period` + `BotSignal.bot_id`, testes `bots_runtime_promote_*` (incl. `bots_runtime_promote_monitor_registry_v2_bot_in_catalog` para `sma-cross@2`), `meta_and_bot_runtime_status_agree_on_runtime_enabled`, com `BOT_HTTP_AGENCY_ID` e `fresh_agent_registry()` em `server.rs`.
 
 ## Testes HTTP (isolamento)
 

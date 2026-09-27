@@ -58,14 +58,14 @@ flowchart LR
 | `core` | `persistence` | `Database`, `persist_dataset` | Fachada de domínio sobre `PostgresDatabase`. | PostgreSQL ignorado por padrão. |
 | `modules` | `monitor` | `run`, `bootstrap_monitor` | Supervisor REST/WS, pausa/retomada, dashboard, persistência. | Testes em `supervisor.rs` e controllers. |
 | `modules` | `market` | candles, `HybridCandleFeed` | Validação, agregação 1m, feed híbrido. | Testes de feed e modelos. |
-| `modules` | `strategy` | SMA, `evaluate` | Sinais sem efeitos colaterais. | Testes de períodos e sinais. |
+| `modules` | `strategy` | SMA/EMA, `evaluate_for_kind` | Sinais sem efeitos colaterais. | Testes de períodos e sinais. |
 | `modules` | `risk` | `gate_signal` | Limites e modo. | Testes de capital e modo. |
 | `modules` | `portfolio` | snapshots paper | Carteira paper; sem ordens. | Testes de consistência. |
 | `modules` | `backtest` | `run_sma_crossover`, CLI | Simulação e fixture sintética. | `tests/backtest_fixture.rs`. |
 | `modules` | `exchanges` | registro, adapters | Binance REST/WS, autorização REST. | Testes de conta, redirect, WS. |
 | `core` | `providers::jev` | `JevAdvisor::review` | Advisory TypeSafe (OpenAI-compatible); sem autoridade de ordem. | `core/providers/jev`, config e testes de contrato. |
 | `modules` | `agents` | `AgentRegistry`, `run_advisory_step` | Identidade administrativa `IdentityOnly`; registry em memória compartilhado; rotas HTTP `/api/v1/agents/*`; write-through e cold-start via `PgAgentIdentityStore` + `load_agent_identity_snapshot` no `serve`. **Não** é o módulo `bots`. | `modules/agents/tests.rs`, `http_bridge/agents.rs`. |
-| `modules` | `bots` | `BotIdentity`, `full_ranking`, `MonitorStrategyRegistry` | Catálogo/ranking; `BotRuntimePort` + `shared_bot_runtime`; HTTP promote via `assert_bot_promotion_allowed`; catálogo HTTP com `monitor_fast_period`/`monitor_slow_period`; supervisor `strategy_evaluation_binding` + `BotSignal.bot_id`. | `monitor_strategy.rs`, `http_bridge/bots.rs`, `evaluation_binding.rs`, `pg_catalog.rs`. |
+| `modules` | `bots` | `BotIdentity`, `MonitorEvaluatorKind`, `MonitorStrategyRegistry` | Catálogo/ranking; runtime promote; catálogo HTTP `monitor_*_period` + `monitor_evaluator`; supervisor/backtest via `strategy_evaluation_binding` + `evaluate_for_kind`. | `monitor_strategy.rs`, `http_bridge/bots.rs`, `evaluation_binding.rs`, `pg_catalog.rs`. |
 | `modules` | `orders` | `submit_order`, `ReservedLiveExchangeExecutor`, `OrderIdempotencyStore`, `HttpOrderExecutor` | Risk → port; HTTP `GET /orders/execution-status`, `POST /submit`; `live_exchange`/`paper` → `live_exchange_not_wired`; idempotência memória/PG. | `orders/tests.rs`, `http_bridge/orders.rs`, `order_execution.rs`, `server.rs`. |
 | `modules` | `application_contracts` | `BotSignal`, `Signal` | Tipos compartilhados leves; `bot_id` opcional ≠ `AgentId` nem módulo `bots`. | Testes indiretos. |
 | `presentation` | `terminal` | TUI | Ratatui; comandos via contrato do monitor. | Máquina de estados / teclado. |

@@ -60,7 +60,7 @@ Esta é a entrada principal da documentação do backend. Use as referências po
 - [SDD — Módulo bots (estratégia × timeframe)](./sdd/bots-module-sdd.md) — identidade versionada, catálogo, ranking e HTTP.
 - [SDD — Módulo orders (fail-closed)](./sdd/orders-module-sdd.md) — validação de risco e port de execução bloqueado.
 - [SDD — Gate 2 orders live (parcial)](./sdd/orders-live-execution-gate2-sdd.md) — `HttpOrderExecutor`, idempotência HTTP; adapter exchange real pendente.
-- [SDD — Gate 2 bots runtime (parcial)](./sdd/bots-runtime-live-gate2-sdd.md) — `BotRuntimePort`, `MonitorStrategyRegistry`, promoção HTTP; evaluators não-SMA pendentes.
+- [SDD — Gate 2 bots runtime (parcial)](./sdd/bots-runtime-live-gate2-sdd.md) — `BotRuntimePort`, `MonitorEvaluatorKind` (SMA/EMA), promoção HTTP; auth owner pendente.
 - [SDD — Módulo agents (fundação IdentityOnly)](./sdd/agents-module-sdd.md) — registry + espelhamento/hidratação PG, hierarquia, lifecycle e seam Jev; auth owner pendente.
 - [SDD — HTTP admin bearer seam](./sdd/http-admin-auth-seam-sdd.md) — `BOT_HTTP_ADMIN_TOKEN`, binds opcionais de owner/agency; não substitui auth owner Gate 1.
 
