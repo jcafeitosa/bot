@@ -10,7 +10,7 @@ status: draft
 ---
 # SDD — Módulo `modules/bots`
 
-- **Estado:** fundação G1 — catálogo/ranking/HTTP; `BotCatalogBackend` com `PgBotCatalogStore` quando `DATABASE_URL` conecta (scaffold `0002_agents_bots_scaffold.sql`); runtime live e promoção executor pendentes.
+- **Estado:** fundação G1 — catálogo/ranking/HTTP; `BotCatalogBackend` com `PgBotCatalogStore` quando `DATABASE_URL` conecta (scaffold `0002_agents_bots_scaffold.sql`); runtime live pendente — [Gate 2 runtime draft](./bots-runtime-live-gate2-sdd.md).
 - **Referências:** [SDD agents — Relação com bots](./agents-module-sdd.md), [Pesquisa agents](../research/agents-capability-research.md), [Módulos não implementados §1b](../planning/unimplemented-modules-analysis.md), [Convenção MVC](./modules-mvc-convention-sdd.md).
 - **Premissas:** Bots são **variações estratégia × timeframe** (e símbolo de mercado quando aplicável), versionados, avaliados por métricas de simulação. Não são identidades administrativas (`modules/agents`).
 
