@@ -11,7 +11,7 @@ status: draft
 
 # SDD — Gate 2: execução de orders (exchange)
 
-- **Estado:** **parcial** — G1 + `HttpOrderExecutor` (`paper`, `recording`, `testnet`+`BINANCE_TESTNET_*` → `live_exchange_wired`); `binance_spot_testnet_submit` (market buy por `quote_amount` via `quoteOrderQty`); sell testnet e reconciliação pendentes; dedupe `client_order_id` (memória + PG `0004`).
+- **Estado:** **parcial** — G1 + `HttpOrderExecutor` (`paper`, `recording`, `testnet`+`BINANCE_TESTNET_*` → `live_exchange_wired`); `binance_spot_testnet_submit` (market buy/sell por `quote_amount`; buy via `quoteOrderQty`, sell via base qty do ticker); reconciliação pendente; dedupe `client_order_id` (memória + PG `0004`).
 - **Referências:** [SDD orders G1](./orders-module-sdd.md), [auditoria de completude](../planning/modules-completeness-audit.md), `modules/exchanges/rest`, `modules/risk`.
 
 ## Contexto

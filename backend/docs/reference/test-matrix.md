@@ -81,7 +81,7 @@ Bin `bot`: **331** aprovados, **6** ignorados. PG: `./scripts/run-pg-integration
 ## Lacunas explícitas
 
 - Não há teste end-to-end contra Binance real; isso é intencional para evitar dependência de rede e credenciais.
-- CI não envia ordem testnet real (sem credenciais em pipeline): `recording` + `paper` são determinísticos; `binance_spot_testnet_submit` coberto por testes de contrato (sell rejeitado; buy exige rede manual).
+- CI não envia ordem testnet real (sem credenciais em pipeline): `recording` + `paper` são determinísticos; `binance_spot_testnet_submit` coberto por testes de contrato (buy/sell exigem credenciais e rede manual; CI usa `recording`/`paper`).
 - Não há teste de saldo privado ou produção porque esses caminhos são bloqueados.
 - A integração Jev externa é validada por contrato/configuração; disponibilidade do serviço e qualidade da recomendação não são gates operacionais.
 - O listener HTTP local requer permissão de loopback no ambiente de execução.
