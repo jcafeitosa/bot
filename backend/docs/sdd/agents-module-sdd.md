@@ -12,7 +12,7 @@ status: draft
 
 - **Estado:** draft G1 — revisão independente pendente.
 - **Referências:** [Pesquisa de capacidades](../research/agents-capability-research.md), [Módulos não implementados](../planning/unimplemented-modules-analysis.md), [Convenção MVC](./modules-mvc-convention-sdd.md), [Proposta 0001](../proposals/0001-backend-core-modules-mvc.md).
-- **Premissas:** Gate 1 da pesquisa (auth do owner, bootstrap, PostgreSQL) permanece bloqueado; esta entrega implementa **fundação executável em memória** com invariantes `IdentityOnly` e seam de advisory delegando a [`core::providers::jev`](../../src/core/providers/jev/mod.rs). Persistência e API HTTP administrativa ficam para fatias posteriores.
+- **Premissas:** Gate 1 da pesquisa (auth do owner, bootstrap, PostgreSQL) permanece bloqueado; esta entrega implementa **fundação executável em memória** com invariantes `IdentityOnly` e seam de advisory delegando a [`core::providers::jev`](../../src/core/providers/jev/mod.rs). Persistência durável e autenticação do owner no transporte ficam para Gate 1; rotas HTTP de registro/lifecycle existem sem auth verificável do owner.
 
 ## 1. Contexto e objetivo
 
