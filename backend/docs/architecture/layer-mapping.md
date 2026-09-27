@@ -74,6 +74,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 | `order_executor` | Infra port | `FailClosedExecutor` até adapter exchange |
 | `http_admin_auth` | Presentation seam | `BOT_HTTP_ADMIN_TOKEN`, `BOT_HTTP_OWNER_ID`, `BOT_HTTP_AGENCY_ID` |
 | `databases` | Infra | Postgres + Neo4j opcional para `/readyz` |
+| `monitor` | Domain handle via infra | `monitor_snapshot` / `accept_monitor_command` quando `--with-monitor` |
 
 ## Lacunas conscientes
 
@@ -87,7 +88,7 @@ Validadas por `./scripts/check-import-direction.sh`:
 cargo test --locked --bin bot
 ```
 
-Evidência: **203** testes no bin `bot`, **5** ignorados (PG/Neo4j).
+Evidência: **204** testes no bin `bot`, **5** ignorados (PG/Neo4j).
 
 ## Documentos relacionados
 

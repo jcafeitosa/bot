@@ -66,7 +66,7 @@ cargo check --locked --all-targets
 exit 0; sem warnings
 
 cargo test --locked
-203 testes unitários passaram (bin bot) (inclui testes HTTP em `presentation/http/server.rs`)
+204 testes unitários passaram (bin bot) (inclui testes HTTP em `presentation/http/server.rs`)
 1 fixture + 2 config CLI + 3 redirect-origin + 2 redirect-policy HTTP passaram
 5 testes ignorados (PostgreSQL 18+ / Neo4j; ver `#[ignore]` em persistence, pg_catalog, pg identity, market, neo4j)
 ```
