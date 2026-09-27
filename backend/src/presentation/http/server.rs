@@ -361,6 +361,75 @@ mod tests {
         std::env::remove_var("BOT_ORDERS_EXECUTION");
     }
 
+    #[tokio::test]
+    async fn router_after_build_api_state_meta_agrees_with_http_seam_endpoints() {
+        use crate::core::database::AppDatabases;
+
+        let state = ApiState::build_api_state_for_http_serve(
+            None,
+            AppDatabases::empty(),
+            crate::modules::config_api::Config::default(),
+            std::sync::Arc::new(std::sync::Mutex::new(
+                crate::modules::agents::AgentRegistry::new(),
+            )),
+        )
+        .await;
+        let app = build_router(state);
+        let meta_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/meta")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(meta_response.status(), StatusCode::OK);
+        let meta_bytes = axum::body::to_bytes(meta_response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let meta: serde_json::Value = serde_json::from_slice(&meta_bytes).unwrap();
+        let runtime_response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/bots/runtime/status")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(runtime_response.status(), StatusCode::OK);
+        let runtime_bytes = axum::body::to_bytes(runtime_response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let runtime: serde_json::Value = serde_json::from_slice(&runtime_bytes).unwrap();
+        assert_eq!(
+            meta["http_seams"]["bot_runtime_enabled"],
+            runtime["runtime_enabled"]
+        );
+        let exec_response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/api/v1/orders/execution-status")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(exec_response.status(), StatusCode::OK);
+        let exec_bytes = axum::body::to_bytes(exec_response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let exec: serde_json::Value = serde_json::from_slice(&exec_bytes).unwrap();
+        assert_eq!(meta["http_seams"]["order_execution_mode"], exec["mode"]);
+        assert_eq!(
+            meta["http_seams"]["live_exchange_wired"],
+            exec["live_exchange_wired"]
+        );
+    }
+
     #[test]
     fn order_reconciliation_poll_interval_parses_positive_seconds() {
         use crate::core::test_env_lock::with_env_test_lock;
