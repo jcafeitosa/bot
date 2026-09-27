@@ -108,3 +108,6 @@ A semântica de estados, gaps e recuperação está no [SDD T-15](../sdd/monitor
 ## Contratos de segurança
 
 O backend trabalha com dados públicos e não envia ordens no fluxo atual. Redirects entre origens são tratados pelo [SDD T-05](../sdd/rest-redirect-sdd.md). Alterações de configuração, mercado e validação devem seguir o [SDD T-03](../sdd/backend-corrections-sdd.md).
+
+
+| `BOT_HTTP_ADMIN_TOKEN` | Quando definido, habilita `HttpAdminAuth` no `ApiState` (seam fail-closed; wiring nas rotas mutantes em evolução). |
