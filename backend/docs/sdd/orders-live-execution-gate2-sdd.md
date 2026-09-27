@@ -118,3 +118,5 @@ Implementado (recording): `run_reconciliation_poll_once`, `SpotOrderReconciliati
 - [ ] Critic independente registra LGTM com achados tratados ou aceitos.
 - [ ] TTL/retenção de `order_idempotency_keys` e `order_reconciliation` definidos (ops).
 - [ ] Prod REST permanece bloqueado em `authorize_rest_use` até decisão explícita.
+
+**Recomendação ops (não automatizada no código):** retenção sugerida `order_idempotency_keys` **90 dias**; linhas `order_reconciliation` em estado terminal (`reconciled`/`divergent`) **180 dias**; pendências além de **7 dias** devem acionar alerta + poll manual (`POST /orders/reconciliation/poll`). Job `BOT_ORDERS_RECONCILIATION_POLL_SECS` ≥ **60** em ambientes com submit live wired.

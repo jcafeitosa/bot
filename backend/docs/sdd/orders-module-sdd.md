@@ -45,14 +45,13 @@ O produto não envia ordens reais. Ainda assim, o mapa alvo reserva `modules/ord
 | `RecordingExecutor` | Double determinístico para testes de `submit_order` após risco (sem rede). |
 | `submit_order` | Valida risco; retorna `OrdersError::ExecutionDisabled` se risco OK e executor disabled. |
 | `OrderIdempotencyStore` / `InMemoryOrderIdempotencyStore` | Dedupe síncrono em processo (`http_bridge/orders::submit_order_http`). |
-| `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Modo `live_exchange` wired + `client_order_id`: pending → reconciled com id do adapter (`recording-N` / testnet). |
-| `PgOrderReconciliationStore` | Espelha estado em `order_reconciliation` (`0006`); hidrata memória no boot HTTP com `symbol`/`side` (`seed_hydrated_row`); `GET` + `POST /orders/reconciliation/poll`; poller `run_reconciliation_poll_once`. |
-| `PgOrderIdempotencyStore` | Dedupe durável quando `DATABASE_URL` conecta; `ApiState` consulta PG antes de executar e grava após sucesso. |
-| `OrderReconciliationLedger` / `InMemoryOrderReconciliationLedger` | Scaffold G2: `Pending` → `Reconciled` / `Divergent` por `client_order_id`; wiring HTTP e poller exchange pendente. |
+| `OrderReconciliationLedger` / `shared_live_order_reconciliation_ledger` | Ledger compartilhado HTTP + monitor testnet; `pending`→`reconciled`/`divergent`; `LiveExchangeSpotOrderReconciliationQuery` no poll. |
+| `PgOrderReconciliationStore` | Espelha `order_reconciliation` (`0006`); hidrata `symbol`/`side`; `GET` + `POST /orders/reconciliation/poll`. |
+| `PgOrderIdempotencyStore` | Dedupe durável (`0004`) quando `DATABASE_URL` conecta. |
 
 ## Validação
 
-`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **357** testes bin `bot` (incl. `RecordingExecutor` em `orders` + `http_bridge/orders`, `meta_and_orders_execution_status_agree_on_seams`).
+`./scripts/verify-backend-gates.sh` (fmt, clippy `--bin bot`, import check, `cargo test --locked`). Comportamento HTTP: `GET /orders/execution-status`, `orders_submit_*` e `orders_submit_dev_accept_executor_returns_200` em `server.rs`; `order_execution.rs` + `state.rs` (`ApiState::for_http_server` lê `BOT_ORDERS_EXECUTION`). Evidência: **364** testes bin `bot` (incl. reconciliação poll, `live_query_*`, supervisor `record_monitor_spot_submit_reconciliation`).
 
 ## Rollback
 
