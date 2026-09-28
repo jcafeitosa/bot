@@ -88,7 +88,7 @@ Rollout proposto: implementar 503/401/continuação primeiro em testes do seam p
 
 Para uma rota protegida representativa e para cada classe/lista aprovada: sem env, resposta 503 + `admin_auth_not_configured`, handler não chamado; com env e sem bearer / bearer inválido, resposta 401 + `unauthorized`, handler não chamado; com env e bearer válido, handler chamado uma vez e resposta normal. Para cada rota pública, sem env e sem bearer, resposta normal. Para rota futura sem classificação, handler não chamado e resposta de negação conforme seam escolhido. Cobrir também o fluxo real de `serve`: listener ativo sem token, rota pública respondendo e rota protegida retornando 503. Os nomes de helper, localização do middleware, status/corpos estáveis e estratégia de lista exigem acordo antes de testes TDD; nenhum teste foi executado nesta entrega de documentação.
 
-#### Seams públicos exatos que ainda exigem acordo antes do TDD
+#### Seams públicos fechados pelo owner
 
 1. Qual API/config seam expõe o estado de configuração: tipo/enum e campos para ausente, vazio, válido e inválido; regra de força/validação do token e ponto único de leitura do env.
 2. Função/método público que decide/verifica credencial e sua assinatura: entrada do request, como representar segredo sem expô-lo em `Debug`, saída de decisão e erros/códigos públicos exatos.
