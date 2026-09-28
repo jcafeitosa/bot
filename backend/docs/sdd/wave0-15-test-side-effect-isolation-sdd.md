@@ -1,6 +1,6 @@
 ---
 title: SDD T-W0-06 — Isolar efeitos externos da suíte de testes
-description: Contrato de segurança para impedir que cargo test herde efeitos de dotenv, bancos ou Binance sem opt-in isolado.
+description: Contrato para tornar cargo test inofensivo por padrão e exigir opt-in, alvo efêmero e identidade verificada para cada integração com efeitos.
 tags:
   - sdd
   - backend
@@ -11,83 +11,88 @@ status: draft
 ---
 # SDD T-W0-06 — Isolar efeitos externos da suíte de testes
 
-**Status:** PROPOSED — G1 pendente. Este documento propõe seams públicos para aprovação do owner; não autoriza implementação.
+**Status:** PROPOSED — G1 pendente. O uso local de `.env` e o comportamento do backtest foram acordados pelo owner. Os nomes dos gates, runners e provas de identidade abaixo continuam candidatos, aguardando aprovação explícita do owner e revisão G1 independente. Não implementar nem executar integrações antes desses gates.
 
-## Problema e objetivo
+## Contexto e objetivo
 
-Uma execução ampla de `cargo test` não deve inferir autorização de efeito externo pela presença de credenciais e, por isso, conectar ou migrar bancos, gravar no Neo4j ou enviar ordens à exchange. O comportamento deve ser previsível quando `backend/.env` existe ou quando o shell exporta credenciais. Integrações precisam de opt-in específico, alvo descartável e seleção explícita do teste.
+A suíte pode herdar credenciais do shell ou carregar `.env`; isso permanece permitido no runtime local. Credenciais presentes nunca são opt-in. Hoje o helper PG conecta pela configuração ambiente e migra; testes Neo4j conectam/escrevem conforme configuração do stack; o teste Spot Testnet pode enviar compra Market BTC/USDT; e `execute_backtest` persiste quando `persist=true`.
 
-**Objetivo observável:** o caminho padrão da suíte não tenta rede nem persistência, mesmo quando credenciais estão no ambiente por causa de `.env` ou do shell; cada integração com efeitos exige opt-in próprio e prova do destino isolado.
+**Objetivo mensurável:** `cargo test` padrão não inicia tentativa de conexão PG/Neo4j, migration, escrita externa nem submissão Binance, mesmo com `.env` carregado. Cada integração só prossegue por runner dedicado após verificar gate, alvo descartável e identidade.
 
-**Fora de escopo:** alterar o fluxo de configuração do runtime `serve`; mudar lógica de negócio de PG/Neo4j/exchange; executar ordem testnet ou iniciar suite PG/Neo4j durante a implementação deste SDD.
+## Seams públicos propostos
 
-## Sistema atual
+### Suíte padrão e observação de tentativas
 
-- `backend/src/main.rs` chama `ensure_dotenv_loaded()` no entrypoint operacional. `backend/src/core/config/env_loader.rs` lê o dotenv padrão e, como fallback, `backend/.env`; seu teste `ensure_dotenv_loaded_is_idempotent` chama essa função dentro do bin de testes. Isso pode inserir valores de `.env` no ambiente compartilhado pelo processo de testes.
-- `backend/src/core/persistence/pg_integration.rs::database_for_integration_test` usa `Database::connect_from_env()` e executa migrações. Os testes PG chamam esse helper; sem opt-in específico, um teste normal pode consumir `DATABASE_URL`.
-- Os testes de projeção/leitura de grafo podem ser habilitados por configuração de Neo4j via `neo4j_stack_enabled()`; requerem alvo de integração isolado para não tocar o grafo de desenvolvimento.
-- `backend/src/modules/exchanges/adapters/binance_spot_testnet_submit.rs::integration_submits_minimal_market_buy_on_testnet` está registrado na suíte comum. Com credenciais visíveis, envia uma ordem Market de teste para BTC/USDT. Credenciais por si só não são autorização suficiente para o efeito.
-- A execução deliberada de integração PG é especificada em [W0-02](./wave0-02-ci-pg-fail-loud-sdd.md); este SDD adiciona um gate de segurança anterior a ela.
+`backend/scripts/verify-test-isolation.sh` define explicitamente os gates de integração como `0`, preserva `.env` e executa a suite usual. Gate ausente equivale a desabilitado, mesmo que dotenv defina configuração/credenciais. Gate só é aceito quando valor é exatamente `1`.
 
-## Contratos públicos propostos — aguardam concordância
+Todos os pontos de I/O passam por seams únicos, com observer injetável e acumulador thread-safe. Imediatamente antes de cada tentativa, registrar `io_start(effect, target_id, test_name)`, onde effect é `pg_connect`, `pg_migrate`, `neo4j_connect`, `neo4j_write` ou `binance_submit`. Denegação do gate não registra tentativa. Wrapper default falha se qualquer contador for diferente de zero.
 
-1. **Suíte padrão:** `cargo test` pode herdar variáveis do shell ou carregar `.env` por um teste/configuração local, mas credenciais por si só nunca habilitam integrações com efeitos. Os guards PG, Neo4j e Binance exigem opt-in explícito e alvo permitido. `ensure_dotenv_loaded()` continua válido para o runtime e não deve ser tratado como autorização de teste.
-2. **PostgreSQL:** apenas `BOT_RUN_PG_INTEGRATION=1` autoriza testes PG. O helper exige ainda marcador de banco de teste e conexão para banco/instância descartável. Ausência de opt-in significa skip explícito; opt-in sem pré-requisitos falha alto e sem revelar URL/segredo.
-3. **Neo4j:** testes que escrevem ou consultam integração externa exigem opt-in próprio e instância de teste descartável identificável. A configuração de runtime/credenciais não deve habilitar esses testes automaticamente. O nome e formato desse opt-in e do marcador precisam ser definidos na revisão G1.
-4. **Binance Spot Testnet:** somente a combinação de `BOT_RUN_BINANCE_TESTNET_ORDER=1`, as duas credenciais testnet presentes e filtro exato de `integration_submits_minimal_market_buy_on_testnet` pode submeter a ordem. Fora desse comando, a suíte não faz chamada à Binance; credenciais sozinhas não habilitam a ordem. Credencial ausente ou gate incompleto não envia ordem e produz skip/mensagem diagnóstica segura.
-5. **Diagnóstico:** logs/status de gate identificam o motivo do skip ou bloqueio sem incluir endpoint com credenciais, key, secret ou URL de banco.
+O wrapper inicia listeners-sentinela loopback em portas efêmeras para os gateways PG e Neo4j e falha se receber SYN/conexão, contando tentativa mesmo que o servidor de teste rejeite. Binance usa client/transport adapter injetável; o default exige transporte não-real e falha se houver submit. Um guard CI localiza construtores de drivers/clients e chamadas de persistência/submissão que não usam o seam; bypass reprova. HTTP mocks internos de unit tests são permitidos e separados de destinos externos.
 
-A lista de alvos isolados deve distinguir o banco de aplicação persistente dos bancos descartáveis. O marcador não substitui a separação da instância/credencial nem permite executar migrations no banco de aplicação.
+### PostgreSQL
 
-## Alternativas consideradas
+Variáveis candidatas: `BOT_RUN_PG_INTEGRATION=1`, `BOT_PG_TEST_DATABASE_URL`, `BOT_PG_TEST_RUN_ID`; manifest candidato `backend/.test-targets/pg.json`. Nunca escolher DB de teste via `DATABASE_URL`.
 
-- **Adicionar opt-ins por efeito, permitindo o dotenv local:** mantém a conveniência de configuração operacional sem transformar credenciais em autorização implícita para testes.
-- **Continuar carregando `.env` e exigir que o operador lembre de limpar variáveis:** simples, mas transforma credenciais locais em habilitação incidental de efeitos e depende de ambiente externo.
-- **Marcar somente a ordem como `#[ignore]`:** reduz o risco da exchange, mas deixa PG/Neo4j acoplados a `.env` e impede prova unificada de que o default não tenta persistência.
+1. Runner cria container PostgreSQL novo por execução: UUID aleatório no nome/label, image digest fixo, senha aleatória, database `trading_bot_test`, volume efêmero e porta loopback aleatória. Sem reaproveitar container, volume ou banco de aplicação.
+2. Runner verifica pela Docker API ID do container, digest, label/run UUID, porta mapeada e nome do DB. Só após essa verificação cria marker `test_run_marker` fora do helper/teste, contendo run UUID, container ID, digest, database e tipo `postgres`. Grava manifest restrito, nunca imprime URL/senha.
+3. O helper só considera conexão se flag é exatamente `1`, URL dedicada e manifest válido; confirma loopback/porta contra manifest e runner revalida container ativo/ID/digest/label/porta. Divergência falha antes da conexão. `DATABASE_URL` não é fallback.
+4. Depois de conectar, mas antes de migration, helper lê marker e confere UUID/container/digest/database/type. Ausente ou incompatível falha sem migration. Só marker correto autoriza migrate. O observer contabiliza connect e migrate.
+5. Flag desligada = skip explícito e zero conexão. Flag ligada sem URL/manifest ou identidade inconsistente = falha fechada, sem revelar segredo. Os DBs de teste não podem coincidir com endereço/DB runtime.
 
-## Riscos, validação e rollout
+### Neo4j
 
-O principal risco é um teste futuro introduzir acesso externo sem passar pelo gate. O verificador precisa observar tentativa, não apenas resultado: com `.env` contendo valores sentinela, a suite padrão deve concluir sem conexões PG/Neo4j, migração, chamada de rede ou ordem. O teste explícito da ordem deve ser validado por seleção exata e pelo gate de opt-in antes de qualquer acesso à rede; executar essa ordem é um efeito separado e requer a autorização já registrada pelo owner. Integrações PG/Neo4j só rodam contra alvos descartáveis com marcador.
+Gates candidatos separados: `BOT_RUN_NEO4J_READ_INTEGRATION=1` e `BOT_RUN_NEO4J_WRITE_INTEGRATION=1`; destino `BOT_NEO4J_TEST_URI`, `BOT_NEO4J_TEST_DATABASE`, `BOT_NEO4J_TEST_RUN_ID`; manifest `backend/.test-targets/neo4j.json`.
 
-Rollout após aprovação G1: (a) adicionar guards de opt-in na suite, preservando `.env` para runtime local; (b) configurar o job local/CI de PG para habilitar somente o opt-in PG contra DB isolado; (c) deixar ordem Binance e Neo4j opt-in desligados no gate geral; (d) fornecer comando dedicado para cada integração externa. Nenhuma publicação/deploy faz parte do trabalho. Rollback reverte guards e runner juntos; até então, não se executa a suite com ambiente contendo credenciais.
+Runner cria instância/container novo e descartável por run, credencial randômica, URI loopback/porta exclusiva e marker com UUID, container ID, image digest, database e mode (`read` ou `write`). Verifica identidade no runtime de containers e no Neo4j antes de liberar manifest.
 
-## Plano de validação (após G1 e seam acordado)
+Gate read permite apenas operações de leitura e requer marker/identidade correspondente; sempre usar grant read-only quando suportado. Gate write é independente, requer marker `mode=write` e container criado descartável para esse run. Configuração runtime como `BOT_GRAPH_ENABLED` e credenciais normais nunca ativa integração. Helpers validam gate e marker antes do driver conectar; nenhuma operação ambígua recebe read-only implicitamente.
 
-- **RED/GREEN em seam público:** executar o test harness padrão com dotenv sentinela presente e nenhum opt-in; provar que não há tentativa de abrir conexão PG/Neo4j nem tráfego HTTP e que nenhum dado é gravado. Primeiro, o teste deve falhar na implementação atual onde o carregamento incidental produzir efeito; então implementar a menor guarda e repetir.
-- Com PG opt-in ausente, os testes PG são pulados com motivo estável e não conectam. Com PG opt-in presente, banco sem marcador/isolamento é recusado antes de conexão/migração; alvo descartável marcado executa o teste selecionado e passa.
-- Com Binance flag ausente (mesmo que as credenciais existam), teste exato não envia ordem. Com flag ligada sem filtro exato, o runner bloqueia antes de iniciar a ordem. Só o comando exato com flag e credenciais pode chegar à exchange testnet.
-- Verificar que `verify-backend-gates.sh` e a suíte padrão não habilitam efeitos só porque `.env` ou variáveis herdadas contêm credenciais; executar smoke por interceptador local / conexão proibida que observe zero tentativas. Rodar testes de integração somente com destino isolado e opt-in respectivo.
-- Registrar quais testes de escrita Neo4j existem e seu gate observável antes de declarar o objetivo cumprido.
+Inventário inicial: leitura em `core/database/graph_query.rs` e `core/database/neo4j.rs`; projeções que escrevem em `modules/agents/adapters/graph_projection.rs`, `modules/bots/adapters/graph_projection.rs` e `modules/orders/adapters/graph_projection.rs`. Confirmar cada teste durante implementação; default é gate write para classificação ambígua. Gate ausente = skip sem conexão. Gate ativo sem marker/identidade/mode compatíveis = falha antes do driver.
 
-Não executado neste SDD: testes, comandos de integração, conexão aos bancos, solicitação à Binance ou alteração de código/configuração.
+### Binance Spot Testnet
 
-## Questões abertas de G1
+Candidatos: flag `BOT_RUN_BINANCE_TESTNET_ORDER=1`, script `backend/scripts/run-binance-testnet-order.sh`, teste canônico `modules::exchanges::adapters::binance_spot_testnet_submit::tests::integration_submits_minimal_market_buy_on_testnet`.
 
-1. **O owner aprova estes seams públicos e os opt-ins `BOT_RUN_PG_INTEGRATION=1` e `BOT_RUN_BINANCE_TESTNET_ORDER=1`, incluindo exigir filtro exato para a ordem?** A evidência de fechamento é resposta explícita do owner; bloqueia qualquer teste ou código.
-2. **Qual contrato exato de opt-in e marcador isolado para Neo4j?** A resposta deve nomear variável, instância/database de teste e prova que a instância é descartável; decider: owner, com revisão independente de segurança/banco.
-3. **Credenciais herdadas de `.env` ou do shell podem estar presentes no processo padrão de testes?** Resolvida pelo owner: `.env` é permitido para uso local; presença de credenciais não habilita efeitos. O comportamento verificável é zero tentativa de rede/persistência sem opt-in, provado por interceptador/runner em ambiente controlado.
+Script não aceita argumentos livres. Ele próprio monta o comando Cargo com nome completo e `-- --exact --test-threads=1`. Rejeita filtros alternativos, argumentos extras ou modo paralelo antes de invocar o binário. Antes da construção do cliente, o teste verifica `args_os()` do harness para confirmar `--exact`, nome canônico e uma thread; então exige flag exatamente `1` e somente credenciais dedicadas Spot Testnet. Credenciais não são lidas até passar gate/filtro. Base URL é fixada em Spot Testnet; modo produção é impossível nesse runner.
+
+Sem flag ou com filtro/argumentos incompatíveis, sai antes de construir client/transport e observer permanece `binance_submit=0`. Apenas o comando exato e credenciais testnet podem alcançar o submit. Esse runner nunca integra o wrapper padrão; a ordem autorizada pelo owner é uma execução explícita separada.
+
+## Backtest HTTP: auth antes do store
+
+Owner acordou: `POST /api/v1/backtest/sma-crossover` com `persist=false` é cálculo público; com `persist=true` requer admin Bearer válido. O handler deve aplicar auth antes de execução/persistência e receber explicitamente porta/store de persistência. Não pode resolver DB de produção via ambiente antes de autenticar. CLI pode preservar seu fluxo operacional.
+
+| Request | Resposta esperada | Tentativas DB | Teste |
+|---|---|---:|---|
+| Payload válido, `persist=false`, sem Bearer/PG | sucesso HTTP e corpo de cálculo conforme contrato da rota | 0 | suite default; observer/store contador zero |
+| `persist=true`, admin token ausente/fraco | 503, `admin_auth_not_configured` | 0 | unit handler |
+| `persist=true`, token configurado, bearer ausente/errado | 401, `unauthorized` | 0 | unit handler |
+| `persist=true`, bearer válido | sucesso persistente | conexão/write somente no store PG efêmero com marker válido | runner PG opt-in |
+| path/método desconhecido | 404/405 conforme roteamento | 0 | teste roteador |
+
+Testes de 503/401 afirmam que nem store nem gateway PG foram chamados. Caso persist=false usa payload válido e comprova resultado de cálculo, sem instanciar PG. Caso autenticado é validado apenas em alvo PG descartável previamente verificado e afirma write observável. Falha no store não reverte para DB runtime nem ignora persist=true.
+
+## Matriz de validação depois do G1
+
+1. Default com `.env` e variáveis credenciais/sentinelas: gates forçados em zero, suite concluída, todos os contadores de tentativa zero, listeners sem conexão recebida.
+2. PG: DATABASE_URL presente sem gate -> skip/0; gate sem manifest/URL dedicada -> erro antes de connect; URL/ID/digest/porta divergentes -> erro antes de connect; marker ausente/divergente -> connect observável, migrate=0; identidade e marker corretos -> migrate habilitado.
+3. Neo4j: sem gate -> connect=0; read gate/marker read -> leitura permitida, write negada; write gate/mode incompatível -> erro antes de escrita; identidade+marker write corretos -> operação de projeção permitida.
+4. Binance: credenciais sem flag -> cliente/submit=0; flag sem filtro exato ou args extras -> runner rejeita antes do processo/cliente; seleção exata, gate e credenciais testnet -> somente teste canônico pode submeter.
+5. Backtest: exercer cada linha da matriz com resposta HTTP e contador do handler/store; nenhum DB para cálculo público/503/401; Bearer válido persiste somente no PG efêmero autenticado.
+6. Testes de integração são executados apenas após runner criar alvo dedicado. Testnet é chamada separada e nunca parte do default. Verificação inclui guard estático de bypass e testes RED/GREEN nos seams públicos.
+
+## Rollout, rollback, riscos e alternativas
+
+Após G1, implementar gates fechados primeiro, migrar testes para helpers e depois adicionar runners/markers. Default mantém gates zero. Só job PG descartável fica habilitado onde requerido; Neo4j e Binance ficam desativados até comando dedicado. Rollback reverte helper e runner juntos. Cleanup usa trap e UUID/labels; falha de cleanup nunca causa reuso.
+
+Docker e Neo4j precisam suportar os checks declarados; versões não suportadas falham fechadas. Acesso direto a driver/store pode contornar observer; guard e revisão de chamadas são parte do aceite. Nunca logar URL, password, API key, secret ou dados do manifest. Alternativas rejeitadas: depender de operador limpar `.env`; confiar somente em marker sem provar container; ignorar só Binance; usar `DATABASE_URL` para teste; avaliar somente ausência de writes em vez de tentativas.
+
+## Decisões e pendências
+
+- Owner aprovou uso local de `.env`, sem inferir opt-in a partir de credenciais, e a semântica do backtest acima.
+- **Pendente owner:** aprovar/substituir explicitamente nomes e comportamento candidato dos gates PG, Neo4j read/write, Binance; runners e validação `--exact`; container UUID/identidade+marker; observer default e portas/testes da matriz do backtest.
+- **Pendente Critic G1:** revisão independente depois da resposta do owner. Sem ambas aprovações, não iniciar G3 nem integrações.
+- Não executado neste SDD: código, testes, processos/conexões/migrations, chamadas de rede ou ordens.
 
 ## Aceite
 
-G1 exige aprovação independente deste desenho e respostas às questões que definem o seam. G4 exige evidência de zero tentativas de rede/persistência na suite padrão com arquivo `.env` presente, gates explícitos para cada integração, rejeição de alvo PG não marcado/não isolado, e seleção exata obrigatória no teste de ordem.
-
-## Adendo — decisões do owner e achado de backtest
-
-O owner esclareceu que `.env` pode ser usado no trabalho local e que o backtest deve funcionar como em produção. Isso autoriza carregar configuração para execução operacional, mas não transforma credenciais disponíveis no processo em opt-in para efeitos colaterais de um teste comum. O gate padrão continua sem efeitos; integrações seguem exigindo opt-in explícito e alvo descartável.
-
-**Contrato aprovado para o backtest:** `POST /api/v1/backtest/sma-crossover` permanece cálculo público quando `persist=false`; com `persist=true`, exige token admin configurado e Bearer válido. O teste público usa `persist=false`; o caso persistente é validado separadamente contra PostgreSQL descartável e com auth válida. Este comportamento depende de autorização condicional no handler porque a classificação middleware atual cobre método+path; revisão independente deve aprovar o desenho técnico e os testes antes do G3. A rota não é provada segura pela matriz de classificação sozinha.
-
-**Evidência de código:** `backend/src/modules/backtest/cli.rs::execute_backtest` chama `persist_dataset_if_configured` quando `BacktestCli.persist` é verdadeiro. Portanto, a descrição antiga de “seis POSTs de cálculo sem efeito colateral” não é suficiente para este endpoint: a flag torna o caminho persistente.
-
-### Seams atualizados
-
-- O owner permite `.env` para runtime e execução local; qualquer credencial herdada pelo processo de teste continua sem habilitar integração por si só.
-- O conjunto padrão não tenta conectar ou persistir em PG/Neo4j e não chama Binance, independentemente da presença de credenciais.
-- Integração PG exige opt-in, conexão dedicada para instância descartável e marcador criado pelo setup explícito. O helper não deve aceitar apenas um marcador: a configuração/runner também deve provar identidade do alvo isolado antes de migrar. A forma exata dessa prova (variável dedicada, container id/host e validação de banco) fica para aprovação independente G1.
-- Teste Neo4j exige opt-in separado e instância dedicada descartável; configuração local ou credencial, isoladamente, não habilita operação.
-- A ordem Spot Testnet exige opt-in dedicado e filtro exato, além de credenciais testnet válidas. O opt-in autoriza apenas esse teste; não libera a suíte para outras chamadas externas.
-- Backtest sem persistência é público e sem PG; backtest persistente exige Bearer e só testa com PG descartável.
-
-### Status de aceitação atualizado
-
-O owner fechou o princípio de não inferir autorização de efeitos a partir de `.env` (que segue permitido para runtime local), a necessidade de opt-ins/targets descartáveis e o comportamento do backtest conforme a flag. O G1 deste SDD segue **PENDENTE** até revisão técnica independente do adendo, fechamento da prova do destino descartável para PG, e confirmação dos seams específicos (nomes exatos dos opt-ins e mecanismo verificável de filtro exato). Nenhuma integração foi executada.
+G1 exige owner aceitar seams ou declarar substituições e Critic independente aprovar design. G4 exige default observer com zero tentativas, PG/Neo4j provando identidade/marker antes de migrate/ação, Binance recusando qualquer seleção não exata antes do cliente e matriz backtest com respostas/contadores previstos. Credenciais ausentes não contam como evidência de isolamento.

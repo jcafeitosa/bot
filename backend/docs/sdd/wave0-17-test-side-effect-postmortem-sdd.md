@@ -21,14 +21,18 @@ Um postmortem único em `postmortems/2026-09-27-test-suite-side-effects.md`, seg
 
 ## Evidência e limites
 
-Usar apenas: saída registrada no contexto desta tarefa (453 testes passaram, 80 falharam, saída truncada), matriz de testes e SDD T-W0-06 existentes, além do snapshot descrito no contexto como criado após o comando. Não executar novamente a suíte nem consultar PostgreSQL, Neo4j ou Binance. Não afirmar contagens de testes externos individuais, transações, persistência final, número/status de ordens ou estado anterior do banco sem artefato que prove. Marcar eventos de transcript sem timestamp recuperável como reconstruídos e timestamp não preservado.
+Manter separados dois eventos na ordem registrada: (1) `bash scripts/verify-backend-gates.sh`, cujo teste do bin `bot` passou com 520 e a etapa posterior de completude falhou; e (2) `cargo test --locked --bin bot -- --test-threads=1`, com 453 testes aprovados e 80 falhos, saída truncada. Não há SHA/identidade limpa do checkout associado a esses eventos na evidência disponível; registrar como desconhecido, sem fundir contagens nem inferir a lista exata de testes executados. A matriz e SDD T-W0-06 contextualizam quais testes condicionais poderiam ter sido selecionados, mas não provam que cada um foi executado.
+
+O registro da tarefa informa que a execução ampla carregou `backend/.env`, que não foi feito rollback, e que o snapshot `/tmp/bot-backend-safety-backup/trading_bot-2026-09-27.dump` foi criado depois do comando (SHA-256 `c9682fb5c58f566f4c1a217f5fce043648d9486e1e3b08e42d123ad68e941b8a`). Registrar esses itens como declarações do registro da tarefa, com horário não preservado, sem apresentá-los como observação independente. O snapshot é pós-evento, não prova o estado anterior e seu conteúdo/restaurabilidade não foi verificado. Não afirmar conexões, migrações, gravações finais, número/status de ordens nem impacto na integridade sem artefato observável. Não executar novamente a suíte nem consultar PostgreSQL, Neo4j ou Binance. Marcar eventos do registro sem timestamp recuperável como reconstruídos e timestamp não preservado.
 
 ## Critérios de aceite
 
 - Revisão independente G1 deste escopo antes do postmortem.
 - Timeline distingue horário indisponível, sequência observada e fontes.
 - Impacto confirmado separado do potencial/incerto.
-- Resposta documenta parada de novas operações, ausência de rollback e limites do snapshot pós-evento.
+- Resposta limita-se a eventos sustentados pelo registro; quando não houver log independente, explicita que não há registro preservado. O snapshot é identificado por path/hash e descrito somente como pós-evento, com conteúdo e restaurabilidade não verificados.
+- Inclui `What went well` mesmo que registre honestamente que não há evidência suficiente para identificar um fator positivo.
+- Inclui `Related` após busca no corpus de postmortems existentes; linka correspondências existentes, ou declara que a busca não encontrou postmortems relacionados.
 - Root cause e contribuintes descrevem lacunas sistêmicas (dotenv compartilhado por testes, integrações habilitadas por env), sem culpa pessoal.
 - Ações têm equipe/role responsável, data e condição observável de conclusão; não afirmar que foram implementadas.
 - Revisão independente G3 e OpenKnowledge audit do documento, com achados registrados.
