@@ -8,7 +8,7 @@ tags:
   - http
   - wave0
 status: partial
-w0_01_status: ready-for-g1-review
+w0_01_status: g1-approved-g3-pending
 ---
 
 # SDD — HTTP admin bearer seam (serve sem token; rotas protegidas retornam 503)
@@ -66,7 +66,7 @@ Esta classificação é decisão do owner e substitui qualquer classe diferente 
 2. **Verificação:** Bearer válido compara com o token configurado sem expor o segredo; ausente/incorreto resulta em 401 nas rotas protegidas; auth sem token nunca equivale a sucesso.
 3. **Classificação:** a lista método+path acima é a classificação aprovada: mutações e GETs sensíveis protegidos; leituras/health/docs e exatamente seis cálculos públicos.
 4. **Rota futura desconhecida:** 404 `route_not_found` antes do handler; não herda auth pública nem protegida por omissão.
-5. **Fluxo do router:** precisa aplicar a classificação antes do handler e incluir rotas de sistema/docs; nome e composição internos de função/middleware ficam como decisão de implementação revisável em G1, sem mudar os contratos observáveis.
+5. **Fluxo do router:** aplica a classificação aprovada antes do handler e inclui rotas de sistema/docs; o design de composição foi aprovado em G1. Detalhes internos de código podem variar em G3 somente se preservarem os contratos observáveis.
 6. **Respostas:** 503 para auth ausente/vazia/fraca, 401 para bearer ausente/incorreto quando token utilizável está configurado, 404 para rota não classificada; Bearer válido prossegue. Os códigos acima são estáveis e segredos nunca aparecem em respostas/logs.
 
 
@@ -86,7 +86,7 @@ Rollout proposto: implementar 503/401/continuação primeiro em testes do seam p
 
 #### Validação comportamental observável (design; ainda não executada)
 
-Para uma rota protegida representativa e para cada classe/lista aprovada: sem env, resposta 503 + `admin_auth_not_configured`, handler não chamado; com env e sem bearer / bearer inválido, resposta 401 + `unauthorized`, handler não chamado; com env e bearer válido, handler chamado uma vez e resposta normal. Para cada rota pública, sem env e sem bearer, resposta normal. Para rota futura sem classificação, handler não chamado e resposta 404 `route_not_found`. Cobrir também o fluxo real de `serve`: listener ativo sem token, rota pública respondendo e rota protegida retornando 503. A lista e os status/códigos estão fechados pelo owner; helper, tipo Rust e composição do middleware permanecem decisões de implementação para revisão G1. Nenhum teste foi executado nesta entrega de documentação.
+Para uma rota protegida representativa e para cada classe/lista aprovada: sem env, resposta 503 + `admin_auth_not_configured`, handler não chamado; com env e sem bearer / bearer inválido, resposta 401 + `unauthorized`, handler não chamado; com env e bearer válido, handler chamado uma vez e resposta normal. Para cada rota pública, sem env e sem bearer, resposta normal. Para rota futura sem classificação, handler não chamado e resposta 404 `route_not_found`. Cobrir também o fluxo real de `serve`: listener ativo sem token, rota pública respondendo e rota protegida retornando 503. A lista e os status/códigos estão fechados pelo owner e o design foi aprovado em G1; helper, tipo Rust e composição serão implementados em G3 dentro desse desenho. Nenhum teste foi executado nesta entrega de documentação.
 
 #### Seams públicos de comportamento — decisões fechadas pelo owner em 2026-09-27
 
@@ -97,9 +97,9 @@ Os seis seams de comportamento foram fechados pelo owner:
 3. **Classes das rotas atuais:** lista completa método+path acima; mutações e leituras sensíveis protegidas; health/docs/leitura não sensível e os seis cálculos públicos.
 4. **Rotas futuras:** classificar explicitamente; rota sem classe retorna 404 `route_not_found` antes do handler.
 5. **Respostas:** 503 `admin_auth_not_configured`, 401 `unauthorized`, 404 `route_not_found`; rotas públicas preservam resposta normal sem bearer.
-6. **Escopo do middleware:** toda rota protegida passa pela decisão antes do handler; detalhes do tipo Rust, assinatura de funções, composição do router e anotação OpenAPI são decisões de design interno para revisão G1, não seams de comportamento pendentes do owner.
+6. **Escopo do middleware:** toda rota protegida passa pela decisão antes do handler; detalhes do tipo Rust, assinatura de funções, composição do router e anotação OpenAPI são decisões internas abrangidas pela aprovação G1; não são seams de comportamento pendentes do owner.
 
-Não há acordo pendente do owner para começar a revisão G1. O Critic deve revisar se as interfaces e a composição propostas em A2–A6 implementam fielmente estes contratos; implementação e testes seguem bloqueados até aprovação G1 e eventual acordo sobre API pública de teste conforme AGENTS.md.
+O Critic independente aprovou G1 após revisar A2–A6 contra os contratos fechados pelo owner. G3 pode implementar e testar esses seams usando as interfaces propostas e o processo de TDD do AGENTS.md; a aprovação não afirma que implementação ou testes já ocorreram.
 
 
 
@@ -107,11 +107,11 @@ Não há acordo pendente do owner para começar a revisão G1. O Critic deve rev
 
 ## W0-01 — fail-closed de verdade (Onda 0, proposta para G1) [SEGURANÇA]
 
-- **Estado desta seção: pronta para revisão independente G1; G1 ainda não aprovado.** As decisões do owner foram registradas em 2026-09-27; Critic independente deve revisar o design atualizado antes de qualquer implementação ou teste. Vale só para esta seção: o `status: partial` do front-matter descreve as seções "Gate 1" em diante, que documentam o código atual.
+- **Estado desta seção: G1 aprovado por Critic independente; G3 (implementação e testes) pendente.** O owner aprovou os seams públicos e o Critic independente aprovou o design atualizado. Nenhum código ou teste desta fatia foi implementado/executado nesta entrega de documentação. Vale só para esta seção: `status: partial` no front-matter descreve o código atual e continua correto até G3.
 - **Plano:** W0-01, prioridade 1, em [master-plan](../planning/master-plan.md) §4.1.
 - **Fonte dos critérios de segurança:** [F-ADM-01](../security/admin-http-auth-fail-open.md) §4 (SEC-ADM-01…15). Na versão atual do TM, SEC-ADM-01…11, 13 e 15 são F1, SEC-ADM-12 é FU e SEC-ADM-14 é P1.
 - **Leitura importante:** as seções abaixo desta ("Gate 1", "Comportamento") descrevem o código **atual**, que é fail-open sem token. Esta seção descreve o alvo. Quando W0-01 for implementado, a tabela "Comportamento" e o título mudam junto (SEC-ADM-13).
-- **Seams:** decisões públicas de comportamento aprovadas em 2026-09-27 e registradas acima; a composição interna segue para revisão G1.
+- **Seams:** decisões públicas de comportamento aprovadas em 2026-09-27 e registradas acima; a composição interna foi aprovada em G1 e deve ser preservada na implementação G3.
 
 ### Contexto (evidência no código, HEAD `d42b71a5`)
 
@@ -134,21 +134,21 @@ Entre `b8370a75` e `d42b71a5`, `backend/src` mudou só em `core/database/postgre
 - **OpenAPI sem esquema de segurança (F-01-5):** `rg 'security|bearer|SecurityScheme|modifiers' presentation/http/openapi.rs` só acha a descrição textual da linha 171. Nenhuma rota declara `security`.
 - Contradições ainda abertas no código: `admin_auth.rs:1` diz "Optional fail-closed"; `disabled_fail_closed()` monta auth aberta. `cli-and-config.md:138` e o título deste SDD já dizem "ausente ou vazio = nenhuma autenticação".
 
-> **Nota de precedência (2026-09-27):** a decisão do owner acima substitui os textos antigos abaixo que exigem token no startup ou classificam rotas de forma diferente. A lista método+path de cima é a classificação aprovada; a tabela A2.2 é inventário histórico cujo rótulo de classe não prevalece quando divergir dela. A2–A6 e F1–F10 continuam como detalhes de design e validação propostos para revisão, mas não são decisões do owner sobre middleware, tabela central, guard, Host, limitador ou OpenAPI. Os critérios antigos de startup recusado e rota desconhecida 401 estão supersedidos por listener ativo e 503 para auth ausente/fraca, e 404 para rota sem classe. O documento está pronto para revisão independente de G1; G1 não está aprovado.
+> **Nota de precedência (2026-09-27):** a decisão do owner acima substitui os textos antigos abaixo que exigem token no startup ou classificam rotas de forma diferente. A lista método+path de cima é a classificação aprovada; a tabela A2.2 é inventário histórico cujo rótulo de classe não prevalece quando divergir dela. A2–A6 e F1–F10 continuam como detalhes de design e validação propostos para revisão, mas não são decisões do owner sobre middleware, tabela central, guard, Host, limitador ou OpenAPI. Os critérios antigos de startup recusado e rota desconhecida 401 estão supersedidos por listener ativo e 503 para auth ausente/fraca, e 404 para rota sem classe. O Critic independente aprovou G1 para esta fatia; implementação e validação comportamental permanecem pendentes em G3.
 
 ### A1 — escopo obrigatório e follow-ups
 
 | Classe | IDs de [F-ADM-01](../security/admin-http-auth-fail-open.md) | Tratamento |
 |---|---|---|
-| Obrigatório em W0-01 | SEC-ADM-01, 02 (forma depende da decisão do opt-out, A3), 03, 04, 05, 06, 07, 08, 09, 10, 11 (forma de A6), 13, 15 | critérios de aceite desta fatia |
+| Obrigatório em W0-01 | SEC-ADM-01, 02 (configuração ausente/fraca retorna 503 em protegidas; listener permanece ativo), 03, 04, 05, 06, 07, 08, 09, 10, 11 (forma de A6), 13, 15 | critérios de aceite desta fatia |
 | Follow-up explícito | SEC-ADM-12 (rotação com dois tokens) | item próprio no plano; não bloqueia G4 de W0-01 |
 | Bloqueado | SEC-ADM-14 | depende de P1 (auth humano/IdP); registrado, não implementado |
 
-**Decisão de runtime (2026-09-27):** auth ausente, vazia ou fraca não impede o boot nem a abertura do socket. Rotas protegidas retornam **503** `admin_auth_not_configured`; com token utilizável configurado, bearer ausente/incorreto retorna **401** `unauthorized` e bearer válido prossegue. Rotas públicas seguem abertas sem token. As classes exatas aprovadas constam acima; a composição técnica do router continua para revisão G1.
+**Decisão de runtime (2026-09-27):** auth ausente, vazia ou fraca não impede o boot nem a abertura do socket. Rotas protegidas retornam **503** `admin_auth_not_configured`; com token utilizável configurado, bearer ausente/incorreto retorna **401** `unauthorized` e bearer válido prossegue. Rotas públicas seguem abertas sem token. As classes exatas aprovadas constam acima; a composição técnica do router segue o design aprovado em G1 e será implementada em G3.
 
 **Decisão antiga substituída:** falhar o startup sem token e impedir o listener. A resposta 503 no endpoint protegido é o contrato escolhido pelo owner, não uma alternativa rejeitada.
 
-### A2 — proposta de roteamento e defesa em profundidade (classes aprovadas acima; detalhes para G1)
+### A2 — roteamento e defesa em profundidade (classes aprovadas; design G1)
 
 Evidência: o `Router` do axum (0.8.9 no `Cargo.lock`) não lista as rotas registradas; hoje as rotas são registradas em dois arquivos (`routes/mod.rs` e `server.rs`); o OpenAPI vem de `#[utoipa::path]` agregado em `ApiDoc` (`openapi.rs`), então um teste guiado só pelo OpenAPI não vê rota registrada e esquecida na anotação.
 
@@ -309,7 +309,7 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
 
 ### Seams públicos — contratos de comportamento fechados pelo owner
 
-A decisão do owner fecha os seis seams públicos de comportamento listados no início desta seção: configuração token ausente/fraco, verificação Bearer, classificação da lista existente, comportamento para rota não classificada, respostas HTTP e ausência de token nas rotas públicas. O design interno do middleware/router, Host, rate limit e anotação OpenAPI permanece recomendação técnica sujeita à revisão G1; não altera estes contratos.
+A decisão do owner fecha os seis seams públicos de comportamento listados no início desta seção: configuração token ausente/fraco, verificação Bearer, classificação da lista existente, comportamento para rota não classificada, respostas HTTP e ausência de token nas rotas públicas. O Critic independente aprovou em G1 o desenho interno do middleware/router e os controles previstos nesta fatia; a implementação G3 deve manter estes contratos.
 
 | Seam | Contrato aprovado / proposta interna para revisão |
 |---|---|
@@ -318,9 +318,9 @@ A decisão do owner fecha os seis seams públicos de comportamento listados no i
 | Ponto de leitura | Proposta: ler/validar env uma vez ao construir estado de auth para evitar TOCTOU; nunca falhar o startup por ausência/token fraco. |
 | Classes de rota | Lista método+path aprovada na seção “Classificação aprovada das rotas existentes”: mutações e leituras sensíveis protegidas; health/docs/leitura e seis cálculos públicos. |
 | Rota não classificada | 404 `route_not_found` antes de executar handler; sem herança pública ou auth por omissão. |
-| Composição router | Proposta de G1: camada de classificação aplicada antes dos handlers, incluindo endpoints de sistema/docs; nome de funções e estrutura do registro ficam para Critic revisar. |
+| Composição router | Design aprovado em G1: camada de classificação aplicada antes dos handlers, incluindo endpoints de sistema/docs; G3 implementa o seam preservando o contrato. |
 
-### Critérios de aceite W0-01 (pronto para revisão G1; critérios observáveis propostos)
+### Critérios de aceite W0-01 (design G1 aprovado; validação G3 pendente)
 
 Os critérios observáveis que prevalecem sobre os F1–F10 antigos são:
 
