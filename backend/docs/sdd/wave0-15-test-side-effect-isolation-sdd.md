@@ -28,7 +28,7 @@ A suíte unitária default deve executar sem egress, inclusive quando acionada d
 - Cargo usa CARGO_NET_OFFLINE=true, --locked --offline, registry/cache previamente provisionado read-only em /cargo/registry e CARGO_HOME=/cargo; target/audit temporários por execução. Imagem é pinada por digest/ID e strace por versão. Sem imagem, cache, arquitetura ou profile compatível, aborta antes de Cargo; sem build/pull/fallback implícito.
 - Docker usa --network=none, --cap-drop=ALL e somente SYS_PTRACE, no-new-privileges e usuário sem privilégio. Profile seccomp restritivo nega io_uring_setup/register/enter com EPERM; os três syscalls são explicitamente incluídos no filtro strace e auditor. Wrapper valida arquitetura/profile antes de iniciar imagem e falha fechado em host incompatível.
 - Auditor permite somente mocks loopback dentro do namespace. DNS na porta 53 é proibido também em loopback; UDP/TCP externo, redirect, syscall de rede malformada ou endereço não interpretável falha mesmo se aplicação ignorou o erro. Socket Unix do host não é montado. O self-test adversarial deve provar mocks locais permitidos, DNS/UDP/TCP/redirect bloqueados e as três chamadas io_uring observadas com EPERM.
-- Observer classifica `pg_connect`, `pg_migrate`, `neo4j_connect/read/write`, `provider_http` e `binance_submit`. Unit suite fica em deny-all. Para a topologia executável PG/Neo4j e o proxy Spot Testnet, incluindo IP/porta de cada perfil, destinos adversariais e observação de descendentes, prevalece a seção “T-W0-06 rev-next2 — topologia de egress dos runners” abaixo. Observer complementa strace e auditoria de descendentes. Zero-egress vale para a suite unitária no Cargo target runner e wrapper.
+- Observer classifica `pg_connect`, `pg_migrate`, `neo4j_connect/read/write`, `provider_http` e `binance_submit`. Unit suite fica em deny-all. Para a topologia executável PG/Neo4j e o proxy Spot Testnet, incluindo IP/porta de cada perfil, destinos adversariais e observação de descendentes, prevalece a seção “T-W0-06 ciclo 3 — topologia de egress dos runners” abaixo. Observer complementa strace e auditoria de descendentes. Zero-egress vale para a suite unitária no Cargo target runner e wrapper.
 
 ## Fases e dependências
 
@@ -133,7 +133,7 @@ A rev-next2 de T-W0-06 foi APROVADA COM FOLLOW-UP (`d797073e4539fcf85c15a777d087
 - Escopo autorizado pelo owner: execução local, dados persistentes protegidos, runner PG/Neo4j efêmero, backtest runtime autenticado, ordem dedicada Spot Testnet apenas.
 - Nenhuma evidência de CI GitHub foi alegada.
 
-## T-W0-06 rev-next2 — topologia de egress dos runners
+## T-W0-06 ciclo 3 — topologia de egress dos runners
 
 Este adendo fechou os blockers do G1 ciclo 1 sobre Cargo direto/wrapper e topologia executável. A reprovação G1 do ciclo 2 é um estado histórico supersedido por esta revisão ciclo 3, que agora especifica autoridade do daemon/harness, inspeção live de membership pre/post e semântica correta de TLS pass-through. Esta revisão continua PROPOSED/G1 pendente; implementação permanece congelada.
 
