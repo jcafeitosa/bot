@@ -10,7 +10,7 @@ status: proposed
 ---
 # SDD T-DB-ENV — Ambientes dev/prod com PostgreSQL local isolado
 
-**Status: PROPOSED — requer revisão G1 independente e acordo explícito dos seams antes de criar testes ou implementar.** O objetivo autorizado é ter execução local dev e prod usando bancos locais distintos. Não há endpoint nem secret manager real de produção fornecido; este SDD não cria nem presume um.
+**Status: PROPOSED — o owner aprovou o seletor separado e todos os callers no resolver; revisão G1 independente e detalhes operacionais ainda estão pendentes.** Não criar testes ou implementar até os gates restantes serem resolvidos. O objetivo autorizado é ter execução local dev e prod usando bancos locais distintos. Não há endpoint nem secret manager real de produção fornecido; este SDD não cria nem presume um.
 
 ## Contexto e objetivo
 
@@ -73,11 +73,13 @@ A regra proposta é abrangente: todo caller runtime que conecta, lê, escreve, m
 
 Esta matriz consolida [integração dos módulos](./database-module-integration-sdd.md), [core database](./core-database-sdd.md), [configuração centralizada](./centralized-config-sdd.md) e [referência de CLI](../reference/cli-and-config.md), mais os callers/orders e scripts identificados no review. Antes do aceite de implementação, busca de código e inspeção de call graph devem confirmar a lista completa de acessos diretos/transitivos. Critério: nenhum acesso runtime residual a DATABASE_URL ou postgres_url_from_env; helpers transitivos recebem DatabaseEnvironment; scripts de teste/auditoria ficam em contratos explícitos separados e não são apresentados como comandos runtime.
 
-## Seams que exigem novo acordo explícito antes de testes
+## Acordo owner e pendências de seam
 
-A autorização anterior cobriu os cinco seams do rascunho original. Esta revisão altera flag pública e migra todos os callers, por isso exige novo acordo para: (1) --database-environment dev|prod ortogonal a --environment de trading/Binance; (2) nomes BOT_DATABASE_URL_DEV/PROD e ausência de fallback DATABASE_URL; (3) migração de todos os callers da matriz e fail-closed nos sem seletor; (4) Compose com nomes por run e validação de project labels, IDs e mount sources, sem down/prune amplo; (5) backup consistente/restaurável em banco não vazio ou exigência de target vazio; (6) backtest persist=true herdar seletor e persist=false não abrir PG.
+Acordo literal recebido do owner: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Isso cobre a separação do seletor em relação a --environment de trading/Binance e o requisito de migrar todos os callers runtime PostgreSQL ao resolver. A matriz documental acima está fechada para os callers/scripts identificados neste ciclo; auditoria do source/call graph ainda deve confirmar cobertura completa antes do aceite de implementação.
 
-Até acordo e G1, não criar testes dependentes desses seams nem alterar parser, config, connector, migrations ou Compose.
+Esse acordo não aprova detalhes não perguntados: nomes exatos BOT_DATABASE_URL_DEV/PROD, política de fallback DATABASE_URL, formato do manifest/Run ID e labels do Compose, operação/cleanup de recursos, critério de backup consistente ou target vazio, e contrato detalhado do runner PG continuam propostas sujeitas à revisão G1 e ao plano aprovado. Nenhum destino remoto está autorizado ou configurado.
+
+Até revisão G1 e confirmação dos seams operacionais restantes, não criar testes dependentes desses detalhes nem alterar parser, config, connector, migrations ou Compose.
 
 ## Produção remota e segurança
 
@@ -93,14 +95,19 @@ Manter um único DATABASE_URL e trocar seu valor manualmente entre dev e prod ex
 
 | Seam | RED/GREEN após acordo | Observabilidade/efeito esperado |
 |---|---|---|
-| --database-environment | ausente/inválido/duplicado falha; dev e prod resolvem destinos diferentes | connector falso recebe zero chamadas nos erros; --environment trading não muda |
-| Resolver e env vars | escolhe só BOT_DATABASE_URL_DEV/PROD; DATABASE_URL isolada ou presente como fallback é rejeitada | zero connect/migrate e erro sem URL/segredo |
-| Callers runtime | serve, monitor, backtest, graph-projection e stores recebem mesmo DatabaseEnvironment | sem seletor todos registram zero conexão/read/write/migrate |
-| Compose resource identity | labels/container ID/volume ID/mount source corretos permitem operação; divergência aborta | nenhum comando Docker mutável no caso negativo; tentativa dev não alcança prod |
-| Schema/migration | alvo vazio migra; alvo ocupado requer backup consistente comprovável | versão/checksum por alvo; database irmão inalterado |
-| Test runner separado | BOT_PG_TEST_DATABASE_URL só via runner validado; DATABASE_URL nunca fallback | sem gate/runner, zero connect/migrate; runtime recusa marker de teste |
+| --database-environment | ausente/inválido/duplicado falha; dev/prod resolvem destinos distintos | connector falso recebe zero chamadas nos erros; --environment trading não muda |
+| Resolver e env vars | seleciona só URL do ambiente; nenhum DATABASE_URL runtime/fallback | zero connect/migrate e erro sem URL/segredo |
+| serve + stores transitivos | bootstrap, owner, agents, bots, provider credentials recebem DatabaseEnvironment | sem seletor zero connect/read/write/migrate |
+| monitor + optional_postgres_for_monitor_supervisor_snapshot() | contexto selecionado propaga ao caminho auxiliar; flag ausente falha fechado | zero resolução por postgres_url_from_env e zero query sem seletor |
+| backtest e orders retention-purge | persist=true e purge recebem o seletor; persist=false não abre PG | sem seletor zero connect/migrate/delete; ambiente trading não escolhe DB |
+| graph-projection drain | PG outbox usa destino selecionado; Neo4j é independente | zero PG access sem seletor |
+| run-pg-integration-tests.sh | integrações só rodam com runner/target/marker explícitos | default não lê DATABASE_URL nem conecta ao runtime DB |
+| pg-v18-monitor-persistence-audit.sh | ferramenta de auditoria requer target manifestado, não é CLI runtime | recusa target ausente/ambíguo antes de query; sem fallback DATABASE_URL |
+| verify-backend-full.sh | verificação composta delega integração somente ao runner separado | modo default não resolve URL nem cria conexão |
+| Compose resource identity | labels/container ID/volume ID/mount source corretos permitem operação; divergência aborta | zero mutações Docker em caso negativo; dev não alcança prod |
+| Schema/migration | alvo vazio migra; alvo ocupado requer backup consistente/restaurável | versão/checksum por alvo; database irmão inalterado |
 
-Testes unitários são offline, usam valores-sentinela e connector falso, sem carregar .env real. Integração usa apenas runner descartável autorizado; esta seção define evidência futura e não afirma execução já realizada.
+Testes unitários são offline, usam sentinelas e connector falso, sem carregar .env real. Integrações de runner/auditoria usam target e manifest explícitos descartáveis; scripts documentam que não são comandos runtime e não herdam DATABASE_URL. Esta seção define evidência futura, não execução já realizada.
 
 ## Rollout local e rollback
 
@@ -123,4 +130,4 @@ Rollback interrompe processos, restaura configuração local anterior e selecion
 
 ## Decisão solicitada e estado
 
-A proposta revisada seleciona banco exclusivamente por --database-environment dev|prod, ortogonal ao --environment de trading; usa BOT_DATABASE_URL_DEV/PROD sem fallback e migra todos os callers runtime PostgreSQL ao resolver comum; separa runner de testes; e opera somente projetos/containers/volumes novos após validar labels, IDs e mount sources. Destino remoto não é configurado. Aguardam-se novo acordo explícito dos seams materiais e revisão G1 independente. Até então, status permanece proposed; não implementar, alterar bancos ou executar testes.
+A proposta revisada seleciona banco por --database-environment dev|prod, separado do --environment de trading; todos os callers runtime PostgreSQL passam pelo resolver, com runner de teste distinto. O owner aprovou literalmente: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Esse acordo não aprova nomes exatos de variáveis, formato/labels do Compose, operações/cleanup, nem política de backup/restauração. Destino remoto não é configurado. Status permanece proposed aguardando revisão G1 independente e resolução dos detalhes operacionais; não implementar, alterar bancos ou executar testes.
