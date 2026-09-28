@@ -108,7 +108,9 @@ Manter um único DATABASE_URL e trocar seu valor manualmente entre dev e prod ex
 | run-pg-integration-tests.sh | integrações só rodam com runner/target/marker explícitos | default não lê DATABASE_URL nem conecta ao runtime DB |
 | pg-v18-monitor-persistence-audit.sh | ferramenta de auditoria requer target manifestado, não é CLI runtime | recusa target ausente/ambíguo antes de query; sem fallback DATABASE_URL |
 | verify-backend-full.sh | verificação composta delega integração somente ao runner separado | modo default não resolve URL nem cria conexão |
-| Compose resource identity | labels/container ID/volume ID/mount source corretos permitem operação; divergência aborta | zero mutações Docker em caso negativo; dev não alcança prod |
+| Docker context local | endpoint Unix local e daemon identity validados permitem operação; DOCKER_HOST/DOCKER_CONTEXT, SSH/TCP/HTTP remoto ou context alterado falham | nenhuma operação mutável antes/depois de falha de prova local |
+| Compose resource identity | labels/project/environment-id/container ID/volume ID/mount source/image/port corretos permitem operação; divergência aborta | zero mutações Docker em caso negativo; dev não alcança prod |
+| Lifecycle e URL estável | up cria uma vez; stop/start/migrate/backup preservam environment-id, porta e URL; cleanup preserva volume; destroy explícito remove apenas target validado | manifest mapeia deterministicamente URL→project/container/port/image/volume/mount; não fica URL stale nem cria volume substituto silencioso |
 | Schema/migration | alvo vazio migra; alvo ocupado requer backup consistente/restaurável | versão/checksum por alvo; database irmão inalterado |
 
 Testes unitários são offline, usam sentinelas e connector falso, sem carregar .env real. Integrações de runner/auditoria usam target e manifest explícitos descartáveis; scripts documentam que não são comandos runtime e não herdam DATABASE_URL. Esta seção define evidência futura, não execução já realizada.
@@ -117,12 +119,13 @@ Testes unitários são offline, usam sentinelas e connector falso, sem carregar 
 
 1. Após acordo dos novos seams e G1, inventariar e mapear todos os callers runtime de DATABASE_URL antes de código.
 2. Implementar --database-environment e resolver puro; provar RED/GREEN offline com connector falso.
-3. Criar projetos, containers e volumes Compose novos com run-id; validar labels, IDs e mount sources; manter o stack atual intocado.
-4. Criar targets vazios ou exigir backup consistente/restaurável; aplicar migrations e comparar versão/checksum.
-5. Migrar todos os callers da matriz em fatias pequenas, cada um exigindo DatabaseEnvironment; URL sem seletor falha fechado.
-6. Configurar BOT_DATABASE_URL_DEV/PROD localmente; usar --database-environment explícito em cada execução; revisar logs redigidos.
+3. Validar o Docker context/socket local e daemon identity, sem overrides, antes de qualquer operação mutável.
+4. Criar uma vez projeto/container/volume persistente por ambiente com environment-id estável e porta host fixa; manifest liga deterministicamente URL→project/container/port/image/volume/mount; manter stack atual intocado.
+5. Criar targets vazios ou exigir backup consistente/restaurável; aplicar migrations e comparar versão/checksum.
+6. Migrar todos os callers da matriz em fatias pequenas, cada um exigindo DatabaseEnvironment; URL sem seletor falha fechado.
+7. Configurar BOT_DATABASE_URL_DEV/PROD localmente; usar --database-environment explícito. Stop/start preserva URL e environment-id; revisar logs redigidos.
 
-Rollback interrompe processos, restaura configuração local anterior e seleciona os containers/volumes antigos sem apagá-los. Se uma migration tiver alterado o novo volume, recriar somente o volume descartável correspondente ou restaurar seu backup; nunca apontar rollback para o outro ambiente. Nenhuma ação remota está prevista.
+Rollback interrompe somente os container IDs validados, restaura configuração e backup consistente do mesmo environment-id se migration exigir; URL e porta continuam apontando para aquele manifest. Não recriar silenciosamente volume de stack persistente nem mudar para environment-id novo. Destroy é operação distinta, explícita e identificada por environment-id, com backup restaurável ou prova de vazio e remoção apenas após revalidar IDs/mounts. Nunca apontar prod para dev. Nenhuma ação remota está prevista.
 
 ## Riscos e pendências
 
@@ -134,4 +137,4 @@ Rollback interrompe processos, restaura configuração local anterior e selecion
 
 ## Decisão solicitada e estado
 
-A proposta revisada seleciona banco por --database-environment dev|prod, separado do --environment de trading; todos os callers runtime PostgreSQL passam pelo resolver, com runner de teste distinto. O owner aprovou literalmente: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Esse acordo não aprova nomes exatos de variáveis, formato/labels do Compose, operações/cleanup, nem política de backup/restauração. Destino remoto não é configurado. Status permanece proposed aguardando revisão G1 independente e resolução dos detalhes operacionais; não implementar, alterar bancos ou executar testes.
+A proposta revisada seleciona banco por --database-environment dev|prod, separado do --environment de trading; todos os callers runtime PostgreSQL passam pelo resolver, com runner de teste distinto. O owner aprovou literalmente: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Compose local comprova endpoint/socket/daemon antes de mutações; environment-id persistente vincula URLs estáveis a recursos identificados e governa up/stop/start/migrate/backup/cleanup. Esses detalhes seguem proposta técnica, não ampliação do acordo do owner. Destino remoto não é configurado. Status permanece proposed aguardando revisão G1 independente; não implementar, alterar bancos, Docker ou executar testes.
