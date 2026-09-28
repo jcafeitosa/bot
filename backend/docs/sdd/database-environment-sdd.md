@@ -18,6 +18,12 @@ A configuração documentada hoje carrega .env, system.toml e bot.toml, e DATABA
 
 A proposta dá a cada execução um ambiente explícito, uma URL correspondente e um alvo local dedicado. Ambos os ambientes usam PostgreSQL em Docker no host, com instâncias/volumes separados e nomes de database distintos. “prod” nesta proposta significa perfil local com comportamento de produção e dados isolados; não significa acesso a serviço de produção remoto.
 
+## Escopo desta proposta
+
+- **Inclui:** mapear `--environment dev|prod` para Spot Testnet/live e para `BOT_DATABASE_URL_DEV/PROD`; exigir o par live antes de qualquer efeito/conexão `prod`; permitir somente os comandos locais declarados na allowlist; provar identidade/localidade do target antes de SQLx para todos os callers runtime; isolar o runner PG em `BOT_PG_TEST_DATABASE_URL`; especificar testes comportamentais RED/GREEN.
+- **Não inclui:** PostgreSQL remoto, deploy, secret manager, validação de credencial chamando Binance, monitor/live exchange access em prod nesta fatia, envio de ordem live, transferir/copiar dados entre ambientes, ou migrar/reutilizar silenciosamente bancos/volumes existentes. Ordens live seguem Disabled/rejeitadas; o teste Spot Testnet autorizado anteriormente é independente e não será executado por esta revisão.
+- **Usuário beneficiado e sucesso observável:** operador local escolhe um ambiente único, e o serviço falha sem connector attempt quando credenciais, comando, URL, manifest, daemon ou identidade não provam o destino local correto; comandos permitidos não conseguem cruzar dados nem habilitar ordens.
+
 ## Contrato proposto
 
 ### Seleção de ambiente e URL
@@ -170,11 +176,12 @@ Rollback interrompe somente os container IDs validados, restaura configuração 
 
 ## Riscos e pendências
 
-- Há vários entrypoints que podem abrir PostgreSQL; auditoria do código runtime precisa provar que nenhum caller lê DATABASE_URL diretamente após a migração.
-- O seam unificado `--environment` e a remoção do fallback `DATABASE_URL` requerem G1 independente antes de implementação.
-- Nomes, portas, roles e mounts do Compose devem vincular ao environment-id estável; validação de labels, IDs e mount sources precisa ser implementada antes de qualquer operação mutável.
-- “prod local” ajuda a reproduzir configuração e migrations, mas não simula IAM, TLS, rede, backup ou operação de produção real.
-- A disponibilidade local de migrations/extensões da imagem deve ser validada nos containers novos; nenhum banco já existente é evidência automática para esse contrato.
+- A presença das chaves live não comprova que estejam válidas ou restritas a leitura; esta proposta nunca testa a validade com Binance e não dá ordem de trading. Uma chave com privilégios amplos continua segredo de alto impacto.
+- Uma manifest/daemon proof incompleta pode aprovar container errado. Qualquer campo ausente/divergente deve falhar sem tentativa SQLx; toda rota/caller runtime precisa usar o mesmo seam, sem helper paralelo.
+- Reuso de porta, process-env override, manifest stale/corrompido, daemon/context remoto ou disponibilidade de Docker ausente podem impedir operações locais legítimas; o custo aceito é fail-closed sem fallback.
+- `Config::validate` atualmente rejeita `Environment::Prod`; comando allowlist precisa ser explícita e testável para que liberar `serve`/`backtest` não libere monitor, troca live ou ordem por efeito colateral.
+- “prod local” não simula IAM, TLS, rede, backups/PITR nem operação remota real. Docker/image/migrations/extensões exigem validação futura somente em stack descartável identificado; banco existente não é evidência.
+- Resolução local do target não valida conteúdo/durabilidade nem substitui backup/restauração; migration parcialmente aplicada exige estratégia específica por ambiente.
 
 ## G1 anterior — ciclo final do contrato supersedido
 
