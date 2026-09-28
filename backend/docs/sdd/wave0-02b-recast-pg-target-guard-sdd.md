@@ -13,7 +13,7 @@ status: proposed
 
 # SDD T-W0-02b recast — proteção do alvo PostgreSQL e comportamento do gate
 
-**Status: PROPOSED; G1 independente APROVADO COM FOLLOW-UP** pelo Critic em `226476719b4ca488c7eca8b73a8d6a5214b41245`; o follow-up G3 de composição verifier→capability→connector→pool/lifecycle permanece pendente.** Este é um SDD substituto para fechar o comportamento do gate PostgreSQL e supersede explicitamente o item escalado T-W0-02b do [SDD W0-02 anterior](./wave0-02-ci-pg-fail-loud-sdd.md), que permanece como histórico `draft` reprovado. A substituição não aprova o desenho, não autoriza implementação e não transforma vereditos de outros SDDs em autorização.
+**Status: PROPOSED; G1 independente APROVADO COM FOLLOW-UP** pelo Critic em `226476719b4ca488c7eca8b73a8d6a5214b41245`; o follow-up G3 de composição verifier→capability→connector→pool/lifecycle permanece pendente. Este SDD substitui o item escalado T-W0-02b do [SDD W0-02 anterior](./wave0-02-ci-pg-fail-loud-sdd.md), que permanece como histórico `draft` reprovado. A aprovação G1 habilita somente o trabalho G3 descrito neste SDD; não aprova G3 global, não autoriza G4 nem habilita efeitos externos.
 
 ## Contexto e objetivo
 
@@ -27,7 +27,7 @@ Sucesso observável: qualquer prova ausente, inválida ou divergente bloqueia co
 - Integração PG usa somente `BOT_PG_TEST_DATABASE_URL` e manifest/identity do runner efêmero. Presença de `DATABASE_URL` herdada, mesmo vazia ou junto da URL dedicada, é erro antes de SQLx; o snapshot carrega somente o bit de presença, nunca o valor.
 - Neo4j READ e WRITE têm opt-ins independentes. Binance é exclusivamente Spot Testnet. Ausência/`0` é opt-out; opt-in literal `1` seguido de configuração/credenciais/identity/permissões/conexão inválidas resulta em erro não-zero, nunca skip.
 - Marker presente vazio, inválido, múltiplo ou schema/query incompatível é fail-closed. Relação ausente só permite runtime após identidade independente validada antes do connector.
-- T-DB-ENV G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` aprovou com follow-up a capability e o lease; o follow-up G3 offline de retenção do lease continua requisito, não evidência de implementação. Este SDD integra esse contrato; não invoca o veredito para autorizar trabalho de implementação.
+- T-DB-ENV G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` aprovou com follow-up a capability e o lease; a prova G3 de composição e retenção continua pendente de conclusão/revisão. Este SDD integra esse contrato e limita a implementação ao follow-up G3 aprovado, sem autorizar G3 global ou G4.
 - W0-06 é pré-requisito de integração: conforme o estado informado pelo Orquestrador, G1 foi aprovado com follow-up, mas a validação G3 da topologia de egress ainda precisa ser implementada/revisada antes de habilitar o perfil de integração correspondente. Nenhuma etapa G4, acesso a DB/Docker/CI/Testnet ou produção faz parte deste desenho.
 
 Não inclui migrações em banco persistente, conexão remota, ativação de prod/live, alteração de workflows, execução de testes ou inicialização de containers/serviços.
@@ -141,4 +141,4 @@ Rollback reverte coordinator, capability/lease wiring e lifecycle interlock como
 
 ## Critério de conclusão
 
-Critic independente aprova esta revisão G1; G3 prova os seams e ownership sem egress/serviços; G4 somente após aprovações necessárias registra qualquer SQL real autorizado. Até esses eventos, o status continua PROPOSED, o T-W0-02b anterior segue superseded/histórico draft reprovado e nenhuma implementação ou operação externa é autorizada.
+Critic independente aprovou esta revisão em G1 com follow-up no hash `226476719b4ca488c7eca8b73a8d6a5214b41245`; o follow-up de composição G3 permanece pendente até implementação e revisão independente. G4 somente após aprovações necessárias registra SQL real especificamente autorizado. O T-W0-02b anterior segue superseded/histórico draft reprovado; nenhum efeito externo é autorizado por este status.
