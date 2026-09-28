@@ -147,4 +147,51 @@ Para cada invocação isolada `--exact`, runner exige exit zero, `1 passed`, zer
 
 ### Estado
 
-C0/C1 ficam especificados para revisão independente. C4 ainda precisa da execução CI real no digest. Sem re-review independente e evidência GitHub, G1 permanece pendente.
+C0/C1 ficam especificados para revisão independente. A evidência local do digest permite avaliar o alvo de desenvolvimento local, mas C4 de CI ainda precisa da execução real do service container GitHub. Sem re-review independente, G1 permanece pendente.
+
+## Revisão G1 ciclo 4 — isolamento por identidade e evidência por ambiente
+
+> Este adendo registra como tratados os achados do Critic G1 e prevalece sobre trechos anteriores conflitantes. O documento continua em `draft`; a revisão independente G1 e a aprovação do owner continuam pendentes. Este adendo não autoriza implementação.
+
+### Runner local PG: identidade antes do marcador
+
+O runner local cria um container PostgreSQL novo por execução, usando o digest aprovado para desenvolvimento, UUID aleatório único em nome/label, credencial aleatória, database `trading_bot`, volume descartável e porta aleatória publicada somente em loopback. Não aceita container, volume ou database preexistente como alvo. O banco persistente da aplicação não é alvo nem fallback.
+
+A sequência obrigatória é:
+
+1. Criar o container efêmero e registrar em um manifest restrito (permissão `0600`) o UUID da execução, container ID, digest da imagem, porta publicada, database e referência do manifest. O manifest não escreve credencial ou URL completa em logs nem em artefatos compartilhados.
+2. Antes de criar qualquer marcador, consultar a API local do Docker e validar container em execução, ID, label/UUID, imagem/referência pelo digest fixado e mapeamento da porta. Validar também pelo endpoint recém-criado que `current_database()` é exatamente `trading_bot` e que a versão/extensões atendem ao contrato. Qualquer divergência encerra o runner sem marcador, migração ou teste.
+3. Só após essas validações, criar fora das migrations a tabela `bot_test_database_marker` e uma única linha contendo o UUID, container ID, digest, database e modo do alvo. Não criar nem reparar marcador a partir do helper.
+4. Passar o endpoint somente por `BOT_PG_TEST_DATABASE_URL` e os dados de identidade/manifest por campos dedicados do manifest. O helper de teste exige `BOT_RUN_PG_INTEGRATION=1`, URL dedicada e manifest válido; valida novamente o container ativo e o vínculo digest/UUID/porta/database **antes de abrir uma conexão PostgreSQL**. `DATABASE_URL` é ignorada como fonte e sua presença nunca habilita o gate nem serve de fallback.
+5. Após a verificação Docker pré-conexão, conectar ao endpoint dedicado, validar exatamente uma linha de marcador contra todos os campos de identidade e só então migrar. Ausência/divergência do marcador, manifest incompleto, container parado, erro do Docker, identidade diferente ou falha de consulta termina antes da migration. O marcador é defesa em profundidade; isoladamente, ele não prova que o banco é descartável.
+
+O modo obrigatório continua fail-loud. `BOT_PG_INTEGRATION_REQUIRED=1` exige `BOT_RUN_PG_INTEGRATION=1`, `BOT_PG_TEST_DATABASE_URL` e a identidade descrita acima; não exige nem lê `DATABASE_URL`. Sem modo obrigatório, a suíte default retorna sem conectar. Se o gate estiver ligado e algum requisito faltar ou falhar, o teste falha com mensagem estável sem URL, credencial ou conteúdo do manifest.
+
+### Semântica do marcador em runtime
+
+A tabela é criada fora das migrations, portanto sua ausência é normal para databases de runtime ainda não marcados. A checagem runtime distingue estritamente:
+
+- tabela inexistente (erro SQLSTATE `42P01`): tratar como marcador ausente; conexão runtime pode prosseguir, pois a tabela fora das migrations ainda não foi provisionada;
+- tabela existente sem linha: tratar como marcador ausente; runtime pode prosseguir;
+- linha válida do marcador: recusar a conexão runtime com erro dedicado `TestDatabaseMarkerPresent`;
+- erro de permissão, timeout, conexão interrompida, resultado ambíguo, esquema inesperado ou qualquer erro diferente de ausência inequívoca da tabela: falhar fechado. Nunca converter erro de leitura do marcador em “sem marcador”.
+
+No helper de integração, tabela/linha ausente ou identidade diferente sempre falha antes de migration. Essa diferença preserva databases normais de runtime sem permitir que o caminho de teste migre um alvo não atestado.
+
+### Evidência local e gate de CI separados
+
+A revisão registra para o digest `timescale/timescaledb-ha@sha256:131bfdf82ec0dfe42eaa3f4a189f8e04b7b1dc2b27705cfd921e55ebef339840` a evidência local descrita acima: container local com digest e image ID correspondentes; `server_version_num=180006`, `timescaledb=2.30.1` e `vector=0.8.6`. Essa evidência sustenta somente a escolha/aceite do alvo Docker local. Não afirma que GitHub Actions consegue iniciar a mesma imagem como service container.
+
+O gate C4 de CI permanece pendente até execução real do workflow com o digest exato, inicialização/health check bem-sucedidos, PostgreSQL 18+, e ambas as extensões disponíveis e instaladas. A validação CI deve registrar a execução e os resultados redigidos de versão/extensões; evidência local nunca substitui esse gate. Não alterar workflow ou marcar CI como aprovada nesta etapa documental.
+
+### Alternativas, riscos e validação
+
+- **Alternativa considerada — marcador sem identidade Docker:** rejeitada; uma tabela pode existir em um banco persistente e não prova descartabilidade.
+- **Alternativa considerada — usar `DATABASE_URL` e verificar apenas o nome `trading_bot`:** rejeitada; nome e URL não distinguem o banco de aplicação. URL dedicada, manifest e identidade ativa do container são gates independentes.
+- **Alternativa considerada — tratar qualquer erro de lookup do marcador como ausência:** rejeitada; falhas de permissão/rede poderiam abrir o runtime. Só SQLSTATE de tabela inexistente é ausência inequívoca; os demais erros fecham.
+- **Risco operacional:** falha de cleanup pode deixar container/volume efêmero local órfão. UUID único impede reuso; o runner reporta o identificador para limpeza manual, sem tocar containers ou volumes de aplicação.
+- **Validação TDD futura:** provar `DATABASE_URL` sozinho resulta em zero conexão/migration; gate ligado sem URL dedicada/manifest falha antes de conexão; identity, digest, UUID, porta ou database divergente falha antes de marker; marker ausente/divergente falha antes de migration; runtime continua com tabela ausente, recusa marker presente e falha fechado em erro inesperado de lookup. Caminho verde exige container efêmero identificado, manifest válido e marker correspondente antes da migration. C4 requer ainda execução real no GitHub; nada nesta revisão documental fornece essa evidência.
+
+### Próxima ação de governança
+
+Solicitar ao Critic independente nova revisão G1 deste adendo. Até o veredito registrado, W0-02 permanece `draft`, G1 pendente e implementação bloqueada.
