@@ -115,7 +115,7 @@ Critérios de T-CI-01 (toolchain e job `rust`) e T-CI-02 (PG 18 e manifesto), co
 
 ## Validação
 
-- Antes do TDD: fechar G1, inclusive prova de compatibilidade da imagem/digest concreta e decisão sobre parsing confiável do manifesto; até lá, sem alteração de workflow/helper/script.
+- Antes do TDD: fechar G1 com Critic independente, incluindo identidade e digest local comprovados e parsing confiável do manifesto; até lá, sem alteração de workflow/helper/script. A configuração/aceite do service container GitHub fica separada e bloqueada até G4/C4, que exige evidência do próprio runner GitHub.
 - Após autorização G1, aplicar TDD por seam público e fatias verticais: RED comportamental reproduzível antes da implementação, GREEN mínimo, preservar regressões. Cobrir modo obrigatório (URL ausente, conexão/versão/migração/extensão/marcador inválido), marcador rejeitado pelo runtime, comparação completa do manifesto (teste omitido/entrada fantasma/wrapper) e seleção/execução exata com prova individual do helper. Depois executar `verify-backend-gates.sh`, `assert-pg-integration-manifest.sh`, `run-pg-integration-tests.sh` em PostgreSQL descartável 18+ com extensões `timescaledb` e `vector` e marcador. Registrar comandos e resultados, incluindo a asserção de baseline 520/519 e sua resolução.
 
 ## Rollout / rollback
@@ -131,7 +131,7 @@ Critérios de T-CI-01 (toolchain e job `rust`) e T-CI-02 (PG 18 e manifesto), co
 
 Imagem candidata: `timescale/timescaledb-ha@sha256:131bfdf82ec0dfe42eaa3f4a189f8e04b7b1dc2b27705cfd921e55ebef339840`, digest fixado em `docker-compose.bot.yml`. Nesta revisão, `docker inspect` do container local `bot-agents-postgres` confirmou digest e image ID iguais; consulta SQL ao banco retornou `server_version_num=180006`, `timescaledb=2.30.1` e `vector=0.8.6`. Isso comprova o container local, não a inicialização no GitHub Actions.
 
-Antes da aprovação G1, CI deve iniciar o digest exato como service container com `POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=postgres`, `POSTGRES_DB=trading_bot`, porta 5432 e health `pg_isready -U postgres -d trading_bot` (intervalo 5s, timeout 5s, 10 tentativas). Após healthy, registrar saída/exit code sem segredo e link da execução para `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc 'SHOW server_version_num'` e `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "SELECT extname || '=' || extversion FROM pg_extension WHERE extname IN ('timescaledb','vector') ORDER BY extname"`. Gate: versão ≥ 180000 e as duas extensões instaladas. Se disponíveis, mas não instaladas, executar `CREATE EXTENSION IF NOT EXISTS timescaledb; CREATE EXTENSION IF NOT EXISTS vector;` e consultar novamente; falha é bloqueante. CI real ainda não foi executado; C4 fica pendente até evidência do runner GitHub.
+Para passar C4 de CI em G4, o workflow deve iniciar o digest exato como service container com `POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=postgres`, `POSTGRES_DB=trading_bot`, porta 5432 e health `pg_isready -U postgres -d trading_bot` (intervalo 5s, timeout 5s, 10 tentativas). Após healthy, registrar saída/exit code sem segredo e link da execução para `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc 'SHOW server_version_num'` e `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -Atc "SELECT extname || '=' || extversion FROM pg_extension WHERE extname IN ('timescaledb','vector') ORDER BY extname"`. Gate: versão ≥ 180000 e as duas extensões instaladas. Se disponíveis, mas não instaladas, executar `CREATE EXTENSION IF NOT EXISTS timescaledb; CREATE EXTENSION IF NOT EXISTS vector;` e consultar novamente; falha é bloqueante. CI real ainda não foi executado; C4 fica pendente até evidência do runner GitHub.
 
 ### C0 — checker Rust AST
 
@@ -180,7 +180,7 @@ No helper de integração, relação/linha ausente, múltipla ou identidade dive
 
 ### Evidência local e gate de CI separados
 
-A revisão registra para o digest `timescale/timescaledb-ha@sha256:131bfdf82ec0dfe42eaa3f4a189f8e04b7b1dc2b27705cfd921e55ebef339840` a evidência local descrita acima: container local com digest e image ID correspondentes; `server_version_num=180006`, `timescaledb=2.30.1` e `vector=0.8.6`. Essa evidência sustenta somente a escolha/aceite do alvo Docker local. Não afirma que GitHub Actions consegue iniciar a mesma imagem como service container.
+A revisão registra para o digest `timescale/timescaledb-ha@sha256:131bfdf82ec0dfe42eaa3f4a189f8e04b7b1dc2b27705cfd921e55ebef339840` a evidência local descrita acima: container local com digest e image ID correspondentes; `server_version_num=180006`, `timescaledb=2.30.1` e `vector=0.8.6`. Essa evidência pode sustentar o G1/aceite do runner Docker local quando a identidade efêmera for comprovada. Não afirma que GitHub Actions consegue iniciar a mesma imagem como service container.
 
 O gate C4 de CI permanece pendente até execução real do workflow com o digest exato, inicialização/health check bem-sucedidos, PostgreSQL 18+, e ambas as extensões disponíveis e instaladas. A validação CI deve registrar a execução e os resultados redigidos de versão/extensões; evidência local nunca substitui esse gate. Não alterar workflow ou marcar CI como aprovada nesta etapa documental.
 
