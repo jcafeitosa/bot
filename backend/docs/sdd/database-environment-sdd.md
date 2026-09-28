@@ -120,9 +120,9 @@ Esta matriz consolida [integração dos módulos](./database-module-integration-
 
 Direcionamento aprovado pelo owner: um único `--environment` seleciona exchange e banco; `dev` usa Spot Testnet + `BOT_DATABASE_URL_DEV`, `prod` seleciona conta live + `BOT_DATABASE_URL_PROD`; integração PG usa somente `BOT_PG_TEST_DATABASE_URL` isolada; não existe `--database-environment`. Esta decisão substitui o seletor separado anterior e continua sendo o seam público.
 
-O G1 APROVADO COM FOLLOW-UP registrado abaixo cobre somente o desenho anterior e não aprova esta revisão. O último Critic G1 manteve implementação bloqueada por três pontos: (1) par completo `BINANCE_PROD_API_KEY`/`BINANCE_PROD_API_SECRET` antes de qualquer conexão/migration/ação externa e definição inequívoca da allowlist de comandos prod apesar de `Config::validate` rejeitar `Environment::Prod`; (2) prova local de target e identidade antes do connector para todos os callers runtime, com zero tentativas se URL/host/porta/manifest/identity/daemon falharem; (3) TDD RED/GREEN dessas barreiras, da allowlist e da compatibilidade dev. Esta revisão incorpora propostas para os três; a aprovação de escopo do owner não substitui o novo G1 técnico.
+**Registro histórico, supersedido pelo G1 atual `be7c3d47e10bd0e32ddde84e582066e7dad18ea2`:** o parágrafo abaixo descrevia blockers de uma revisão anterior e não é o estado dos gates atual. O Critic independente aprovou a revisão atual com follow-up; o G3 dev offline está autorizado conforme o follow-up, enquanto produção, conexões reais e efeitos operacionais continuam bloqueados. Os requisitos e seams desta SDD continuam preservados; somente as antigas frases de “novo G1 pendente” e “nenhuma implementação” foram supersedidas.
 
-Os contratos de no-fallback para URL, isolamento local, backtest persist e integração descartável continuam aplicáveis. Testes PG usam exclusivamente `BOT_PG_TEST_DATABASE_URL`, nunca URL runtime, sem submission de ordens. Até novo G1 aprovado: nenhuma implementação, chamada a DB/Docker/exchange ou smoke operacional. Nenhuma ordem live é permitida nesta entrega.
+Os contratos de no-fallback para URL, isolamento local, backtest persist e integração descartável continuam aplicáveis. Testes PG usam exclusivamente `BOT_PG_TEST_DATABASE_URL`, nunca URL runtime, sem submission de ordens. **Estado atual:** G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` aprovou com follow-up e autoriza somente implementação/dev offline com fakes em G3. PostgreSQL real, Docker, CI, exchange, smoke operacional e ordens live continuam bloqueados; produção permanece fail-closed.
 
 ## Produção remota e segurança
 
@@ -168,7 +168,7 @@ Testes unitários serão offline, usarão sentinelas, verifier/manifest fixtures
 
 ## Rollout local e rollback
 
-1. Fechar os três blockers e obter G1 independente aprovado; até então não há implementação, testes de integração ou operação local de DB/Docker/exchange.
+1. **Critério histórico supersedido:** fechar os três blockers e obter novo G1 era a ação planejada naquela revisão. O G1 atual `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` aprovou com follow-up; somente o slice de implementação/dev offline em G3 está autorizado, e os bloqueios operacionais para PostgreSQL real, Docker, CI, exchange e produção permanecem.
 2. Após G1, mapear todos os callers transitivos e provar que cada caminho SQLx recebe `Environment` e `VerifiedLocalPostgresTarget`; escrever testes RED/GREEN offline com connector e verifier fakes.
 3. Implementar a allowlist de comandos sem tornar `Config::validate(Environment::Prod)` permissivo globalmente. Confirmar que comandos não listados são rejeitados antes de resolver URL, connector, migration, listener ou exchange.
 4. Para validação comportamental posterior autorizada, começar com `dev` e instância PG descartável identificada pelo manifest; não usar `trading_bot` local existente nem volumes preexistentes como banco descartável. Nenhuma chamada à exchange é necessária para provar estes seams.
@@ -193,7 +193,7 @@ Testes unitários serão offline, usarão sentinelas, verifier/manifest fixtures
 
 ## Decisão solicitada e estado
 
-A proposta atual usa somente --environment dev|prod para selecionar exchange e DB coerentemente: dev → Testnet + BOT_DATABASE_URL_DEV; prod → live + BOT_DATABASE_URL_PROD. Todos os callers runtime PostgreSQL passam pelo resolver que recebe o Environment compartilhado; runner de integração usa somente BOT_PG_TEST_DATABASE_URL descartável e não envia ordens. O veredito G1 anterior foi supersedido pela mudança de seam; novo G1 independente está pendente. Compose local continua restrito a endpoint/socket/daemon verificado e environment-id persistente. Destino remoto não é configurado. Status permanece proposed; não implementar até novo G1.
+Esta decisão preserva o seletor único `--environment` para exchange e DB: dev → Testnet + `BOT_DATABASE_URL_DEV`; prod → live + `BOT_DATABASE_URL_PROD`. Todos os callers runtime PostgreSQL passam pelo resolver com Environment compartilhado; runner de integração usa somente `BOT_PG_TEST_DATABASE_URL` descartável e não envia ordens. **O status de G1 que constava aqui está supersedido:** a revisão atual `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` foi aprovada com follow-up. Compose local continua restrito à daemon/socket local verificada e environment-id persistente; destino remoto não é configurado. Status permanece `proposed`; o trabalho autorizado limita-se ao G3 dev offline definido no topo e no estado atual.
 
 ## T-DB-ENV rev2 — capability não-forjável e conector vinculado à URL verificada
 
@@ -265,7 +265,7 @@ G1 aprova estes seams e critérios antes de código/testes G3. G3 limita-se às 
 
 ### Estado
 
-T-DB-ENV rev2 recebeu APROVADO COM FOLLOW-UP no veredito G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` (snapshot WIP `19ab74d29ec3935431f594a87b2da2777583de1b`). O follow-up é implementado e validado em G3/G4; G3 autorizado limita-se ao slice dev offline, enquanto execução operacional permanece bloqueada. Critérios de aceite visíveis: capability só é emitida pelo verifier; campos/ctor privados e ausência de Default/Deserialize; conector recebe apenas a capability e usa a URL exata verificada; testes compile-fail/API e mismatch provam esses invariantes; dev tem caminho de arranque documentado; prod permanece inativo. Esta revisão aplica o veredito G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2`; o follow-up de implementação e verificação offline está em G3. Nenhuma validação operacional está autorizada nesta fase.
+T-DB-ENV rev2 recebeu APROVADO COM FOLLOW-UP no veredito G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` (revisão/snapshot WIP `19ab74d29ec3935431f594a87b2da2777583de1b`). **Follow-up G3 pendente:** implementar e verificar offline com fakes a retenção do lease pelo pool e zero tentativas SQLx em divergência/erro. O G1 autoriza apenas esse slice dev offline. Critérios aprovados permanecem: capability só é emitida pelo verifier; campos/ctor privados e ausência de Default/Deserialize; conector recebe apenas a capability e usa a URL exata verificada; cobertura API/mismatch; startup dev isolado; prod inativo. PostgreSQL real, Docker, CI, exchange e qualquer validação operacional não estão autorizados nesta fase.
 
 ### T-DB-ENV rev2 follow-up — stack dev isolada e lease contra TOCTOU
 
