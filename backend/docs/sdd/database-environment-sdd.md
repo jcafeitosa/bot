@@ -10,7 +10,7 @@ status: proposed
 ---
 # SDD T-DB-ENV — Ambientes dev/prod com PostgreSQL local isolado
 
-**Status: PROPOSED — o contrato atual ainda aguarda aprovação G1 independente.** O owner aprovou um único `--environment` para selecionar exchange e banco; o último Critic G1 apontou três bloqueios antes de qualquer implementação: par completo de credenciais live e allowlist explícita de comandos `prod`; prova de localidade/identidade antes de qualquer SQLx connector; e testes RED/GREEN que provem esses gates e a compatibilidade dev. Este SDD registra as propostas para sanar esses bloqueios. Implementação, testes com conexões reais, Docker/DB e chamadas a exchange permanecem proibidos até um novo G1 aprovado; esta revisão não roda live. O objetivo autorizado é execução local dev e prod com bancos isolados, sem submissão de ordem live.
+**Status: PROPOSED — o contrato atual ainda aguarda aprovação G1 independente.** O owner aprovou um único `--environment` para selecionar exchange e banco; o último Critic G1 apontou três bloqueios antes de qualquer implementação: par completo de credenciais live e allowlist explícita de comandos `prod`; prova de localidade/identidade antes de qualquer SQLx connector; e testes RED/GREEN que provem esses gates e a compatibilidade dev. Este SDD registra as propostas para sanar esses bloqueios. Implementação, testes com conexões reais, Docker/DB e chamadas a exchange permanecem proibidos até um novo G1 aprovado; esta revisão não roda live. Nesta rev2, o caminho autorizado é apenas dev local. Prod fica inativo e bloqueado até que a configuração real exista e um design explícito seja aprovado por G1; nenhuma allowlist de efeitos prod é ampliada nesta rodada. Nenhuma ordem live é permitida.
 
 ## Contexto e objetivo
 
@@ -60,7 +60,9 @@ Variáveis de ambiente e suas fontes:
 
 As URLs reais permanecem em `backend/.env`, com permissões restritas e fora do Git. Exemplos documentam apenas nomes/forma redigida, sem credenciais ou valores copiáveis. `BINANCE_PROD_API_KEY` e `BINANCE_PROD_API_SECRET` são um par indivisível; runtime não usa uma metade nem cai para chaves dev/testnet. Segredos locais não são copiados para snapshot de testes ou logs.
 
-### Comandos locais suportados em `prod`
+### Allowlist prod proposta anteriormente — inativa e não autorizada na rev2
+
+> A tabela abaixo é proposta histórica, não é uma permissão operacional. Nesta rev2 nenhum comando que seleciona `prod` está autorizado a conectar, migrar, iniciar listener/serviço ou causar efeito externo. Dev permanece o único perfil executável até configuração real e aprovação explícita de um design prod separado. `Config::validate` continua fail-closed para `Environment::Prod`.
 
 `Config::validate` hoje rejeita `Environment::Prod`. G3 não deve remover essa barreira globalmente. Em vez disso, uma validação por comando deve permitir somente os casos locais abaixo e continuar rejeitando qualquer comando `prod` fora da lista:
 
