@@ -265,7 +265,7 @@ G1 aprova estes seams e critérios antes de código/testes G3. G3 limita-se às 
 
 ### Estado
 
-T-DB-ENV rev2 recebeu APROVADO COM FOLLOW-UP no veredito G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` (snapshot WIP `19ab74d29ec3935431f594a87b2da2777583de1b`). O follow-up é implementado e validado em G3/G4; G3 autorizado limita-se ao slice dev offline, enquanto execução operacional permanece bloqueada. Critérios de aceite visíveis: capability só é emitida pelo verifier; campos/ctor privados e ausência de Default/Deserialize; conector recebe apenas a capability e usa a URL exata verificada; testes compile-fail/API e mismatch provam esses invariantes; dev tem caminho de arranque documentado; prod permanece inativo. Sem hash de aprovação anterior aplicado a esta rev2. Nenhuma implementação ou validação operacional foi feita nesta atualização.
+T-DB-ENV rev2 recebeu APROVADO COM FOLLOW-UP no veredito G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2` (snapshot WIP `19ab74d29ec3935431f594a87b2da2777583de1b`). O follow-up é implementado e validado em G3/G4; G3 autorizado limita-se ao slice dev offline, enquanto execução operacional permanece bloqueada. Critérios de aceite visíveis: capability só é emitida pelo verifier; campos/ctor privados e ausência de Default/Deserialize; conector recebe apenas a capability e usa a URL exata verificada; testes compile-fail/API e mismatch provam esses invariantes; dev tem caminho de arranque documentado; prod permanece inativo. Esta revisão aplica o veredito G1 `be7c3d47e10bd0e32ddde84e582066e7dad18ea2`; o follow-up de implementação e verificação offline está em G3. Nenhuma validação operacional está autorizada nesta fase.
 
 ### T-DB-ENV rev2 follow-up — stack dev isolada e lease contra TOCTOU
 
