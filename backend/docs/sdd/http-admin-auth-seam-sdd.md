@@ -107,7 +107,7 @@ O Critic independente aprovou G1 após revisar A2–A6 contra os contratos fecha
 
 ## W0-01 — fail-closed de verdade (Onda 0, G1 aprovado; G3 pendente) [SEGURANÇA]
 
-- **Estado desta seção: G1 aprovado por Critic independente; G3 (implementação e testes) pendente.** O owner aprovou os seams públicos e o Critic independente aprovou o design atualizado. Nenhum código ou teste desta fatia foi implementado/executado nesta entrega de documentação. Vale só para esta seção: `status: partial` no front-matter descreve o código atual e continua correto até G3.
+- **Estado desta seção: G1 aprovado por Critic independente; G3 (implementação e testes) pendente pelo gate do runner isolado T-W0-06a.** O owner aprovou os seams públicos e o Critic independente aprovou o design atualizado. Nenhum código ou teste desta fatia foi implementado/executado nesta entrega de documentação. A validação comportamental aguarda runner aprovado em G3; não execute Cargo direto do host para contornar esse gate. Vale só para esta seção: `status: partial` no front-matter descreve o código atual e continua correto até G3.
 - **Plano:** W0-01, prioridade 1, em [master-plan](../planning/master-plan.md) §4.1.
 - **Fonte dos critérios de segurança:** [F-ADM-01](../security/admin-http-auth-fail-open.md) §4 (SEC-ADM-01…15). Na versão atual do TM, SEC-ADM-01…11, 13 e 15 são F1, SEC-ADM-12 é FU e SEC-ADM-14 é P1.
 - **Leitura importante:** as seções abaixo desta ("Gate 1", "Comportamento") descrevem o código **atual**, que é fail-open sem token. Esta seção descreve o alvo. Quando W0-01 for implementado, a tabela "Comportamento" e o título mudam junto (SEC-ADM-13).
@@ -234,7 +234,7 @@ Conferido no código. Refs: `mod.rs` = `routes/mod.rs`; `pca.rs` = `routes/provi
 
 **Como a contagem foi verificada (no HEAD `d42b71a5`):** `rg -o 'get\(|\.post\(|post\(|put\(|\.delete\(' routes/mod.rs | sort | uniq -c` → 25 `get(` (23 em `v1_routes` + 2 em `system_routes`), 18 POST (16 `post(` + 2 `.post(`), 1 `put(`, 1 `.delete(`; mais `/openapi.json` e `/docs` em `server.rs:87-91` → 27 GET e 20 não-GET. `rg -c 'require_http_admin\(' routes/` → 19. A classe de cada linha foi conferida uma a uma contra a tabela acima; a verificação automática da tabela contra o router é F3 (g).
 
-- **SEC-ADM-05 (F1):** `Protected` por ele: `/admin/*` (#10, 14-17), `GET /agents*` (#20, 21, 27), `/orders/reconciliation/{client_order_id}` (#43), `/config/snapshot` (#8), `/orders/execution-status` (#42).
+- **SEC-ADM-05 (F1):** `Protected` por ele: os pares método+path registrados em `/admin/provider-credentials` e `/admin/graph/*` (#10–17; consulte a lista exata em A2.2), `GET /agents*` (#20, 21, 27), `GET /orders/reconciliation/{client_order_id}` (#43), `GET /config/snapshot` (#8) e `GET /orders/execution-status` (#42). Este shorthand de inventário não torna métodos ou paths não registrados `Protected`; esses retornam 404 conforme decisão do owner.
 - **Além do mínimo, `Protected` por decisão deste SDD:**
   - `GET /meta` (#5): `http_seams` expõe `order_execution_mode` e `live_exchange_wired` (`routes/meta.rs:9-20`, preenchidos em `:44` e `:50`), a mesma informação que torna `/orders/execution-status` sensível.
   - `GET /monitor/snapshot` (#46) e `GET /config/active` (#7): **decisão do Segurança e do Arquiteto** (confirmada neste ciclo), com dois motivos:
