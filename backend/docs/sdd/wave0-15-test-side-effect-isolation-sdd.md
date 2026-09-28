@@ -132,3 +132,40 @@ O G1 anterior `7579a0f2e09d2ffb69b24d7c5b600829389d8601` foi reprovado; esta rev
 - W0-02: readback OpenKnowledge de 2026-09-28 continua `draft/G1 pendente`; T-W0-06 não declara aprovação e mantém isso como bloqueio para PG GREEN. C4 bloqueia alteração/aceite do job PG CI até prova de GitHub Actions; revisão do connector compartilhado segue dependência.
 - Escopo autorizado pelo owner: execução local, dados persistentes protegidos, runner PG/Neo4j efêmero, backtest runtime autenticado, ordem dedicada Spot Testnet apenas.
 - Nenhuma evidência de CI GitHub foi alegada.
+
+## T-W0-06 rev-next2 — topologia de egress dos runners
+
+> Este adendo fecha os blockers do G1 ciclo 1 sobre contradição de Cargo direto/wrapper e falta de topologia executável. Prevalece sobre qualquer frase anterior que diga que somente o wrapper fornece deny-egress, ou que a integração usa loopback/allowlist sem descrever como o teste alcança o serviço. Status continua PROPOSED/G1 pendente; sem implementação autorizada.
+
+### Garantia única da suíte unitária
+
+O Cargo target runner normal e `backend/scripts/verify-test-isolation.sh` devem executar cada binário unitário no mesmo launcher fail-closed, com namespace de rede sem egress, seccomp deny, `strace -f` e auditor de syscalls/descendentes. Ambos bloqueiam DNS, UDP/TCP e redirect externos durante o processo de teste. O runner deve recusar execução se o isolamento ou observação estiver indisponível. O wrapper continua a verificação composta padrão para full verification/CI, acrescentando snapshot allowlisted, auditoria dos comandos/gates e agregação de evidências; não é requisito para obter deny-egress numa chamada normal `cargo test`.
+
+O estado T-W0-06a, critérios TDD, alternativas e rollback ficam alinhados: `cargo test` normal e wrapper mantêm a mesma proteção de egress dos binários; rollback desabilita integração e reverte mudanças do harness em conjunto, mas preserva o Cargo target runner deny-egress. Substituição deliberada do runner/toolchain fora dos comandos/gates suportados permanece tampering residual e não é descrita como rota coberta.
+
+### Topologia por perfil de integração
+
+**PG e Neo4j:** para cada run, criar uma rede Docker user-defined isolada `--internal`, sem gateway/rota externa e sem porta dos serviços publicada no host. Runner do teste e exatamente um serviço efêmero (PostgreSQL ou Neo4j) conectam somente a essa rede privada. O manifest contém run-id, IDs completos dos containers, digest, database, IP privada atribuída e porta interna esperada (`5432` PG, `7687` Neo4j); o verifier rejeita qualquer identidade, digest, IP, porta, database ou container que não corresponda. O teste conecta pelo IP/container endpoint exato do manifest, nunca por `localhost`, hostname DNS genérico, bridge do host, porta publicada ou endpoint runtime/persistente. Nenhuma outra rede é anexada e não há Docker socket no processo do teste.
+
+Para esses perfis, `strace -f` observa a árvore completa de processos dentro do namespace PID privado. O observer/auditor compara cada `connect`, `sendto` e syscall equivalente dos processos/descendentes com o destino e porta exatos do manifest; somente conexões ao serviço efêmero daquele run são permitidas. Syscalls a qualquer outro IP/porta, DNS, host gateway, serviço persistente ou endereço externo falham o teste mesmo que o código ignore o erro. O observer registra eventos e decisão sem registrar URL, senha, token ou payload.
+
+**Binance Spot Testnet:** não anexa a rede privada PG/Neo4j. O processo do teste roda numa rede sem acesso direto à interface externa e pode conectar apenas ao endereço/porta local do proxy de egress dedicado do run. O proxy é o único componente com saída externa; permite o hostname exato de Spot Testnet fornecido pelo adapter/config fixo, porta TLS 443, SNI/Host correspondente e validação TLS normal. Resolve DNS por conta própria e rejeita redirects, hostname alternativo, IP direto, porta diferente, endpoints Live e qualquer destino Binance não listado. Não há fallback de proxy, DNS ou rota do host. O runner entrega somente credenciais Testnet por handoff privado após opt-in; o proxy nunca recebe nem registra segredos de API. A lista deve identificar o hostname Testnet exato usado pelo adapter antes da implementação; wildcard `*.binance.com` não é permitido.
+
+**Observabilidade comum:** launcher aplica sandbox ao PID inicial; `strace -f` acompanha forks/execs e observer correlaciona processos com o perfil e allowlist do run. Falha ao anexar/seguir um descendente, syscall sem interpretação, bypass do proxy, alteração de namespace, observabilidade incompleta ou divergência de manifest aborta e torna a execução não-zero. Perfil, alvos permitidos e tentativas bloqueadas ficam registrados por run-id sem credenciais.
+
+### Provas adversariais por perfil
+
+| Perfil | Alvo permitido que deve funcionar | Alvo adversarial que deve falhar antes de efeito |
+|---|---|---|
+| PG | endereço IP privado e `5432` do PostgreSQL efêmero no manifest | IP/porta diferente, container persistente, bridge/host gateway, DNS ou endpoint externo; afirmar zero migration/query no destino bloqueado |
+| Neo4j READ/WRITE | IP privado e `7687` do Neo4j efêmero do manifest; READ ainda exige preflight de escrita negada pela identidade real | endpoint/digest/ID divergente, serviço persistente, outra porta/IP; READ sem permissão read-only comprovada e WRITE com gate fechado devem falhar sem query/assertion |
+| Binance Spot Testnet | proxy local do run, que aceita somente hostname Testnet exato e 443 | Live hostname, outro hostname Binance, IP literal, porta diversa, redirect ou tentativa de conexão direta; observar zero submit fora do destino permitido |
+| Unitária | mocks dentro do próprio namespace, sem egress externo | DNS, TCP/UDP externo e redirect; observer deve capturar tentativa nos processos descendentes e confirmar bloqueio por syscall/policy |
+
+Fixtures de política, proxy e observer podem provar regras localmente sem usar credenciais reais. Qualquer interação externa autorizada para validar o perfil Binance ocorre apenas em G4, somente Spot Testnet e após gates aprovados; nenhuma ordem Live. Os testes reais PG/Neo4j usam somente os containers efêmeros de seus perfis. Estes critérios não afirmam que Docker, banco, proxy, rede ou exchange foram iniciados nesta revisão documental.
+
+### Critérios de G1/G3/G4, risco e rollback
+
+G1 aprova esta topologia antes de implementação. Em G3, escrever fixtures RED/GREEN para criação da rede `--internal`, handoff do manifest, política do observer, filtro de destino do proxy e tentativas permitidas/diversas; sem depender de banco persistente ou Live. G4 verifica os perfis reais autorizados e guarda evidências por run-id. Erro de setup, observação parcial ou alvo divergente falha fechado, não conta como teste RED do comportamento. Em todas as fases o alvo PG/Neo4j precisa ser temporário e validado; Binance nunca sai do Spot Testnet.
+
+Riscos: dependência de rede Docker privada e proxy estrito; ambientes que não oferecem tais recursos abortam antes dos testes de integração. Mapeamento por IP é limitado ao run e evita resolução ambígua; se o IP mudar, reconstruir/verificar manifest em vez de recorrer a host networking. Para rollback, desativar runners de integração, encerrar somente recursos identificados por IDs do manifest e revogar handoff Testnet. Reverter o proxy/observer com o harness dependente, mantendo o target runner unitário em deny-egress e o wrapper como verificação composta padrão. Nenhum recurso persistente é alvo de cleanup.
