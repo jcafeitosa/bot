@@ -64,12 +64,13 @@ A publicação do snapshot é atômica: só tornar o diretório disponível ao w
 
 ## Provas comportamentais G3
 
-Sem iniciar Cargo até o snapshot passar:
+Sem iniciar Cargo até o snapshot passar. A semântica do inventário é: se um caminho listado não existe no primeiro `lstat` da captura, omiti-lo é normal e representa deleção intencional (inclusive arquivo rastreado ausente); se o objeto existe no primeiro `lstat` mas some, muda de identidade ou tipo em qualquer validação posterior, abortar toda captura antes de Cargo. Não converter uma falha após a primeira validação em omissão.
 
 - fonte Rust não rastreada e modificada rastreada entram com o conteúdo atual;
-- para cada classe restante da allowlist, canário positivo entra e canários de exclusão (incluindo `.env*`) não entram; qualquer JSON, inclusive sob `tests/fixtures/`, é excluído; a prova não usa regex como evidência de ausência completa de segredos;
+- para cada classe restante da allowlist, canário positivo entra e canários de exclusão (incluindo `.env*`) não entram; JSON em qualquer raiz é excluído sem inspecionar campos por regex, inclusive fixture contendo `"apiKey":"..."` e `"token":"..."`;
 - diretórios e harness excluídos permanecem ausentes;
-- symlink interno/externo e hardlink (`nlink != 1`) falham sem copiar; substituir adversarialmente componente de diretório entre enumeração e `openat` aborta com zero comando Cargo; substituir arquivo após enumeração não copia o novo objeto por path;
+- hardlink para um nome fora da árvore (fixture com `st_nlink > 1`) e symlink interno/externo falham sem copiar; substituir adversarialmente componente de diretório entre enumeração e `openat` aborta com zero comando Cargo;
+- caminho rastreado ausente no primeiro `lstat` é omitido normalmente; após a primeira validação, remover ou trocar arquivo/componente aborta toda captura, limpa o destino parcial e não inicia Cargo;
 - alterar/truncar/regravar o mesmo inode enquanto o descritor está sendo copiado causa falha de estabilidade e zero comando Cargo;
 - sucesso e erro não expõem valores canário nos logs; o snapshot publicado corresponde exatamente ao manifesto;
 - mock do wrapper confirma pre-req inválido e qualquer falha de snapshot causam zero Cargo/test commands.
@@ -84,4 +85,4 @@ Até G1 aprovado e fixtures G3 revisadas, manter explicitamente o coletor atual 
 
 ## Gate e dependências
 
-Status atual: ciclo G1 2 REPROVADO independentemente; esta revisão de ciclo 3 remove JSON da allowlist e explicita prova de hardlink proibido. Re-review G1 independente pendente; sem autorização de implementação. A aprovação existente de T-W0-06 continua cobrindo o desenho anterior e demais seams, mas não esta expansão do snapshot. O addendum macOS segue separado e aguarda decisão do owner sobre o entrypoint. Nenhuma etapa aqui autoriza PG/Neo4j, Binance, produção ou banco persistente.
+Status atual: G1 ciclo 3 APROVADO COM FOLLOW-UP; a semântica de inventário/deleções foi esclarecida para G3. Esta fatia G3 limita-se a testes de captura com `tempfile`, sem Cargo/Docker/serviços/rede, sem alteração da allowlist. A aprovação existente de T-W0-06 continua cobrindo o desenho anterior e demais seams, mas não esta expansão do snapshot. O addendum macOS segue separado e aguarda decisão do owner sobre o entrypoint. Nenhuma etapa aqui autoriza PG/Neo4j, Binance, produção ou banco persistente.
