@@ -1,3 +1,16 @@
+---
+title: "W0-02b Recast: PostgreSQL Target Guard"
+description: Replacement SDD for fail-closed PostgreSQL target verification, integration settings, and database lifecycle lease behavior.
+tags:
+  - sdd
+  - backend
+  - database
+  - security
+  - testing
+  - wave0
+status: proposed
+---
+
 # SDD T-W0-02b recast — proteção do alvo PostgreSQL e comportamento do gate
 
 **Status: PROPOSED; G1 independente pendente.** Este é um SDD substituto para fechar o comportamento do gate PostgreSQL e supersede explicitamente o item escalado T-W0-02b do [SDD W0-02 anterior](./wave0-02-ci-pg-fail-loud-sdd.md), que permanece como histórico `draft` reprovado. A substituição não aprova o desenho, não autoriza implementação e não transforma vereditos de outros SDDs em autorização.
