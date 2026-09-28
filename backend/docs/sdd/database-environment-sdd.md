@@ -31,6 +31,8 @@ A proposta dá a cada execução um ambiente explícito, uma URL correspondente 
 - Opção pública: --environment dev|prod existente. Não adicionar --database-environment.
 - Uma única escolha de Environment é compartilhada entre exchange e DB: dev → credenciais/endpoints Spot Testnet + BOT_DATABASE_URL_DEV; prod → configuração de exchange live + BOT_DATABASE_URL_PROD.
 - Todos os callers runtime que conectam, leem, escrevem, migram ou apagam PostgreSQL recebem esse mesmo `Environment` e usam o resolver comum; nenhum lê `DATABASE_URL` diretamente nem faz fallback. O resolver é o único seam até SQLx e deve devolver uma prova verificada do target local antes de criar/invocar qualquer connector.
+- URL selecionada ausente/vazia/inválida falha fechado antes de conexão/migration/delete. Erros e logs nunca exibem URL ou segredo.
+- O Environment resolvido aparece em logs/metadados sem credenciais. O default permanece dev; prod só é selecionado por `--environment prod`, nunca pela presença de chaves. Em qualquer comando prod que vá abrir uma conexão, migrar ou executar outra ação externa, validar antes que `BINANCE_PROD_API_KEY` e `BINANCE_PROD_API_SECRET` estejam ambos presentes, não vazios e não placeholders; ausência ou presença parcial falha antes de qualquer connector/migration/ação. A validação não chama Binance nem prova validade remota; não registra nem ecoa valores.
 
 ### Prova de target local antes do connector
 
@@ -44,8 +46,6 @@ A prova deve, antes de qualquer `PgPoolOptions`/SQLx connect:
 4. Produzir um `VerifiedLocalPostgresTarget` imutável para aquele Environment e URL. Os callers runtime aceitam o connector somente com esse valor; URL ou prova ausente/inválida nunca chega a SQLx.
 
 Manifest ausente, corrompido, duplicado, identity mismatch, daemon/serviço/volume ausente, endereço ou porta remotos/divergentes, process env override ambíguo, falha de inspeção e qualquer erro de prova resultam em erro estável, sem URL/segredo, e **zero tentativas de connector**. Prova local apenas valida destino/identidade; não garante correção dos dados nem autoriza ordens.
-- URL selecionada ausente/vazia/inválida falha fechado antes de conexão/migration/delete. Erros e logs nunca exibem URL ou segredo.
-- O Environment resolvido aparece em logs/metadados sem credenciais. O default permanece dev; prod só é selecionado por `--environment prod`, nunca pela presença de chaves. Em qualquer comando prod que vá abrir uma conexão, migrar ou executar outra ação externa, validar antes que `BINANCE_PROD_API_KEY` e `BINANCE_PROD_API_SECRET` estejam ambos presentes, não vazios e não placeholders; ausência ou presença parcial falha antes de qualquer connector/migration/ação. A validação não chama Binance nem prova validade remota; não registra nem ecoa valores.
 
 Variáveis candidatas para acordo:
 
@@ -53,6 +53,8 @@ Variáveis candidatas para acordo:
 |---|---|
 | BOT_DATABASE_URL_DEV | URL somente para o PostgreSQL local de desenvolvimento |
 | BOT_DATABASE_URL_PROD | URL somente para o PostgreSQL local do perfil prod |
+| BINANCE_PROD_API_KEY | Uma metade do par obrigatório do perfil prod antes de qualquer ação/conexão externa |
+| BINANCE_PROD_API_SECRET | Outra metade do par obrigatório do perfil prod; não é usada isoladamente nem por dev |
 | BOT_PG_TEST_DATABASE_URL | URL exclusiva do runner de integração para banco PostgreSQL descartável; não é fallback runtime |
 | BOT_DATABASE_ALLOW_REMOTE | Não proposta; nenhum flag libera destino remoto nesta entrega |
 
@@ -139,7 +141,7 @@ URLs permanecem em env local; TOMLs não recebem segredos.
 
 ## Matriz TDD e validação proposta para novo G1 (nenhuma execução nesta revisão)
 
-| Seam | RED/GREEN após acordo | Observabilidade/efeito esperado |
+| Seam | Critério RED/GREEN para G3 após aprovação G1 | Observabilidade/efeito esperado |
 |---|---|---|
 | --environment compartilhado | dev e prod mapeiam em pares coerentes exchange+DB; nenhuma opção de DB separada | teste puro prova mapping dev→testnet+URL_DEV e prod→live+URL_PROD; trading e DB nunca divergem |
 | Resolver e env vars | Environment seleciona só `BOT_DATABASE_URL_DEV/PROD`; nenhum `DATABASE_URL` runtime/fallback | URL ausente/vazia falha antes de connect/migrate; nenhum segredo em erro/log |
@@ -164,15 +166,15 @@ Testes unitários serão offline, usarão sentinelas, verifier/manifest fixtures
 
 ## Rollout local e rollback
 
-1. Após acordo dos novos seams e G1, inventariar e mapear todos os callers runtime de DATABASE_URL antes de código.
-2. Após novo G1, testar o mapping puro do --environment existente para configuração de exchange e URL de banco; provar RED/GREEN offline com connector falso.
-3. Validar o Docker context/socket local e daemon identity, sem overrides, antes de qualquer operação mutável.
-4. Criar uma vez projeto/container/volume persistente por ambiente com environment-id estável e porta host fixa; manifest liga deterministicamente URL→project/container/port/image/volume/mount; manter stack atual intocado.
-5. Criar targets vazios ou exigir backup consistente/restaurável; aplicar migrations e comparar versão/checksum.
-6. Migrar todos os callers da matriz em fatias pequenas, cada um usando o Environment compartilhado; seleção/URL inválida falha fechado.
-7. Configurar `BOT_DATABASE_URL_DEV/PROD` localmente e usar `--environment dev|prod`. Dev seleciona Testnet + URL_DEV; prod seleciona live + URL_PROD, com par `BINANCE_PROD_API_KEY/SECRET` completo antes de qualquer connector/migration/ação externa. Prod suporta apenas backtest offline e `serve` loopback sem monitor, com execução `Disabled`, conforme tabela. Stop/start preserva URL e environment-id; revisar logs redigidos. Nenhuma ordem live é submetida.
+1. Fechar os três blockers e obter G1 independente aprovado; até então não há implementação, testes de integração ou operação local de DB/Docker/exchange.
+2. Após G1, mapear todos os callers transitivos e provar que cada caminho SQLx recebe `Environment` e `VerifiedLocalPostgresTarget`; escrever testes RED/GREEN offline com connector e verifier fakes.
+3. Implementar a allowlist de comandos sem tornar `Config::validate(Environment::Prod)` permissivo globalmente. Confirmar que comandos não listados são rejeitados antes de resolver URL, connector, migration, listener ou exchange.
+4. Para validação comportamental posterior autorizada, começar com `dev` e instância PG descartável identificada pelo manifest; não usar `trading_bot` local existente nem volumes preexistentes como banco descartável. Nenhuma chamada à exchange é necessária para provar estes seams.
+5. Somente com autorização separada para operações Docker/DB, criar containers/volumes dedicados vazios por ambiente, verificar digest/extension/identity, depois executar migrations com backup/restauração e comparar versão/checksum. Nunca migrar banco populado sem backup verificável.
+6. Antes de qualquer ação de perfil `prod` que abra connector, migre ou aja externamente, validar as duas chaves live juntas e provar o target prod. `serve prod` somente em loopback, sem monitor e com execução `Disabled`; nenhuma ordem live é executada nem incluída nesta validação.
+7. Testes PG usam exclusivamente `BOT_PG_TEST_DATABASE_URL` para instância descartável. O runner não herda URL runtime nem chama exchange. Inspecionar logs para confirmar ausência de secrets e URLs.
 
-Rollback interrompe somente os container IDs validados, restaura configuração e backup consistente do mesmo environment-id se migration exigir; URL e porta continuam apontando para aquele manifest. Não recriar silenciosamente volume de stack persistente nem mudar para environment-id novo. Destroy é operação distinta, explícita e identificada por environment-id, com backup restaurável ou prova de vazio e remoção apenas após revalidar IDs/mounts. Nunca apontar prod para dev. Nenhuma ação remota está prevista.
+**Rollback:** credencial parcial, target não provado, migration inesperada ou comando fora da allowlist deve abortar antes do connector/efeito externo. Se G3 introduzir regressão, reverter em conjunto o resolver e todos os adapters/comandos; não reabilitar fallback `DATABASE_URL` nem remover o preflight. Se migration já ocorreu, atuar apenas no environment-id/container/volume daquele ambiente e restaurar backup verificado correspondente; nunca apontar prod para dev. Nenhuma ação remota/live está prevista.
 
 ## Riscos e pendências
 
