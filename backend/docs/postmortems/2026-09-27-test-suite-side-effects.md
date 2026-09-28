@@ -66,7 +66,7 @@ Foi criado um dump depois do comando para preservar um snapshot corrente. Ele n�
 
 ## What went well
 
-Depois da execução, o risco de execução incidental foi identificado e, conforme o registro da tarefa, novas chamadas a banco/exchange foram suspensas. Não se tentou rollback sem conhecer o escopo das mudanças; criou-se um snapshot posterior identificável por path e hash. Ele registra apenas um estado pós-evento e não estabelece o estado anterior.
+Depois da execução, o risco de execução incidental foi identificado e, conforme o registro da tarefa, novas chamadas a banco/exchange foram suspensas. O registro informa que não houve rollback e que foi criado um snapshot posterior identificável por path e hash; não registra a motivação para não fazer rollback. O snapshot representa apenas o pós-evento e não estabelece o estado anterior.
 
 ## Action items
 
@@ -74,7 +74,7 @@ Todos os itens abaixo estão **abertos**; não há evidência de implementação
 
 | Tipo | Owner | Prazo | Ação e condição verificável de conclusão | Status |
 |---|---|---|---|---|
-| Prevention | Backend / test infrastructure | 2026-10-05 | Implementar o contrato aprovado no [SDD de isolamento](../sdd/wave0-15-test-side-effect-isolation-sdd.md): dotenv pode continuar configurando runtime local, mas sua presença/credenciais não autorizam efeitos em testes. Com `.env` sentinela presente e sem opt-ins, o runner deve provar zero tentativas de rede, PG ou Neo4j. | Aberto |
+| Prevention | Backend / test infrastructure | 2026-10-05 | Fechar primeiro a aprovação do owner e do Critic G1 para o desenho/prova de egress no [SDD de isolamento](../sdd/wave0-15-test-side-effect-isolation-sdd.md), então implementar o contrato aprovado. O desenho mantém dotenv para runtime local sem inferir autorização de teste a partir das credenciais. Só após aprovação e implementação, comprovar com `.env` sentinela e sem opt-ins que o runner faz zero tentativas de rede, PG ou Neo4j. | Aberto |
 | Mitigation | Backend / database owners | 2026-10-05 | Exigir opt-in dedicado e prova automatizada de destino descartável antes de qualquer teste PG/Neo4j; registrar o teste negativo em que DB persistente de desenvolvimento é recusado antes de conexão/migração. Evidência: teste negativo passa e execução opt-in usa apenas destino descartável. | Aberto |
 | Prevention | Backend / exchange owners | 2026-10-05 | Bloquear a ordem testnet fora de runner dedicado, opt-in explícito e seleção exata do teste; provar com credenciais sentinela e interceptador que a suíte padrão não envia requisição de ordem. | Aberto |
 | Detection | Backend / test infrastructure | 2026-10-05 | Fazer o relatório de CI/local registrar comando, SHA/estado dirty, resumo por alvo e lista de testes; simular falha para verificar que a saída arquivada permite identificar o teste sem imprimir segredos. | Aberto |
