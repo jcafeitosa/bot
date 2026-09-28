@@ -160,3 +160,75 @@ status: draft
 
 - Rollout, em releases separadas: 1) 07a; 2) 07b migração 1 + encoder + CLI; 3) `encrypt-existing` + verificação; 4) 07b migração 2 (`CHECK`); 5) rotação das chaves nos providers. Nenhum deploy autorizado.
 - Rollback: 07b → 07a é suportado e falha fechado (503). Para antes de 07a, depois do backfill, sem suporte. Não existe ferramenta que decifre para texto claro na API; exportação em claro só por break-glass fora da API (SEC-CRED-03), fora desta fatia.
+
+## Revisão G1 proposta — escopo de cifragem em repouso para dev local
+
+**Estado:** proposta documental para G1, aguardando Critic independente e decisões do owner abaixo. O status draft do SDD e do ADR 0001 permanece. Esta revisão limita a implementação proposta ao desenvolvimento local; não declara cifragem implementada, segredo configurado, banco validado ou G1 aprovado. As regras desta seção prevalecem para o escopo e gates desta revisão. Nenhuma execução com provider, DB ou credencial real faz parte dela.
+
+### Sistema atual observado
+
+- A migração 0007 define provider_credentials.secret como TEXT NOT NULL em claro.
+- core/providers/credentials/cache.rs lê a coluna secret para um cache de String em processo; core/providers/credentials/store.rs lista e escreve esse campo. O CRUD HTTP está em presentation/http/routes/provider_credentials_admin.rs e modules/http_bridge/provider_credentials.rs.
+- core/providers/credentials/mod.rs expõe PROVIDER_CREDENTIALS_ENCRYPTION_MODE = "none"; /meta e /healthz publicam esse valor. Não há encoder/decoder de aplicação, colunas ciphertext nem KEK loader no código observado.
+- core/config/providers/file.rs obtém chaves para clientes Jev/NIM do cache e ainda tem fallback ambiental legado. O W0-07a deve preservar o contrato de falhar fechado quando PG foi configurado e a leitura do cache falha.
+- O código e o SDD base confirmam que um backup/dump do PG atual contém segredos em claro. A presença de autenticação HTTP ou máscara na resposta não cifra o dado em disco.
+
+O escopo desta revisão são as chaves de API dos providers configurados pelo CRUD local (typesafe/openai/nvidia/ngc). Chaves Binance, credenciais de produção, implementação de secret manager de produção e configuração real de .env ficam fora. Nenhum secret manager de produção está provisionado/aprovado para este backend; production permanece bloqueado e não pode anunciar modo cifrado nem aceitar credenciais de produção por este desenho.
+
+### Objetivo e seams propostos
+
+Para o operador de desenvolvimento local: armazenar credenciais de provider no PG local somente em ciphertext, protegendo dumps/cópias offline contra leitura sem a KEK. O operador deve poder iniciar o backend local depois de configurar a origem de KEK aprovada pelo owner. A proteção não cobre comprometimento do processo em execução, root/administrador local, memória, swap, logs antigos, WAL ou backups feitos antes de backfill/rotação.
+
+O formato envelope e AAD descritos neste SDD continuam proposta técnica: DEK aleatória por registro; AEAD; AAD canônica incluindo provider_id, key_name, version, kek_id e alg; DEK wrapped por KEK fora do banco; nonce novo a cada escrita. O storage persiste apenas metadados e ciphertext depois do backfill. O contrato observável de status continua none antes da habilitação, envelope-v1-pending-backfill durante a transição e envelope-v1 somente depois de leitura, escrita e constraint cifradas estarem ativas.
+
+| Seam público | Responsabilidade proposta |
+|---|---|
+| KekProvider / KekRing | carregar e selecionar chave por kek_id; wrap/unwrap de DEK; nenhuma chave vem do PG |
+| Database::connect_from_url | PG/migrations e disponibilidade geral do banco não dependem da KEK; registrar KEK ausente/inválida como estado de credenciais indisponível, sem abortar o pool |
+| credentials cache | distinguir sem-PG de carregado e indisponível; não cair para env após falha de reload com PG configurado |
+| credentials store | encrypt no create/replace, decrypt em lookup, listagem sem segredo/ciphertext; remoção somente após backfill verificado |
+| provider lookup e CRUD | com KEK ausente/inválida ou ciphertext não decifrável, provider lookup e mutações de credencial retornam indisponível/503, sem fallback para plaintext ou env |
+| /meta e /healthz | expor modo real; envelope-v1 só quando todas as leituras e escritas usam cifragem |
+| CLI de manutenção | encrypt-existing idempotente, rewrap e verify-kek-retired; operações explícitas, transacionais quando necessário e com logs contendo apenas contagens |
+
+**Precedência em falha da KEK:** falta, formato inválido, ambiguidade de fonte ou erro ao ler o arquivo não podem impedir conexão/migração do PG usado por outros módulos. O processo registra estado sanitized de KEK indisponível; rotas/provider clients dependentes de credencial cifrada respondem indisponível/503. Uma linha ciphertext sem KEK nunca usa fallback em claro. Não esconder a causa: erro estruturado e redigido fica observável, sem material de chave ou segredo. O comportamento de leitura de linhas legadas ainda em claro durante pending-backfill depende da decisão de rollout abaixo; não habilitar novos writes em claro após o primeiro rollout de cifragem.
+
+Esta proposta supersede explicitamente a frase anterior em Decisões comuns, item 3, que chamava KekRing::load_from_env() antes de Database::connect_from_url. A ordem proposta é: conectar/migrar PG para os módulos gerais; carregar/validar KEK como estado separado; provider paths exigem KEK válida para operação cifrada. KEK inválida não aborta o pool geral; uma operação que precise de ciphertext sem a chave falha fechado em 503. A decisão de colunas/migrações permanece limitada ao esquema já descrito no SDD base e SEC-CRED-01/03; este amendment não escolhe nova migração, down migration ou numeração. Detalhes de tipos e códigos HTTP continuam sujeitos a G1 independente. A API pública de CRUD, autenticação e autorização segue os SDDs próprios; cifragem não substitui auth. Backfill nunca roda no boot nem em servidor da API.
+
+### Decisões do owner ainda abertas
+
+1. **Custódia local da KEK (ADR 0001 / D-SEC-KEK):** escolher env injetado pelo operador, arquivo protegido fora do checkout (modo 0400 ou mais restrito), ou outro mecanismo local que o owner aceite. O ADR atual recomenda env com arquivo opcional, mas está draft; esta revisão não adota essa recomendação como decisão. KMS/secret manager não está disponível no ambiente atual e não pode ser presumido. Critério comum: KEK fora do PG/repositório, fonte única e ambiguidade entre fontes causa erro. Sem KEK válida, nenhum fallback para texto claro.
+2. **Charset do segredo (SEC-CRED-13b):** aceitar ASCII visível somente (recomendação do Segurança) ou manter UTF-8 válido integral. É mudança de contrato de entrada com HTTP 400 novo; owner decide antes do teste/implementação. Em ambas, nenhum valor rejeitado pode aparecer em response, log ou audit.
+3. **Máscara HTTP (D-CRED-MASK-FORMAT / W0-14):** confirmar **** fixo ou máscara com sufixo. Este SDD não escolhe resposta pública; formato não altera ciphertext nem autorização.
+4. **Ponto irreversível do backfill (SEC-CRED-03):** owner confirma antes de executar encrypt-existing que binários anteriores a 07a não serão usados após linhas ficarem secret=NULL/ciphertext-only, que todas as chaves já persistidas serão rotacionadas nos providers e que backups/WAL antigos serão retidos ou destruídos segundo política explícita. Não haverá rollback que decifre ciphertext para secret em claro. Down migration mantém ciphertext e a versão anterior compatível falha fechado.
+5. **Linhas legadas no modo pending:** decidir se lookup pode usar uma linha ainda em claro até o backfill, ou se provider fica indisponível até o operador configurar KEK e concluir a migração. Em qualquer opção, writes são bloqueados sem KEK e env não pode substituir uma linha PG ou ciphertext.
+6. **Resíduo em memória:** aceitar explicitamente que ring mantém key schedule interno que não é zeroizado, ou solicitar revisão/alternativa criptográfica que dê garantias diferentes. Bytes crus de KEK/DEK, plaintext temporário e cache devem usar tipos zeroizáveis e escopo curto; ainda assim isso não promete apagar cópias internas da biblioteca, allocator ou swap. A decisão técnica não deve ser apresentada como garantia total de zeroization.
+
+Itens 1–5 bloqueiam implementação de 07b/backfill até decisão registrada. Item 6 requer avaliação do Critic de segurança; implementação não pode afirmar proteção contra comprometimento de memória.
+
+### Alternativas consideradas
+
+- **Manter somente env e remover CRUD/PG:** evita ciphertext local, mas abandona credenciais no banco e reload sem restart já usados; pode ser proposta separada, não a escolha tácita desta revisão.
+- **KEK local em env:** configuração simples, com risco de exposição por inspeção de processo/crash dump; aceitável somente com fonte local aprovada e sem valor em logs.
+- **Arquivo protegido fora do checkout:** reduz herança ambiental, exige controle de owner/mode e procedimento local de backup. É opção ao owner, não padrão decidido aqui.
+- **Secret manager/KMS:** boa separação operacional e auditoria, mas requer conta/serviço, cliente e autoridade de acesso. Não há secret manager de produção no backend; adiar implementação cloud para desenho e aprovação próprios.
+- **Criptografia só do volume/disco:** reduz acesso a mídia offline mas não evita que dumps PG revelem a coluna nem atende ao contrato de envelope no banco; não substitui a proposta.
+
+### TDD e validação por fases
+
+- **G3 offline:** fake KekProvider permite teste RED/GREEN de AAD, wrap/unwrap, alteração de metadado, nonce novo, chave errada/ausente, redaction de Debug/logs, estado de cache e ausência de fallback quando PG configurado. Fixtures são valores sintéticos marcados como teste. Testes de charset e máscara aguardam decisões 2 e 3.
+- **G4 PG local descartável, somente depois de G1 aprovado, G3 independente aprovado e autorização operacional:** upsert do valor sintético seguido de inspeção da linha prova que nenhuma coluna guarda o marcador em claro; reinício/reload recupera o mesmo valor via fake provider; tamper em ciphertext/AAD/KEK falha fechado; listagem não busca ciphertext; encrypt-existing repetido é idempotente; rotação/rewrap e verify-kek-retired mostram zero linhas com kek_id anterior.
+- **Negativos obrigatórios:** KEK ausente, encoding/tamanho inválido, fonte env+file simultânea, permissão de arquivo frouxa, decrypt/tag inválido, metadata alterada, reload falho com env legado presente, cache não carregado com PG, e tentativa de iniciar cliente sem credencial decifrável. Cada caso deve retornar erro definido sem plaintext em log/HTTP/audit. Teste da precedência verifica que falha de KEK deixa PG disponível para módulos não relacionados e que operações de provider falham com 503 sem connector fallback.
+- **G5 não pertence a esta proposta:** nenhuma implantação, migração de banco persistente, rotação de provider externo ou configuração de produção é autorizada aqui. O G4 descrito é apenas o caminho futuro para banco local descartável, após gates.
+
+### Rollout e rollback propostos
+
+1. 07a primeiro: cache tem estados explícitos; com PG, reload falho/linha NULL resulta indisponível e sem fallback env. 07a não cifra e modo continua none.
+2. 07b código e migration aditiva: encoder/decoder e testes com KEK sintética; modo permanece pending até backfill.
+3. Operador configura KEK local aprovada e testa restauração/backup; depois de owner confirmar irreversibilidade, encrypt-existing cifra em transação idempotente e imprime somente contagens.
+4. Verificação de todas as linhas sem plaintext, leitura de cada linha, rotação de chaves nos providers e política de retenção de backup/WAL antigos. Só então migration/constraint final remove o caminho em claro e modo pode anunciar envelope-v1.
+5. Rewrap de DEKs antes de retirar KEK anterior; verify-kek-retired comprova zero linhas antes de apagar a chave antiga.
+
+Rollback de aplicação após backfill volta no máximo a uma versão compatível com 07a, que falha fechado sobre ciphertext-only. Não há rollback para binário anterior a 07a nem exportação automática de segredo em claro. Se verificação falhar, interromper rollout, manter ciphertext/KEK e modo pending; recuperar pela versão compatível, sem decifrar para coluna em claro.
+
+**Gates para sair de draft:** ADR 0001 e decisões owner 1–5 resolvidas; decisão do Critic de segurança sobre zeroization; W0-14 ordenado antes de 07a por compartilhar store.rs; G1 independente aprovado; então dividir em 07a/07b com plano e critérios. Produção continua bloqueada até um projeto aprovado de secret manager/custódia e rollout independente.
