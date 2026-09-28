@@ -202,7 +202,7 @@ Limites: o perfil suportado é este host macOS com Docker Desktop e container Li
 
 ### Inventário observado
 
-neo4j_stack_enabled() em core/persistence/pg_integration.rs lê o opt-in antes de chamar load_agents_stack_from_env(). Sem opt-in exato 1, a configuração, credenciais e driver não são resolvidos. Porém, com opt-in 1, erro de configuração ou stack desabilitado atualmente é convertido para false; os callers retornam sem conexão e libtest registra sucesso. Erros que ocorrem depois da conexão tendem a falhar via .expect(). Essa distinção deve ser eliminada: opt-out significa teste não executado; opt-in inválido ou falho significa resultado não zero.
+neo4j_stack_enabled() em core/persistence/pg_integration.rs atualmente lê o gate legado único BOT_RUN_NEO4J_INTEGRATION, em vez dos gates separados BOT_RUN_NEO4J_READ_INTEGRATION e BOT_RUN_NEO4J_WRITE_INTEGRATION definidos acima. Ele checa opt-in antes de chamar load_agents_stack_from_env(). Sem opt-in exato 1, a configuração, credenciais e driver não são resolvidos. Porém, com opt-in 1, erro de configuração ou stack desabilitado atualmente é convertido para false; os callers retornam sem conexão e libtest registra sucesso. Erros que ocorrem depois da conexão tendem a falhar via .expect(). Essa distinção deve ser eliminada: opt-out significa teste não executado; opt-in inválido ou falho significa resultado não zero.
 
 Os nove callers diretos atuais de neo4j_stack_enabled() não têm #[ignore] e são descobertos pela suite default:
 
