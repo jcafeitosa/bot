@@ -471,7 +471,7 @@ G1 aprova o seam público de configuração e teste descrito neste SDD; G3 imple
 | Resolução do helper | sem opt-in mantém skip; required sem opt-in/url/manifest falha antes do connector | configuração válida chega ao lookup apenas após os gates já definidos |
 | Lookup real via helper | fixtures SQL para ausência, vazio, válido, inválido, múltiplas linhas, schema incompatível e erro de query falham primeiro contra a classificação pretendida | os sete cenários retornam estado tipado correto; cada fixture é revertida na transação |
 | Fail-closed do coordenador | marker presente ou erro SQL não deve chamar factory; teste verifica contador igual a zero | somente ausência inequívoca chama factory uma vez; erro de factory é propagado sem URL |
-| Guard de ambiente | `verify-backend-gates.sh` falha quando um acesso `std::env::var` é introduzido em `core/persistence` | gate passa sem exceção específica para persistência; leituras permanecem na fronteira permitida |
+| Guard estrutural de ambiente | Fixture de source tree injeta `std::env::var` e `std::env::var_os` em `core/persistence/pg_integration.rs`, inclusive para cada opt-in | o mesmo predicado usado por `verify-backend-gates.sh` rejeita todos; fixture com leitura em `core/config/env_parse.rs` é aceita; nenhuma allowlist de persistência |
 | Compatibilidade | opt-in desligado preserva comportamento de skip para testes locais atuais | testes de unidade provam compatibilidade sem PostgreSQL e sem variável global compartilhada |
 
 A prova do lookup SQL é integração e pertence exclusivamente a G4, no runner efêmero seguro aprovado, depois de G1 e da revisão G3 do runner. G3 pode executar unit tests/fakes e checker local; G3 não executa PostgreSQL real. A mera aprovação G1 não autoriza Docker, banco, CI nem exchange. G4 registra o comando e resultado dos sete cenários, identity/manifest do runner, e a saída do gate `verify-backend-gates.sh`. Não alegar execução nesta revisão documental.
@@ -492,3 +492,44 @@ A prova do lookup SQL é integração e pertence exclusivamente a G4, no runner 
 A próxima ação é revisão independente de G1 deste item escalado. Critérios de aprovação observáveis: a mesma função real de lookup é coberta pelos sete estados SQL através do helper; os testes são transacionais e não abrem connector próprio; config tipada é lida centralmente e injetada; nenhuma exceção de `verify-backend-gates.sh` permite env reads em persistence; RED/GREEN e fronteira G3/G4 estão explícitos.
 
 Até G1 aprovar, permanecem bloqueados código, testes, execução PG, Docker, CI e alteração de workflow. Se aprovado, G3 fica limitado a testes unitários/fakes, implementação e verificação estática; somente G4 no runner seguro executa SQL real. Nada neste adendo declara blockers resolvidos antes do parecer Critic.
+
+## T-W0-02b re-review delta — snapshot completo e gate estrutural
+
+> Este delta responde ao blocker do Critic sobre opt-ins omitidos. Prevalece sobre o trecho anterior que limitava o snapshot ao PG e sobre qualquer redação que isente opt-ins de subsistemas. Mantém o item escalado T-W0-02b; não o numera como ciclo 4. Sem aprovação G1 ainda.
+
+### Fronteira única de ambiente
+
+A classe/configuração central em core/config (reader autorizado pelo gate, como env_parse.rs) é a única unidade que lê o processo. Ela cria um snapshot tipado imutável, conceitualmente PgIntegrationSettings, cobrindo todos os valores consumidos direta ou indiretamente pelo módulo core/persistence/pg_integration.rs:
+
+| Entrada de ambiente | Valor do snapshot | Semântica preservada |
+|---|---|---|
+| BOT_PG_INTEGRATION_REQUIRED | opt-in obrigatório | Required=1 exige BOT_RUN_PG_INTEGRATION=1; falha com mensagem estável se não habilitado |
+| BOT_RUN_PG_INTEGRATION | estado do opt-in PG | ausente/0 mantém skip; 1 habilita; outro valor é configuração inválida |
+| BOT_PG_TEST_DATABASE_URL | URL dedicada de integração | usada somente após opt-in; nunca DATABASE_URL |
+| BOT_PG_TEST_TARGET_MANIFEST | caminho de identidade do runner | lido/usado somente após opt-in |
+| DOCKER_HOST e DOCKER_CONTEXT | indicadores de override presente/ausente | qualquer override bloqueia a prova de daemon local |
+| BOT_RUN_BINANCE_TESTNET_ORDER | estado de opt-in testnet | somente valor exato 1 tenta resolver credenciais; credenciais ausentes ou inválidas preservam false; ausente/0/outro valor mantém false sem resolução |
+| BOT_RUN_NEO4J_INTEGRATION | estado de opt-in Neo4j | somente valor exato 1 tenta resolver configuração do stack; stack ausente/inválido preserva false; ausente/0/outro valor mantém false sem resolução |
+
+A construção do snapshot não habilita os efeitos. Opt-ins são avaliados pelas funções de domínio já existentes usando os valores do snapshot; resolução de credenciais Testnet e leitura/validação de configuração Neo4j só ocorre após opt-in exato. Valores secretos (PG URL, credenciais) ficam em campos privados redigidos. Snapshot e resolvers de teste são passados explicitamente às funções puras para evitar leitura de estado global em testes paralelos.
+
+O módulo pg_integration.rs não lê ambiente por mecanismo algum: nenhum std::env::var/var_os, env!, macro, reader encapsulado localmente, nem chamada a helper local que consulte processo. Seus entrypoints solicitam o snapshot à única fábrica de core/config; os resolvers internos recebem-no como parâmetro e fazem parse/decisão sem efeitos. Assim todos os caminhos e os dois opt-ins antes omitidos usam a mesma fonte central. O static guard não ganha exceção para core/persistence.
+
+### Prova estrutural de verify-backend-gates.sh
+
+O guard estático examina toda a árvore src e aceita leituras de ambiente somente na allowlist central de configuração existente. Ele deve reconhecer pelo menos env::var e env::var_os, inclusive caminhos qualificados std::env::..., sem filtrar por nome da variável nem isentar pg_integration.rs. O teste estrutural exercita o mesmo predicado/guard com uma source tree fixture isolada:
+
+- RED: var e var_os em core/persistence/pg_integration.rs falham; cobrir um exemplar por variável opt-in (inclusive BOT_RUN_BINANCE_TESTNET_ORDER e BOT_RUN_NEO4J_INTEGRATION), mais uma fixture com chamada indireta proibida.
+- GREEN: a leitura central equivalente sob core/config/env_parse.rs é permitida; nenhum arquivo em persistence recebe exceção.
+- O teste prova tanto que o guard detecta novos acessos como que o allowlist legítimo permanece restrito. Não precisa de ambiente real, credenciais, DB, Docker ou exchange.
+- Depois de autorizado G3, verify-backend-gates.sh deve executar esse teste estrutural e passar na árvore real sem qualquer leitura ambiental fora de core/config. Não relaxar nem ampliar regex/allowlist para tornar o gate verde.
+
+### TDD, compatibilidade e gates
+
+G1 aprova o contrato do snapshot e a semântica das três famílias de opt-in antes de alteração de código/teste. Em G3, RED/GREEN offline comprova: PG required/opt-in; Binance Testnet somente opt-in literal 1 mais credenciais configuradas; Neo4j somente opt-in literal 1 mais stack ativo; ambos permanecem falsos e não resolvem configuração quando o opt-in não é 1; resolução via snapshot equivale ao comportamento atual. Um spy de resolver confirma zero chamadas de credenciais/config quando opt-out. O teste estrutural do guard roda offline e usa fixtures sintéticas.
+
+G3 não executa conexão PG, inicia Docker, workflow/CI externo ou exchange. A execução SQL real permanece exclusivamente G4 no runner efêmero aprovado, pelos sete casos documentados acima. Compatibilidade opt-out é demonstrada em teste puro, sem ler ou modificar variáveis globais.
+
+Alternativa rejeitada: mover somente os opt-ins PG e manter Binance/Neo4j lendo std::env em pg_integration.rs; isso deixa o gate quebrado e mantém uma única unidade com várias fontes de configuração. Também rejeitado ampliar a exceção do verify-backend-gates.sh para esse arquivo: o gate deve demonstrar que todos os env reads ficaram centralizados, não autorizar a dispersão.
+
+O status continua draft/G1 pendente. Critérios observáveis para fechar o finding: snapshot inclui as oito entradas acima; comportamento exato de opt-in preservado; nenhum acesso direto/indireto local à env em pg_integration.rs; teste estrutural prova as negativas para var e var_os e só autoriza core/config; verify-backend-gates.sh fica verde sem exceção nova. Nenhuma implementação ou execução do gate/testes ocorreu nesta atualização documental.
