@@ -37,7 +37,7 @@ Para runner de integração, a mesma forma de capability/lease liga o manifest d
 
 ## Seam de lease compartilhado/exclusivo
 
-Usar um interprocess read/write lease estável por identidade de target, por exemplo `backend/.local/locks/postgres-<environment-id>.lock` (e chave separada por `run-id` para alvos efêmeros). Todos os callers runtime e o lifecycle suportado usam o mesmo provider e a mesma chave determinada pela identidade validada; não há locks baseados somente em URL/nome.
+Usar um interprocess read/write lease com chave estável que possa ser determinada sem ler o manifest: runtime usa `backend/.local/locks/postgres-<environment>.lock` selecionado pelo `Environment` validado pela configuração central (por exemplo, `postgres-dev.lock`); runner PG efêmero usa `postgres-pg-test-<run-id>.lock`, onde o `run-id` é criado pelo processo supervisor antes de escrever/ler o manifest. Todos os callers runtime e lifecycle suportado usam o mesmo provider e a mesma chave; não há lock baseado em URL, nome de database ou campo ainda não verificado do manifest.
 
 - Verifier adquire lease **compartilhado antes** de ler manifest, config de target ou inspecionar daemon/container. Falha/timeout/corrupção de lock resulta em erro e zero connector.
 - Mantendo lease, verifica autoridade/manifest/live state e URL; revalida manifest, IDs, digest, volume/mount, porta, database e role imediatamente antes de emitir capability/conectar.
@@ -87,6 +87,20 @@ Todos os testes abaixo são requisitos de desenho, não executados nesta tarefa.
 | lease lifecycle | AppDatabase fake mantém shared lease; lifecycle fake solicita exclusive | lifecycle não substitui target enquanto pool/clone existe; após close/drop adquire exclusive |
 | mutation/mismatch pre-connect | sob shared lease, fake lifecycle tenta trocar manifest/port/container ou verifier observa divergence entre checks | operação lifecycle bloqueada/falha; caso de mismatch retorna erro e connector attempts = 0 |
 | release on connector failure | connector fake falha depois de capability válida | capability/drop libera shared lease; sem pool sobrevivente |
+
+**Sete cenários SQL do marker (G3 congela, G4 executa somente após autorização):**
+
+| Estado transacional | Resultado esperado do lookup/classificador real |
+|---|---|
+| Relação ausente com identidade independente validada | `UNMARKED_RUNTIME` |
+| Relação presente vazia | `MARKER_LOOKUP_FAILED` |
+| Uma linha completa válida | `TEST_DATABASE_MARKER_PRESENT` |
+| Uma linha inválida | `MARKER_LOOKUP_FAILED` |
+| Linhas múltiplas | `MARKER_LOOKUP_FAILED` |
+| Schema/colunas incompatíveis | `MARKER_LOOKUP_FAILED` |
+| Falha SQL controlada | `MARKER_LOOKUP_FAILED` |
+
+Cada cenário fixture usa apenas conexão de `database_for_integration_test()` e rollback na mesma transação. Identidade ausente/inválida não é cenário SQL: fake verifier deve comprovar zero connector antes de lookup. Em G3 o teste SQL é escrito/congelado, sem serviço; Critic revê o teste. G4 autorizado observa RED pré-correção e retorna a G3 para fix/revisão; somente depois G4 reexecuta o mesmo teste para GREEN. Setup/identity failure não conta como RED, e as evidências offline G3 e SQL G4 ficam separadas.
 
 Public API seam para callers é `Environment + central config -> verifier -> VerifiedLocalPostgresTarget(lease, exact URL) -> connector(target only) -> AppDatabase(pool + retained lease)`. Teste estrutural prova que callers não constroem SQLx connector nem descartam lease. Unit tests de gates/resolver usam snapshot tipado e spies/fakes; nenhuma variável global ou serviço é lido.
 
