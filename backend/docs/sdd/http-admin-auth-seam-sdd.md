@@ -88,7 +88,18 @@ Rollout proposto: implementar 503/401/continuação primeiro em testes do seam p
 
 Para uma rota protegida representativa e para cada classe/lista aprovada: sem env, resposta 503 + `admin_auth_not_configured`, handler não chamado; com env e sem bearer / bearer inválido, resposta 401 + `unauthorized`, handler não chamado; com env e bearer válido, handler chamado uma vez e resposta normal. Para cada rota pública, sem env e sem bearer, resposta normal. Para rota futura sem classificação, handler não chamado e resposta de negação conforme seam escolhido. Cobrir também o fluxo real de `serve`: listener ativo sem token, rota pública respondendo e rota protegida retornando 503. Os nomes de helper, localização do middleware, status/corpos estáveis e estratégia de lista exigem acordo antes de testes TDD; nenhum teste foi executado nesta entrega de documentação.
 
-#### Seams públicos fechados pelo owner
+#### Seams públicos de comportamento — decisões fechadas pelo owner em 2026-09-27
+
+Os seis seams de comportamento foram fechados pelo owner:
+
+1. **Configuração:** token deve vir de `BOT_HTTP_ADMIN_TOKEN`, conter pelo menos 32 bytes aleatórios e nenhum espaço; ausente/vazio/fraco mantém o servidor ativo e retorna 503 nas protegidas.
+2. **Autenticação:** Bearer válido prossegue; Bearer ausente/incorreto com token utilizável retorna 401; nunca tratar auth ausente como sucesso.
+3. **Classes das rotas atuais:** lista completa método+path acima; mutações e leituras sensíveis protegidas; health/docs/leitura não sensível e os seis cálculos públicos.
+4. **Rotas futuras:** classificar explicitamente; rota sem classe retorna 404 `route_not_found` antes do handler.
+5. **Respostas:** 503 `admin_auth_not_configured`, 401 `unauthorized`, 404 `route_not_found`; rotas públicas preservam resposta normal sem bearer.
+6. **Escopo do middleware:** toda rota protegida passa pela decisão antes do handler; detalhes do tipo Rust, assinatura de funções, composição do router e anotação OpenAPI são decisões de design interno para revisão G1, não seams de comportamento pendentes do owner.
+
+Não há acordo pendente do owner para começar a revisão G1. O Critic deve revisar se as interfaces e a composição propostas em A2–A6 implementam fielmente estes contratos; implementação e testes seguem bloqueados até aprovação G1 e eventual acordo sobre API pública de teste conforme AGENTS.md.
 
 1. Qual API/config seam expõe o estado de configuração: tipo/enum e campos para ausente, vazio, válido e inválido; regra de força/validação do token e ponto único de leitura do env.
 2. Função/método público que decide/verifica credencial e sua assinatura: entrada do request, como representar segredo sem expô-lo em `Debug`, saída de decisão e erros/códigos públicos exatos.
@@ -138,11 +149,11 @@ Entre `b8370a75` e `d42b71a5`, `backend/src` mudou só em `core/database/postgre
 | Follow-up explícito | SEC-ADM-12 (rotação com dois tokens) | item próprio no plano; não bloqueia G4 de W0-01 |
 | Bloqueado | SEC-ADM-14 | depende de P1 (auth humano/IdP); registrado, não implementado |
 
-**Decisão de runtime (2026-09-27):** auth ausente/vazia não impede o boot nem a abertura do socket. Rotas administrativas e mutáveis retornam **503** `admin_auth_not_configured`; com token configurado, credencial ausente/inválida retorna **401** `unauthorized` e bearer válido prossegue. Rotas públicas seguem abertas sem token. A classificação global e os demais detalhes de A2/A5 ainda não foram aprovados.
+**Decisão de runtime (2026-09-27):** auth ausente, vazia ou fraca não impede o boot nem a abertura do socket. Rotas protegidas retornam **503** `admin_auth_not_configured`; com token utilizável configurado, bearer ausente/incorreto retorna **401** `unauthorized` e bearer válido prossegue. Rotas públicas seguem abertas sem token. As classes exatas aprovadas constam acima; a composição técnica do router continua para revisão G1.
 
 **Decisão antiga substituída:** falhar o startup sem token e impedir o listener. A resposta 503 no endpoint protegido é o contrato escolhido pelo owner, não uma alternativa rejeitada.
 
-### A2 — propostas de classificação e roteamento (não aprovadas)
+### A2 — proposta de roteamento e defesa em profundidade (classes aprovadas acima; detalhes para G1)
 
 Evidência: o `Router` do axum (0.8.9 no `Cargo.lock`) não lista as rotas registradas; hoje as rotas são registradas em dois arquivos (`routes/mod.rs` e `server.rs`); o OpenAPI vem de `#[utoipa::path]` agregado em `ApiDoc` (`openapi.rs`), então um teste guiado só pelo OpenAPI não vê rota registrada e esquecida na anotação.
 
@@ -252,7 +263,7 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
 - **OpenAPI com segurança declarada por rota:** `ApiDoc` ganha um `Modify` que registra `components.securitySchemes.admin_bearer` (`type: http`, `scheme: bearer`), e cada `#[utoipa::path]` de rota `Protected` declara `security(("admin_bearer" = []))`. Rotas `PublicRead`/`PublicCompute` não declaram `security`. Rotas `Org` futuras declaram um esquema próprio (`owner_bearer`), nunca `admin_bearer`. Assim a quebra fica visível em `/openapi.json`.
 - **Paridade de classe no teste:** F3 (d) passa a comparar, além de método+path, a classe da tabela com o `security` da operação: `Protected` ⇔ `admin_bearer`; `PublicRead`/`PublicCompute` ⇔ sem `security`.
 
-### A3 — proposta antiga de boot obrigatório (supersedida em 2026-09-27)
+### A3 — proposta antiga de boot obrigatório (supersedida; não normativa)
 
 - **Onde:** a decisão "pode subir?" roda no braço `Some(BotCommand::Serve(args))` de `main.rs`, logo depois de `Config::load` (`main.rs:104`), antes de `--with-monitor` (`:106-136`) e de `run_server` (`:137`). Assim nenhuma conexão a PG/Neo4j, migração, outbox, hidratação ou monitor acontece sem auth válida.
 - **Forma:** função pura em `core/config` (onde o token já é lido, `core/config/http/file.rs`); nenhuma leitura de env em `presentation/`. Entrada: config de auth admin (token, bindings), `allowed_hosts` (A5) e `bind`. Saída: `Enforced` ou erro estável (`admin_auth_not_configured`, `admin_auth_token_weak`, `http_allowed_hosts_required`) sem ecoar o valor.
@@ -267,7 +278,7 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
   - Se o owner aceitar a recomendação, SEC-ADM-02 é atendido na forma "não existe opt-out" (teste: nenhuma flag faz o `serve` subir sem token).
 - **Guard de env:** o regex de `verify-backend-gates.sh:8` (`env::var\(|std::env::var\(`) não pega `env::var_os`, `std::env::vars` nem `dotenvy::var`. O aceite amplia o guard para `(std::)?env::var(s|_os)?\(` e `dotenvy::vars?\(`, com as mesmas exceções de caminho. No HEAD não há ocorrência dessas formas fora de `core/config/` (conferido com `rg`).
 
-### A4 — token de dev sem enfraquecer prod
+### A4 — geração de token de desenvolvimento (proposta; sem falha de startup)
 
 - O desenvolvedor gera o token localmente: `openssl rand -base64 32` (32 bytes de entropia, 44 caracteres; SEC-ADM-15 e SEC-ADM-07) e grava em `backend/.env` (ignorado pelo git em `backend/.gitignore:2`). O procedimento vai para [cli-and-config](../reference/cli-and-config.md) e para o runbook de dev; `.env.example` continua com valor vazio (AGENTS.md proíbe placeholder de credencial). Copiar o exemplo sem gerar token faz o `serve` recusar subir, com mensagem que aponta o comando.
 - A mesma regra de força (SEC-ADM-07) vale sempre; não há "token fraco permitido em dev".
@@ -312,7 +323,7 @@ A decisão do owner fecha os seis seams públicos de comportamento listados no i
 | Rota não classificada | 404 `route_not_found` antes de executar handler; sem herança pública ou auth por omissão. |
 | Composição router | Proposta de G1: camada de classificação aplicada antes dos handlers, incluindo endpoints de sistema/docs; nome de funções e estrutura do registro ficam para Critic revisar. |
 
-### Critérios de aceite W0-01 (rascunho a reconciliar com a decisão do owner)
+### Critérios de aceite W0-01 (pronto para revisão G1; critérios observáveis, não aprovados)
 
 - SEC-ADM-01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11 (forma de A6), 13 e 15, conforme [F-ADM-01](../security/admin-http-auth-fail-open.md) §4, referenciados por ID.
 - F1. Teste CLI em `backend/tests/` (padrão de `config_cli.rs`): `serve` sem token → exit ≠ 0, porta não aberta e **zero conexões ao DB**: `DATABASE_URL` aponta para `127.0.0.1:<porta>/trading_bot` de um `TcpListener` do próprio teste, que conta `accept`s; esperado 0. Entra na lista `INTEGRATION_TESTS` de `verify-backend-gates.sh`. Mesmo teste com token fraco.
