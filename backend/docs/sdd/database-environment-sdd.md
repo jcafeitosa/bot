@@ -10,11 +10,11 @@ status: proposed
 ---
 # SDD T-DB-ENV — Ambientes dev/prod com PostgreSQL local isolado
 
-**Status: PROPOSED — G1 independente APROVADO COM FOLLOW-UP no ciclo final; implementação é autorizada sob os contratos descritos e o follow-up editorial está registrado abaixo.** O owner aprovou o seletor separado e todos os callers no resolver. O SDD continua proposed enquanto implementação/aceite G3 não forem concluídos. O objetivo autorizado é ter execução local dev e prod usando bancos locais distintos. Não há endpoint nem secret manager real de produção fornecido; este SDD não cria nem presume um.
+**Status: PROPOSED — o G1 anterior aprovou o seletor separado, mas esse contrato foi supersedido pelo direcionamento mais recente do owner. Novo G1 independente é necessário antes de implementação.** O owner orientou que um único --environment selecione exchange e banco. O SDD permanece proposto enquanto essa simplificação não for revisada. O objetivo autorizado é ter execução local dev e prod usando bancos locais distintos. Não há endpoint nem secret manager real de produção fornecido; este SDD não cria nem presume um.
 
 ## Contexto e objetivo
 
-A configuração documentada hoje carrega .env, system.toml e bot.toml, e DATABASE_URL alimenta conexões PostgreSQL em múltiplos caminhos. A CLI já usa --environment dev|prod para o perfil de trading/Binance. A proposta de banco adiciona o seletor ortogonal --database-environment dev|prod; não muda a semântica do flag existente. A seleção ambígua pode direcionar comandos de produção para dados de desenvolvimento ou para o banco persistente existente.
+A configuração documentada hoje carrega .env, system.toml e bot.toml, e DATABASE_URL alimenta conexões PostgreSQL em múltiplos caminhos. O owner simplificou a proposta: o --environment existente seleciona coerentemente os dois domínios — dev usa exchange Spot Testnet e BOT_DATABASE_URL_DEV; prod usa exchange live e BOT_DATABASE_URL_PROD. Não adicionar --database-environment. Os callers PostgreSQL runtime devem resolver URL a partir do mesmo Environment efetivo usado pela configuração de trading.
 
 A proposta dá a cada execução um ambiente explícito, uma URL correspondente e um alvo local dedicado. Ambos os ambientes usam PostgreSQL em Docker no host, com instâncias/volumes separados e nomes de database distintos. “prod” nesta proposta significa perfil local com comportamento de produção e dados isolados; não significa acesso a serviço de produção remoto.
 
@@ -22,12 +22,11 @@ A proposta dá a cada execução um ambiente explícito, uma URL correspondente 
 
 ### Seleção de ambiente e URL
 
-- Opção pública proposta: --database-environment dev|prod, independente do --environment existente usado para perfil trading/Binance. Não modifica market, strategy, run mode nem seleção de credenciais de exchange.
-- A seleção de banco é obrigatória para todo caller runtime que conecta, lê, escreve ou migra PostgreSQL. Ela é propagada a monitor, serve, backtest --persist, graph-projection e stores transitivos do bootstrap.
-- A resolução usa exclusivamente BOT_DATABASE_URL_DEV para dev e BOT_DATABASE_URL_PROD para prod. Não há fallback cruzado nem fallback DATABASE_URL.
-- Se seletor/URL estiver ausente, duplicado ou inválido, comando falha antes de resolver conexão, criar schema ou migrar; mensagem redige URL e segredos.
-- Todos os callers runtime que leem DATABASE_URL são migrados ao resolver comum nesta entrega. Se um caminho não receber DatabaseEnvironment, ele falha fechado e não pode manter leitura direta/legada.
-- O ambiente aparece em logs/metadados sem credenciais. Nenhuma opção implícita escolhe prod.
+- Opção pública: --environment dev|prod existente. Não adicionar --database-environment.
+- Uma única escolha de Environment é compartilhada entre exchange e DB: dev → credenciais/endpoints Spot Testnet + BOT_DATABASE_URL_DEV; prod → configuração de exchange live + BOT_DATABASE_URL_PROD.
+- Todos os callers runtime que conectam, leem, escrevem, migram ou apagam PostgreSQL recebem esse mesmo Environment e usam o resolver comum; nenhum lê DATABASE_URL diretamente nem faz fallback.
+- URL selecionada ausente/vazia/inválida falha fechado antes de conexão/migration/delete. Erros e logs nunca exibem URL ou segredo.
+- O Environment resolvido aparece em logs/metadados sem credenciais. O default da configuração permanece dev; prod só é selecionado pelo valor prod, sem inferência a partir da presença de segredos.
 
 Variáveis candidatas para acordo:
 
@@ -79,11 +78,13 @@ Esta matriz consolida [integração dos módulos](./database-module-integration-
 
 ## Acordo owner e pendências de seam
 
-Acordo literal recebido do owner: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Isso cobre a separação do seletor em relação a --environment de trading/Binance e o requisito de migrar todos os callers runtime PostgreSQL ao resolver. A matriz documental acima está fechada para os callers/scripts identificados neste ciclo; auditoria do source/call graph ainda deve confirmar cobertura completa antes do aceite de implementação.
+## Novo direcionamento do owner e estado dos gates
 
-O owner também já aprovou nomes URLs/no-fallback, isolamento dos ambientes e contrato de persistência do backtest conforme registrados neste SDD. O G1 independente aprovou a proposta com follow-up. Restam como detalhes de execução a construir/verificar: manifest e labels, binding e revalidação de endpoint, lifecycle e cleanup exatos, e prova de backup consistente/restore ou alvo vazio. Nenhum destino remoto está autorizado ou configurado.
+Direcionamento do owner recebido: um único --environment seleciona exchange e banco; dev usa Testnet + BOT_DATABASE_URL_DEV, prod usa exchange live + BOT_DATABASE_URL_PROD; não existe --database-environment. Isso substitui a decisão anterior de seletor separado. O acordo prévio de migrar todos os callers runtime ao resolver e a seleção de URL por ambiente continuam aplicáveis, agora usando o Environment compartilhado.
 
-A implementação pode avançar sob os seams aprovados; operação mutável de Compose, integração PostgreSQL e smoke do banco ficam bloqueados até revisão G3 independente e execução explicitamente autorizada.
+O G1 APROVADO COM FOLLOW-UP citado abaixo aplica-se somente ao desenho anterior e não aprova o seam alterado. Solicitar novo G1 independente antes de implementar. Nomes de URL/no-fallback, isolamento local, backtest persist e integração de teste com PostgreSQL descartável seguem os contratos previamente acordados e preservados neste SDD. Os detalhes operacionais de Compose/manifest/backup permanecem como especificados. Nenhum destino remoto é configurado.
+
+Testes de integração usam exclusivamente BOT_PG_TEST_DATABASE_URL apontando para PostgreSQL descartável; não utilizam URLs runtime e não enviam ordens à exchange. Testes não usam prod/live nem Spot Testnet para submissão de ordens. Implementação aguarda novo G1; Docker/DB/smoke operacional permanece bloqueado até G3 independente.
 
 ## Produção remota e segurança
 
@@ -99,8 +100,8 @@ Manter um único DATABASE_URL e trocar seu valor manualmente entre dev e prod ex
 
 | Seam | RED/GREEN após acordo | Observabilidade/efeito esperado |
 |---|---|---|
-| --database-environment | ausente/inválido/duplicado falha; dev/prod resolvem destinos distintos | connector falso recebe zero chamadas nos erros; --environment trading não muda |
-| Resolver e env vars | seleciona só URL do ambiente; nenhum DATABASE_URL runtime/fallback | zero connect/migrate e erro sem URL/segredo |
+| --environment compartilhado | dev e prod mapeiam em pares coerentes exchange+DB; nenhuma opção de DB separada | teste puro prova mapping dev→testnet+URL_DEV e prod→live+URL_PROD; trading e DB nunca divergem |
+| Resolver e env vars | Environment seleciona só BOT_DATABASE_URL_DEV/PROD; nenhum DATABASE_URL runtime/fallback | URL ausente/vazia falha antes de connect/migrate; nenhum segredo em erro/log |
 | serve + stores transitivos | bootstrap, owner, agents, bots, provider credentials recebem DatabaseEnvironment | sem seletor zero connect/read/write/migrate |
 | monitor + optional_postgres_for_monitor_supervisor_snapshot() | contexto selecionado propaga ao caminho auxiliar; flag ausente falha fechado | zero resolução por postgres_url_from_env e zero query sem seletor |
 | backtest e orders retention-purge | persist=true e purge recebem o seletor; persist=false não abre PG | sem seletor zero connect/migrate/delete; ambiente trading não escolhe DB |
@@ -118,7 +119,7 @@ Testes unitários são offline, usam sentinelas e connector falso, sem carregar 
 ## Rollout local e rollback
 
 1. Após acordo dos novos seams e G1, inventariar e mapear todos os callers runtime de DATABASE_URL antes de código.
-2. Implementar --database-environment e resolver puro; provar RED/GREEN offline com connector falso.
+2. Após novo G1, testar o mapping puro do --environment existente para configuração de exchange e URL de banco; provar RED/GREEN offline com connector falso.
 3. Validar o Docker context/socket local e daemon identity, sem overrides, antes de qualquer operação mutável.
 4. Criar uma vez projeto/container/volume persistente por ambiente com environment-id estável e porta host fixa; manifest liga deterministicamente URL→project/container/port/image/volume/mount; manter stack atual intocado.
 5. Criar targets vazios ou exigir backup consistente/restaurável; aplicar migrations e comparar versão/checksum.
@@ -135,10 +136,10 @@ Rollback interrompe somente os container IDs validados, restaura configuração 
 - “prod local” ajuda a reproduzir configuração e migrations, mas não simula IAM, TLS, rede, backup ou operação de produção real.
 - A disponibilidade local de migrations/extensões da imagem deve ser validada nos containers novos; nenhum banco já existente é evidência automática para esse contrato.
 
-## G1 independente — ciclo final
+## G1 anterior — ciclo final do contrato supersedido
 
-**Veredito registrado:** APROVADO COM FOLLOW-UP pelo Critic independente `/root/test_safety_sdd_critic`. O review aplicou-se ao SDD canônico OpenKnowledge revisão `2640bafc0cc822d64be8734f5a2b880c7b5191b9`. Follow-up editorial: padronizar identidade persistente como `environment-id`, registrar ciclo/hash aqui e manter esse ID estável ao longo do lifecycle. Este parágrafo registra o veredito externo; não substitui a execução do follow-up nem o aceite G3 da implementação.
+**Veredito histórico:** APROVADO COM FOLLOW-UP pelo Critic independente `/root/test_safety_sdd_critic` para a revisão canônica OpenKnowledge `2640bafc0cc822d64be8734f5a2b880c7b5191b9`. Esse ciclo analisou --database-environment separado. O owner posteriormente simplificou o seam para o --environment único; portanto o veredito anterior não cobre nem aprova a mudança. O follow-up editorial sobre environment-id foi incorporado. Novo G1 independente solicitado para o mapping --environment → exchange + DB.
 
 ## Decisão solicitada e estado
 
-A proposta revisada seleciona banco por --database-environment dev|prod, separado do --environment de trading; todos os callers runtime PostgreSQL passam pelo resolver, com runner de teste distinto. O owner aprovou literalmente: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Compose local comprova endpoint/socket/daemon antes de mutações; environment-id persistente vincula URLs estáveis a recursos identificados e governa up/stop/start/migrate/backup/cleanup. Destino remoto não é configurado. Status permanece proposed; implementação G3 e follow-up independente ainda precisam ser verificados antes de aceite.
+A proposta atual usa somente --environment dev|prod para selecionar exchange e DB coerentemente: dev → Testnet + BOT_DATABASE_URL_DEV; prod → live + BOT_DATABASE_URL_PROD. Todos os callers runtime PostgreSQL passam pelo resolver que recebe o Environment compartilhado; runner de integração usa somente BOT_PG_TEST_DATABASE_URL descartável e não envia ordens. O veredito G1 anterior foi supersedido pela mudança de seam; novo G1 independente está pendente. Compose local continua restrito a endpoint/socket/daemon verificado e environment-id persistente. Destino remoto não é configurado. Status permanece proposed; não implementar até novo G1.
