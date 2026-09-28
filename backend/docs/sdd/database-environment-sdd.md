@@ -55,18 +55,23 @@ Compose deve criar projetos exclusivos por ambiente e execução, como bot-db-en
 
 Cada operação nomeia explicitamente project + service/container + volume validados. Proibidos: down sem identidade validada, down -v, docker system prune, volume prune, rm amplo ou nomes parciais. Cleanup só remove IDs criados pelo runner após revalidar labels/IDs/mount sources. Dev nunca opera recursos prod. Inventariar stack atual antes de criar recursos; não reatribuir volumes nem migrar o stack existente. Bind somente loopback ou rede privada Docker; credenciais não ficam em texto fixo no Compose.
 
-## Matriz de callers runtime e contrato
+## Matriz de callers runtime e ferramentas
 
-| Caller | Uso PostgreSQL documentado | Mudança proposta |
+A regra proposta é abrangente: todo caller runtime que conecta, lê, escreve, migra ou apaga dados PostgreSQL recebe o mesmo DatabaseEnvironment e usa o resolver. Nenhum caller runtime aceita DATABASE_URL após a migração. Se um caminho não puder receber o seletor, falha fechado antes de resolver URL ou conectar.
+
+| Caller / ferramenta | Classificação e operação PostgreSQL | Caminho de seleção proposto |
 |---|---|---|
-| serve / AppDatabases::bootstrap_runtime (bootstrap_http_api) | bootstrap, hidratação de registry/owner e writes de stores habilitados | recebe DatabaseEnvironment; URL, connector e migrations usam resolver comum |
-| monitor / bootstrap_monitor_postgres e persistência opcional de market data | conexão e migration quando persistência está ativa | propaga --database-environment; sem flag não resolve URL nem conecta |
-| backtest --persist / postgres_for_cli_persist | escrita de resultados | herda database-environment global; persist=false não abre PG |
-| graph-projection drain | leitura/escrita de outbox e migration/validação PG | recebe o seletor; Neo4j segue configuração própria |
-| stores providers credentials, bots, agents e product-owner | leitura/escrita via bootstrap/store | sem leitura própria de URL; recebem AppDatabases já selecionado |
-| runner PostgreSQL de testes | conexão e migration de integração | seam separado: exige BOT_PG_TEST_DATABASE_URL + gate/identity/marker do runner; DATABASE_URL não é fallback |
+| serve / AppDatabases::bootstrap_runtime (bootstrap_http_api) | runtime transitivo: bootstrap/connect/migrations; stores de agents, bots, owner e provider credentials leem/escrevem via AppDatabases | propaga --database-environment ao resolver comum; stores não leem env por conta própria |
+| monitor / bootstrap_monitor_postgres | runtime: conexão e migrations do monitor | recebe DatabaseEnvironment; ausente → zero connect/migrate |
+| optional_postgres_for_monitor_supervisor_snapshot() | runtime transitivo: consulta snapshot/supervisor usando PostgreSQL opcional | recebe contexto do bootstrap selecionado; não chama postgres_url_from_env nem aceita DATABASE_URL; sem resolver, permanece sem DB/falha fechado |
+| backtest --persist / postgres_for_cli_persist | runtime: leitura/escrita de persistência de backtest | herda --database-environment global; persist=false não abre conexão |
+| orders CLI retention-purge | runtime CLI: abre/migra e apaga registros via postgres_url_from_env | substituir postgres_url_from_env por DatabaseEnvironment/resolver; --database-environment obrigatório; sem fallback DATABASE_URL |
+| graph-projection drain | runtime CLI: lê/escreve outbox e valida/migra PG; Neo4j é conexão separada | recebe DatabaseEnvironment no PG; Neo4j mantém seu próprio config/gate |
+| run-pg-integration-tests.sh | runner de testes de integração, não caller runtime; executa testes PG individuais | usa runner dedicado, URL BOT_PG_TEST_DATABASE_URL, gate/identity/marker; rejeita DATABASE_URL fallback antes de iniciar testes |
+| pg-v18-monitor-persistence-audit.sh | ferramenta de auditoria PG, não runtime do produto; acesso a banco só no alvo explicitamente validado | exige target/manifest isolado e URL de auditoria explícita; não faz fallback para DATABASE_URL nem escolhe dev/prod silenciosamente |
+| verify-backend-full.sh | wrapper de verificação; não conecta diretamente, pode delegar ao runner PG | encaminha apenas para run-pg-integration-tests.sh com target/gate explícitos; no modo default não resolve DATABASE_URL |
 
-Este inventário deriva de [integração dos módulos](./database-module-integration-sdd.md), [core database](./core-database-sdd.md), [configuração centralizada](./centralized-config-sdd.md) e [referência de CLI](../reference/cli-and-config.md). Implementação deve auditar toda leitura direta/transitiva de DATABASE_URL e mapear símbolo runtime a DatabaseEnvironment; qualquer caller sem resolução comum reprova aceite.
+Esta matriz consolida [integração dos módulos](./database-module-integration-sdd.md), [core database](./core-database-sdd.md), [configuração centralizada](./centralized-config-sdd.md) e [referência de CLI](../reference/cli-and-config.md), mais os callers/orders e scripts identificados no review. Antes do aceite de implementação, busca de código e inspeção de call graph devem confirmar a lista completa de acessos diretos/transitivos. Critério: nenhum acesso runtime residual a DATABASE_URL ou postgres_url_from_env; helpers transitivos recebem DatabaseEnvironment; scripts de teste/auditoria ficam em contratos explícitos separados e não são apresentados como comandos runtime.
 
 ## Seams que exigem novo acordo explícito antes de testes
 
