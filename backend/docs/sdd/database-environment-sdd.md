@@ -10,7 +10,7 @@ status: proposed
 ---
 # SDD T-DB-ENV — Ambientes dev/prod com PostgreSQL local isolado
 
-**Status: PROPOSED — o G1 anterior aprovou o seletor separado, mas esse contrato foi supersedido pelo direcionamento mais recente do owner. Novo G1 independente é necessário antes de implementação.** O owner orientou que um único --environment selecione exchange e banco. O SDD permanece proposto enquanto essa simplificação não for revisada. O objetivo autorizado é ter execução local dev e prod usando bancos locais distintos. Não há endpoint nem secret manager real de produção fornecido; este SDD não cria nem presume um.
+**Status: PROPOSED — o contrato atual ainda aguarda aprovação G1 independente.** O owner aprovou um único `--environment` para selecionar exchange e banco; o último Critic G1 apontou três bloqueios antes de qualquer implementação: par completo de credenciais live e allowlist explícita de comandos `prod`; prova de localidade/identidade antes de qualquer SQLx connector; e testes RED/GREEN que provem esses gates e a compatibilidade dev. Este SDD registra as propostas para sanar esses bloqueios. Implementação, testes com conexões reais, Docker/DB e chamadas a exchange permanecem proibidos até um novo G1 aprovado; esta revisão não roda live. O objetivo autorizado é execução local dev e prod com bancos isolados, sem submissão de ordem live.
 
 ## Contexto e objetivo
 
@@ -24,9 +24,22 @@ A proposta dá a cada execução um ambiente explícito, uma URL correspondente 
 
 - Opção pública: --environment dev|prod existente. Não adicionar --database-environment.
 - Uma única escolha de Environment é compartilhada entre exchange e DB: dev → credenciais/endpoints Spot Testnet + BOT_DATABASE_URL_DEV; prod → configuração de exchange live + BOT_DATABASE_URL_PROD.
-- Todos os callers runtime que conectam, leem, escrevem, migram ou apagam PostgreSQL recebem esse mesmo Environment e usam o resolver comum; nenhum lê DATABASE_URL diretamente nem faz fallback.
+- Todos os callers runtime que conectam, leem, escrevem, migram ou apagam PostgreSQL recebem esse mesmo `Environment` e usam o resolver comum; nenhum lê `DATABASE_URL` diretamente nem faz fallback. O resolver é o único seam até SQLx e deve devolver uma prova verificada do target local antes de criar/invocar qualquer connector.
+
+### Prova de target local antes do connector
+
+A presença de URL em `.env`, `localhost` ou uma porta com resposta **não** prova que o alvo é o PostgreSQL local autorizado: processo env pode substituir `.env`, porta pode ser ocupada/redirecionada e Docker context pode apontar a daemon remota. Portanto, o resolver seleciona `BOT_DATABASE_URL_DEV` ou `BOT_DATABASE_URL_PROD`, valida localidade e identidade sem SQLx, e só então entrega a URL ao connector. Não se permite tentativa de conexão como método de descoberta.
+
+A prova deve, antes de qualquer `PgPoolOptions`/SQLx connect:
+
+1. Rejeitar `DATABASE_URL` como runtime fallback, host não-loopback, hostname remoto, endereço/link-local/private não permitido, URL malformada, porta que não consta no manifest, database ou role diferentes dos declarados, e qualquer override de Docker para daemon desconhecida/remota (`DOCKER_HOST`, `DOCKER_CONTEXT`, SSH/TCP/HTTP).
+2. Confirmar que o manifest local de targets existe, parseia sem ambiguidade e contém exatamente uma entrada para o `Environment` selecionado, com project/service, environment-id estável, container ID, image digest/ID, volume ID/mount source, host-port→container-port e nomes esperados de database/role.
+3. Confirmar daemon Docker disponível pelo endpoint/socket local esperado e identidade local, inspecionar serviço/container e volume vivos, e comparar rótulos/IDs/image/mount/porta do estado real com o manifest e a URL selecionada. `BOT_DATABASE_URL_DEV` só pode corresponder ao manifest dev; `BOT_DATABASE_URL_PROD` somente ao manifest prod.
+4. Produzir um `VerifiedLocalPostgresTarget` imutável para aquele Environment e URL. Os callers runtime aceitam o connector somente com esse valor; URL ou prova ausente/inválida nunca chega a SQLx.
+
+Manifest ausente, corrompido, duplicado, identity mismatch, daemon/serviço/volume ausente, endereço ou porta remotos/divergentes, process env override ambíguo, falha de inspeção e qualquer erro de prova resultam em erro estável, sem URL/segredo, e **zero tentativas de connector**. Prova local apenas valida destino/identidade; não garante correção dos dados nem autoriza ordens.
 - URL selecionada ausente/vazia/inválida falha fechado antes de conexão/migration/delete. Erros e logs nunca exibem URL ou segredo.
-- O Environment resolvido aparece em logs/metadados sem credenciais. O default da configuração permanece dev; prod só é selecionado pelo valor prod, sem inferência a partir da presença de segredos.
+- O Environment resolvido aparece em logs/metadados sem credenciais. O default permanece dev; prod só é selecionado por `--environment prod`, nunca pela presença de chaves. Em qualquer comando prod que vá abrir uma conexão, migrar ou executar outra ação externa, validar antes que `BINANCE_PROD_API_KEY` e `BINANCE_PROD_API_SECRET` estejam ambos presentes, não vazios e não placeholders; ausência ou presença parcial falha antes de qualquer connector/migration/ação. A validação não chama Binance nem prova validade remota; não registra nem ecoa valores.
 
 Variáveis candidatas para acordo:
 
@@ -34,9 +47,24 @@ Variáveis candidatas para acordo:
 |---|---|
 | BOT_DATABASE_URL_DEV | URL somente para o PostgreSQL local de desenvolvimento |
 | BOT_DATABASE_URL_PROD | URL somente para o PostgreSQL local do perfil prod |
+| BOT_PG_TEST_DATABASE_URL | URL exclusiva do runner de integração para banco PostgreSQL descartável; não é fallback runtime |
 | BOT_DATABASE_ALLOW_REMOTE | Não proposta; nenhum flag libera destino remoto nesta entrega |
 
-As URLs reais permanecem em backend/.env, com permissões restritas e fora do Git. Exemplos documentam apenas nomes/forma redigida, sem credenciais ou valores copiáveis que possam ser confundidos com segredo real. Segredos locais não são copiados para snapshot de testes ou logs.
+As URLs reais permanecem em `backend/.env`, com permissões restritas e fora do Git. Exemplos documentam apenas nomes/forma redigida, sem credenciais ou valores copiáveis. `BINANCE_PROD_API_KEY` e `BINANCE_PROD_API_SECRET` são um par indivisível; runtime não usa uma metade nem cai para chaves dev/testnet. Segredos locais não são copiados para snapshot de testes ou logs.
+
+### Comandos locais suportados em `prod`
+
+`Config::validate` hoje rejeita `Environment::Prod`. G3 não deve remover essa barreira globalmente. Em vez disso, uma validação por comando deve permitir somente os casos locais abaixo e continuar rejeitando qualquer comando `prod` fora da lista:
+
+| Comando/perfil local | Decisão proposta para G3 | Pré-condições / limites |
+|---|---|---|
+| `backtest --environment prod` sem `--persist` | Permitido; fixture/simulação offline | Não abre DB, não consulta exchange, não habilita execução de ordem; par live pode estar ausente porque não há ação externa/conexão |
+| `backtest --environment prod --persist` | Permitido somente com par completo live e destino PG local provado | Credenciais verificadas antes de SQLx/migration; persiste apenas no DB associado ao manifest prod |
+| `serve --environment prod` | Permitido somente como API local em loopback, sem `--with-monitor` e com execução de ordens `Disabled` | Par live completo validado antes de qualquer DB connector/migration e antes do listener; PG local prod provado; serve não inicializa exchange |
+| `serve --environment prod --with-monitor`, monitor/TUI live, `orders retention-purge`, `graph-projection drain` e todo outro comando ausente da lista permitida | Rejeitado por padrão nesta entrega | Rejeição antes de connector, migration, listener ou chamada externa; exigir design/decisão separada para ampliar |
+| qualquer submissão de ordem live | Rejeitada e fail-closed | Chaves live presentes não habilitam ordem. Sem teste live nesta entrega; somente autorização explícita e SDD/revisão próprios poderiam alterar esse gate |
+
+A allowlist de comandos é uma decisão de contrato a ser aprovada no próximo G1. Ela permite smoke local do serviço e backtest determinístico, sem ligar o monitor à Binance live nem confundir `prod` local com autorização de trading. Um comando permitido deve rejeitar bind não-loopback, persistência sem prova de target e qualquer configuração de execução diferente de `Disabled` antes de efeitos externos.
 
 ### PostgreSQL e isolamento
 
