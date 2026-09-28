@@ -30,9 +30,11 @@ O cenário preserva os asserts atuais: snapshot inicial com runtime desabilitado
 
 ## TDD e critério de aceite
 
-- **RED:** executar o filtro exato do teste pelo runner de testes isolado aprovado. Antes da anotação `#[test]`, o filtro não encontra teste correspondente: zero testes executados. O Cargo pode retornar sucesso quando nenhum teste combina; por isso, a evidência RED é a contagem zero, e o gate deste item trata qualquer contagem diferente de um como falha.
-- **GREEN:** adicionar somente `#[test]` à função existente e repetir o mesmo filtro, com o mesmo runner e snapshot de código. Deve executar exatamente um teste e passar, preservando os asserts existentes.
-- **Verificação posterior:** quando G3 permitir a execução, rodar `cargo check --locked --offline --all-targets` e Clippy pelo mesmo caminho isolado, confirmando que o aviso de dead code desapareceu sem novos warnings desta função.
+- **Contrato necessário do wrapper:** o caminho isolado `verify-test-isolation.sh --filter <filtro>` deve interpretar o summary do Cargo e falhar fechado se a contagem de testes selecionados/executados não for exatamente um. Status de processo zero não basta. Este requisito depende do gate T-W0-06a e deve ser revisado/implementado antes de usar o wrapper como evidência para este item.
+- **Fixture do wrapper:** cobrir summaries fakes de 0, 1 e 2 testes: zero e múltiplos terminam não-zero sem reportar PASS; exatamente um permite validar o código de saída e o resultado daquele teste. O filtro continua usando `--exact`; a fixture não inicia Cargo, Docker ou serviços.
+- **RED:** antes da anotação `#[test]`, o filtro exato não encontra caso correspondente e o summary informa 0; a nova fixture deve provar que o wrapper falha fechado nesse caso, ainda que Cargo retorne status zero.
+- **GREEN:** adicionar somente `#[test]` à função existente; o mesmo filtro deve produzir summary com exatamente 1 teste executado e passar, preservando os asserts existentes.
+- **Verificação posterior:** após a fixture e a implementação do contrato no wrapper, e quando G3 permitir execução do caso, rodar `cargo check --locked --offline --all-targets` e Clippy pelo caminho isolado; confirmar que o aviso de dead code desapareceu sem novos warnings desta função.
 - Os resultados RED/GREEN e da verificação posterior devem registrar comando/filtro, contagem observada e resultado, sem conteúdo de `.env` ou segredos.
 
 ## Fases e dependências
