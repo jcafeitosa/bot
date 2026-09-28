@@ -11,7 +11,7 @@ status: proposed
 ---
 # SDD W0-06 — snapshot seguro do working tree
 
-**Status:** PROPOSTO — ciclo G1 2 foi REPROVADO independentemente: hardlinks precisam ser rejeitados explicitamente e o scanner não demonstrou cobertura de todos os campos JSON. Esta revisão de ciclo 3 remove JSON da allowlist e mantém hardlinks proibidos. Aguardando re-review G1 independente; não implementar nem executar até aprovação. O T-W0-06 (`1d215962826470071a9954ec2885035e22959bae`) segue aplicável aos demais seams e esta proposta não o amplia por si só.
+**Status:** G1 ciclo 3 APROVADO COM FOLLOW-UP pelo Critic independente. Follow-up G3: especificar a distinção entre caminho ausente na primeira observação (omissão intencional) e remoção/troca após primeira validação (abortar antes de Cargo); coberto nas provas abaixo. JSON segue fora da allowlist e hardlinks são proibidos. O T-W0-06 (`1d215962826470071a9954ec2885035e22959bae`) segue aplicável aos demais seams e esta proposta não o amplia por si só.
 
 ## Contexto e problema
 
