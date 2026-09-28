@@ -105,7 +105,7 @@ O Critic independente aprovou G1 após revisar A2–A6 contra os contratos fecha
 
 
 
-## W0-01 — fail-closed de verdade (Onda 0, proposta para G1) [SEGURANÇA]
+## W0-01 — fail-closed de verdade (Onda 0, G1 aprovado; G3 pendente) [SEGURANÇA]
 
 - **Estado desta seção: G1 aprovado por Critic independente; G3 (implementação e testes) pendente.** O owner aprovou os seams públicos e o Critic independente aprovou o design atualizado. Nenhum código ou teste desta fatia foi implementado/executado nesta entrega de documentação. Vale só para esta seção: `status: partial` no front-matter descreve o código atual e continua correto até G3.
 - **Plano:** W0-01, prioridade 1, em [master-plan](../planning/master-plan.md) §4.1.
@@ -134,7 +134,7 @@ Entre `b8370a75` e `d42b71a5`, `backend/src` mudou só em `core/database/postgre
 - **OpenAPI sem esquema de segurança (F-01-5):** `rg 'security|bearer|SecurityScheme|modifiers' presentation/http/openapi.rs` só acha a descrição textual da linha 171. Nenhuma rota declara `security`.
 - Contradições ainda abertas no código: `admin_auth.rs:1` diz "Optional fail-closed"; `disabled_fail_closed()` monta auth aberta. `cli-and-config.md:138` e o título deste SDD já dizem "ausente ou vazio = nenhuma autenticação".
 
-> **Nota de precedência (2026-09-27):** a decisão do owner acima substitui os textos antigos abaixo que exigem token no startup ou classificam rotas de forma diferente. A lista método+path de cima é a classificação aprovada; a tabela A2.2 é inventário histórico cujo rótulo de classe não prevalece quando divergir dela. A2–A6 e F1–F10 continuam como detalhes de design e validação propostos para revisão, mas não são decisões do owner sobre middleware, tabela central, guard, Host, limitador ou OpenAPI. Os critérios antigos de startup recusado e rota desconhecida 401 estão supersedidos por listener ativo e 503 para auth ausente/fraca, e 404 para rota sem classe. O Critic independente aprovou G1 para esta fatia; implementação e validação comportamental permanecem pendentes em G3.
+> **Nota de precedência (2026-09-27):** a decisão do owner acima substitui os textos antigos abaixo que exigem token no startup ou classificam rotas de forma diferente. A lista método+path de cima é a classificação aprovada; a tabela A2.2 é inventário histórico cujo rótulo de classe não prevalece quando divergir dela. A2–A6 e F1–F10 registram o design técnico aprovado em G1. Esses detalhes não alteram os contratos decididos pelo owner; mudanças de implementação em G3 devem permanecer compatíveis com eles ou voltar a G1 para nova revisão. Os critérios antigos de startup recusado e rota desconhecida 401 estão supersedidos por listener ativo e 503 para auth ausente/fraca, e 404 para rota sem classe. O Critic independente aprovou G1 para esta fatia; implementação e validação comportamental permanecem pendentes em G3.
 
 ### A1 — escopo obrigatório e follow-ups
 
@@ -260,7 +260,7 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
 
 ### A3 — proposta antiga de boot obrigatório (supersedida; não normativa)
 
-> Toda decisão desta subseção que exige `Enforced` obrigatório, encerra o processo sem token, validação fatal de token fraco ou decisão pendente de opt-out é legado. O contrato atual mantém `serve` ativo e responde 503 nas rotas protegidas sem token utilizável. A leitura única de env continua recomendação técnica contra TOCTOU, para revisão G1.
+> Toda decisão desta subseção que exige `Enforced` obrigatório, encerra o processo sem token, validação fatal de token fraco ou decisão pendente de opt-out é legado. O contrato atual mantém `serve` ativo e responde 503 nas rotas protegidas sem token utilizável. A leitura única de env continua recomendação técnica contra TOCTOU e integra o desenho aprovado em G1; deve ser implementada e validada em G3.
 
 - **Onde:** a decisão "pode subir?" roda no braço `Some(BotCommand::Serve(args))` de `main.rs`, logo depois de `Config::load` (`main.rs:104`), antes de `--with-monitor` (`:106-136`) e de `run_server` (`:137`). Assim nenhuma conexão a PG/Neo4j, migração, outbox, hidratação ou monitor acontece sem auth válida.
 - **Forma:** função pura em `core/config` (onde o token já é lido, `core/config/http/file.rs`); nenhuma leitura de env em `presentation/`. Entrada: config de auth admin (token, bindings), `allowed_hosts` (A5) e `bind`. Saída: `Enforced` ou erro estável (`admin_auth_not_configured`, `admin_auth_token_weak`, `http_allowed_hosts_required`) sem ecoar o valor.
@@ -298,7 +298,7 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
   - Cliente que acessa por IP da LAN ou nome próprio recebe 421 até o host entrar em `allowed_hosts`.
 - **Testes sem `Host`:** os 101 `Request::builder()` de teste (Contexto) passariam a receber 421. O aceite cria um helper de teste (nome proposto `test_request(method, uri)`) que já põe `Host: localhost`, e os testes existentes passam a usá-lo (mudança mecânica).
 - CORS: o código não tem layer de CORS (conferido com `rg`), então não há `Access-Control-Allow-Origin: *`; o aceite fixa isso num teste.
-- **O que protege:** DNS rebinding pelo navegador. **O que não protege:** proxy ou túnel local que reescreve `Host` para `localhost`. Esse caso só é coberto pelo token obrigatório **se o opt-out de dev for removido** (recomendação de A3). Na alternativa `DevDisabled` não há token e o túnel expõe o admin sem barreira; por isso F11 exige a heurística e a proibição documentada, e registra que ela não detecta tudo.
+- **O que protege:** DNS rebinding pelo navegador. **O que não protege:** proxy ou túnel local que reescreve `Host` para `localhost`. O Host allowlist é defesa adicional e não substitui autenticação; rotas protegidas continuam exigindo Bearer quando há token utilizável configurado e respondem 503 quando a configuração não é utilizável.
 
 ### A6 — limitador de falhas de autenticação (SEC-ADM-11, forma revisada)
 
@@ -365,7 +365,7 @@ Os critérios observáveis que prevalecem sobre os F1–F10 antigos são:
   - boot com bind não-loopback sem `allowed_hosts` → exit ≠ 0.
 - F9 (SEC-ADM-11, A6). Com N de teste pequeno: N+1 requisições com token errado numa rota `Protected` → a última é **429** com `Retry-After`; requisições com token errado a paths inexistentes não mudam o contador; em seguida, token válido → **200**; rotas `PublicRead` não mudam de status durante o bloqueio; nenhum log contém o token; o Critic confere que não há `sleep` no caminho da layer.
 - F10 (TOCTOU, F-01-2). Boot com token A no env produz `Enforced(A)`; o teste troca o env para B e monta o estado por `for_http_server(…, Enforced(A))`: requisição com B → 401, com A → 200.
-- F11 (só se o owner mantiver `DevDisabled`). Com opt-out ativo: requisição com `X-Forwarded-For`, `X-Forwarded-Host` ou `Forwarded` → **403** (heurística anti-túnel do SEC-ADM-02, §2.1 E0-T do TM); `Host: example.ngrok.app` → 421; `WARN` no boot; `cli-and-config.md` proíbe operar o opt-out atrás de túnel ou proxy. A entrega registra que a heurística **não detecta** túnel que não acrescenta esses headers (ex.: `ssh -R`), que é o motivo da recomendação de remover o opt-out.
+
 
 ### Divergências registradas (Critic × código × threat model)
 
@@ -377,7 +377,7 @@ Os critérios observáveis que prevalecem sobre os F1–F10 antigos são:
   - SEC-ADM-04 fala em layer "no sub-router admin/mutante"; este SDD aplica a layer ao router inteiro (mais restritivo).
   - `GET /meta`, `GET /config/active` e `GET /monitor/snapshot` são `Protected` aqui e não estão na lista mínima do SEC-ADM-05.
   - SEC-ADM-11: o TM ainda diz "429 com backoff crescente"; este SDD usa 429 com `Retry-After`, sem atraso no servidor, contando só 401 em rotas `Protected` casadas (A6).
-  - SEC-ADM-02 e SEC-ADM-13 ("exceto opt-out dev em loopback"): se o owner aceitar remover o opt-out, os dois perdem a menção.
+
   - SEC-ORG-33 usa `Owner`/`Org`; o nome adotado é `Org`.
   - A lista "Documentação que afirma fail-closed" do TM já está alinhada (só resta `admin_auth.rs:1`).
 - O Critic citou `state.rs:157` como "construtor de produção". É código de produção (`pub`, fora de `#[cfg(test)]`); no HEAD não há chamador fora de testes. Mesmo assim vira `#[cfg(test)]` (A3).
