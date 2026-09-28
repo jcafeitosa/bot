@@ -135,9 +135,11 @@ Para passar C4 de CI em G4, o workflow deve iniciar o digest exato como service 
 
 ### C0 — checker Rust AST
 
-Criar binário checker independente em `backend/scripts/pg-manifest-checker/`, com versões/features de `syn` fixadas no lockfile, usando `syn::parse_file` e `syn::visit::Visit`. Percorrer arquivos `.rs` rastreados sob `backend/src`, módulos inline, `ItemFn`, blocos e `ExprCall`; extrair nome qualificado, caminho relativo e linha/coluna da chamada direta ao helper cujo último segmento do caminho seja `database_for_integration_test`. Comparar conjunto exato extraído com `PG_TESTS`, reportando divergências e origens. Reconhecer somente `#[test]` e `#[tokio::test]` (formas observadas), também em `async fn`; novos atributos exigem suporte e fixture explícitos.
+Criar binário checker independente em `backend/scripts/pg-manifest-checker/`, com versões/features de `syn` fixadas no lockfile, usando `syn::parse_file` e `syn::visit::Visit`. Percorrer arquivos `.rs` rastreados sob `backend/src`, módulos inline, `ItemFn`, blocos e `ExprCall`; extrair nome qualificado, caminho relativo e linha/coluna das chamadas diretas ao helper cujo último segmento do caminho seja `database_for_integration_test`. Comparar conjunto exato extraído com `PG_TESTS`, reportando divergências e origens. Reconhecer somente `#[test]` e `#[tokio::test]` (formas observadas), também em `async fn`; novos atributos exigem suporte e fixture explícitos.
 
-Fail closed para wrappers, aliases/imports, indireção por ponteiro/closure, `include!`, módulos externos via `#[path]`, macros contendo token do helper e código gerado; erros trazem arquivo/linha. Não expandir proc-macros nem inferir fluxo. Fixtures sem banco: async tokio em módulo inline passa; função sem atributo, wrapper, teste omitido, entrada fantasma e macro/include falham; menção em comentário/string é ignorada. Limite: AST não prova expansão/semântica de macros ou alcançabilidade runtime; essas formas ficam proibidas e C1 cobre execução.
+Além do manifesto, o checker proíbe em funções `#[test]`/ `#[tokio::test]` conexões PostgreSQL diretas por `PostgresDatabase::connect_from_env`, `PostgresDatabase::connect_from_url`, `Database::connect_from_env`, `Database::connect_from_url`, criação/conexão de `PgPoolOptions` e APIs equivalentes identificadas no inventário de conexões. Todas as integrações passam por `database_for_integration_test`, que é o único connector normal de teste e lê apenas o alvo dedicado verificado. A única exceção permitida é o teste canônico `core::database::postgres::tests::connect_refuses_marked_test_database`, que invoca uma vez `PostgresDatabase::connect_from_url` para provar a recusa runtime do marcador e afirma especificamente `DatabaseError::TestDatabaseMarkerPresent`. A exceção é exata por caminho qualificado e função; não se estende a helpers, wrappers, `connect_from_env`, pools diretos ou outros testes.
+
+Fail closed para wrappers, aliases/imports, indireção por ponteiro/closure, `include!`, módulos externos via `#[path]`, macros contendo tokens de conexão/helper e código gerado; erros trazem arquivo/linha e chamador. Não expandir proc-macros nem inferir fluxo. Fixtures sem banco: teste Tokio no módulo inline chamando helper passa; a exceção exata com chamada e assertion do erro passa; função sem atributo, wrapper, teste chamador omitido, entrada fantasma, macro/include e qualquer chamada direta de conexão fora da exceção falham. Fixture adversarial com `connect_from_env`/ `connect_from_url` em teste PG fora da allowlist deve ser RED; fixture equivalente usando o helper deve ser GREEN. Menção em comentário/string é ignorada. Limite: AST não prova expansão/semântica de macros ou alcançabilidade runtime; essas formas ficam proibidas e C1 cobre execução.
 
 ### C1 — chegada ao helper e término das assertions
 
@@ -195,3 +197,41 @@ O gate C4 de CI permanece pendente até execução real do workflow com o digest
 ### Próxima ação de governança
 
 Solicitar ao Critic independente nova revisão G1 deste adendo. Até o veredito registrado, W0-02 permanece `draft`, G1 pendente e implementação bloqueada.
+
+## Revisão G1 ciclo 5 — conexões de teste centralizadas no helper
+
+> Este adendo trata o finding bloqueante do Critic de que C0 enumerava chamadas do helper, mas não impedia um teste de abrir conexão PG por outra API. Prevalece sobre descrições anteriores de C0; status continua `draft`, sem aprovação G1 ou autorização de implementação.
+
+### Regra para conexões PostgreSQL em testes
+
+Toda conexão usada por testes de integração PostgreSQL deve passar por `database_for_integration_test`, o connector dedicado que valida gate, endpoint loopback, manifesto/identidade do container local e marcador antes de migrate. Chamadas de teste a `PostgresDatabase::connect_from_env`, `PostgresDatabase::connect_from_url`, `Database::connect_from_env`, `Database::connect_from_url`, criação/conexão de `PgPoolOptions` ou qualquer API equivalente são proibidas fora do connector dedicado.
+
+A única exceção é o teste unitário canônico `core::database::postgres::tests::connect_refuses_marked_test_database`. Ele precisa atravessar o connector runtime `PostgresDatabase::connect_from_url` para afirmar que runtime recusa um banco marcado; o runner fornece para esse caso somente um PG efêmero local identificado e marcado. A allowlist contém apenas esse caminho/função exato, permite uma chamada direta e exige assertion de `DatabaseError::TestDatabaseMarkerPresent`. A exceção não permite `connect_from_env`, pools diretos, wrappers, outros testes, endpoint não descartável ou alteração genérica da allowlist. O manifest o contabiliza em uma categoria de teste de guarda runtime; ele não é tratado como integração comum via helper.
+
+### C0 — detecção e fixtures adversariais
+
+C0 verifica duas propriedades de conjunto e fronteira:
+
+1. o conjunto exato de testes que chamam o helper dedicado coincide com o manifest de integrações PG, conforme C0/C1;
+2. nenhuma função de teste abre conexão PostgreSQL por API direta fora do helper, exceto a função única explicitamente allowlisted acima.
+
+O AST checker deve percorrer módulos/arquivos rastreados e atribuir cada chamada ao teste qualificado. Deve detectar conexão direta em teste mesmo que o teste não chame o helper; alias/import, wrapper, ponteiro/closure, macro/include, módulo externo `#[path]` ou código gerado que impeça prova resulta em falha fechada. Nenhum `DATABASE_URL` ou outra URL runtime legitima uma chamada direta. A exceção é comparada por caminho e nome completos, não por substring/nome curto.
+
+Fixtures determinísticas sem banco demonstram:
+- **RED:** um teste sem helper que chama `connect_from_env`, `connect_from_url` ou cria pool direto falha no checker;
+- **RED:** qualquer outro teste, wrapper ou alias que tente a conexão runtime falha;
+- **GREEN:** teste de integração que chama diretamente o helper dedicado entra uma vez no manifest;
+- **GREEN restrito:** somente o teste canônico allowlisted que chama uma vez `connect_from_url` e afirma `TestDatabaseMarkerPresent` é aceito;
+- **RED:** nome/path semelhante mas não idêntico à allowlist, ausência da assertion esperada, segunda chamada direta ou chamada `connect_from_env` dentro da exceção falham.
+
+C1 continua exigindo execução exata e evidência individual; para o teste allowlisted, o runner exige comprovação de que o alvo foi o container efêmero local marcado e que a recusa ocorreu antes de qualquer efeito de schema/migration. O checker AST demonstra cobertura de chamadas visíveis na fonte, não expansão semântica de macros; formas que escondem chamadas ficam proibidas.
+
+### Decisão, alternativas e risco
+
+A alternativa de permitir conexões diretas em testes e confiar apenas no nome `trading_bot` ou no marker foi rejeitada: não garante URL dedicada nem impede um teste não listado de selecionar o banco persistente. Conectar tudo pelo helper preserva uma única checagem de identidade e reduz bypass; a exceção específica mantém uma prova do guard runtime sem reabrir uma API genérica para integração.
+
+Risco residual: AST estático não expande macros/proc-macros nem prova fluxo dinâmico. Checker deve falhar fechado nesses constructos quando houver indício de conexão/helper, e fixtures cobrem as formas suportadas; o wrapper isolado e o runner efêmero fornecem camadas adicionais, sem substituir G3/G4.
+
+### Estado e próxima ação
+
+O finding foi traduzido em regra, allowlist estreita e provas RED/GREEN planejadas. Isso não é evidência de execução das fixtures. Requer nova revisão independente G1 antes da implementação; W0-02 permanece `draft` e implementação bloqueada.
