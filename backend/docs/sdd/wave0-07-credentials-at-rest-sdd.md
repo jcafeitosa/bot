@@ -129,7 +129,7 @@ status: draft
 | Seam | Proposta |
 |---|---|
 | Estado do cache (07a) | `NoPostgres` \| `Loaded` \| `Unavailable(not_loaded \| reload_failed \| unsupported_row_format \| kek_unavailable)` |
-| `lookup_secret` (07a) | passa a devolver `Result<Option<String>, CredentialsUnavailable>`; chamadores em `core/config/providers/file.rs` tratam `Err` como "provider não configurado" e o boot do cliente falha fechado |
+| `lookup_secret` (07a) | passa a devolver `Result<Option<Zeroizing<String>>, CredentialsUnavailable>`; chamadores em `core/config/providers/file.rs` tratam `Err` como "provider não configurado", mantêm o valor zeroizável até o cliente e o boot falha fechado |
 | Erros HTTP | 503 `provider_credentials_unavailable` (07a), 503 `provider_credentials_kek_unavailable` (07b) |
 | Formato da linha (07b) | `version INT`, `alg TEXT` (`A256GCM`), `kek_id TEXT`, `nonce BYTEA` (12 bytes), `dek_nonce BYTEA` (12 bytes), `wrapped_dek BYTEA`, `secret_ciphertext BYTEA`, `fingerprint TEXT` |
 | Origem da KEK | ver Decisões comuns, item 3 |
@@ -163,7 +163,7 @@ status: draft
 
 ## Revisão G1 proposta — escopo de cifragem em repouso para dev local
 
-**Estado:** proposta documental para G1, aguardando Critic independente e decisões do owner abaixo. O status draft do SDD e do ADR 0001 permanece. Esta revisão limita a implementação proposta ao desenvolvimento local; não declara cifragem implementada, segredo configurado, banco validado ou G1 aprovado. As regras desta seção prevalecem para o escopo e gates desta revisão. Nenhuma execução com provider, DB ou credencial real faz parte dela.
+**Estado:** proposta documental para G1, aguardando Critic independente e decisões do owner abaixo. O status draft do SDD e do ADR 0001 permanece. O Critic anterior bloqueou G1 por retorno lookup_secret não zeroizável e falta dos gates do runner PG; este WIP incorpora ambas as correções para novo review. Esta revisão limita a implementação proposta ao desenvolvimento local; não declara cifragem implementada, segredo configurado, banco validado ou G1 aprovado. As regras desta seção prevalecem para o escopo e gates desta revisão. Nenhuma execução com provider, DB ou credencial real faz parte dela.
 
 ### Sistema atual observado
 
