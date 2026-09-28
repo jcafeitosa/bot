@@ -194,3 +194,75 @@ Testes unitários serão offline, usarão sentinelas, verifier/manifest fixtures
 ## Decisão solicitada e estado
 
 A proposta atual usa somente --environment dev|prod para selecionar exchange e DB coerentemente: dev → Testnet + BOT_DATABASE_URL_DEV; prod → live + BOT_DATABASE_URL_PROD. Todos os callers runtime PostgreSQL passam pelo resolver que recebe o Environment compartilhado; runner de integração usa somente BOT_PG_TEST_DATABASE_URL descartável e não envia ordens. O veredito G1 anterior foi supersedido pela mudança de seam; novo G1 independente está pendente. Compose local continua restrito a endpoint/socket/daemon verificado e environment-id persistente. Destino remoto não é configurado. Status permanece proposed; não implementar até novo G1.
+
+## T-DB-ENV rev2 — capability não-forjável e conector vinculado à URL verificada
+
+> Adendo para nova revisão G1 após finding do Critic sobre a superfície pública de VerifiedLocalPostgresTarget. Prevalece sobre descrições anteriores que chamavam o target de “imutável” sem especificar como se prova a construção. O documento permanece proposed; esta revisão não autoriza implementação nem operação de prod.
+
+### Estado prod nesta rodada
+
+O mapeamento aprovado de seleção permanece único: --environment dev seleciona Spot Testnet + BOT_DATABASE_URL_DEV; --environment prod seleciona live + BOT_DATABASE_URL_PROD. Não criar --database-environment.
+
+Prod permanece inativo e bloqueado nesta rodada. Não ampliar a allowlist para backtest com persistência, serve/monitor, migrações, chamadas externas ou outros efeitos prod. Manter o comportamento fail-closed existente que rejeita Environment::Prod; não adicionar credenciais/config prod ao perfil ativo. Reativar prod exige configuração real, um SDD explícito que defina seu escopo e aprovação independente G1 antes de implementação ou operação. As credenciais live não são necessárias nem lidas pelo caminho dev. Ordens live continuam Disabled/rejeitadas.
+
+### Capability e seam do conector
+
+VerifiedLocalPostgresTarget é uma capability opaca que prova que o verifier selecionou e validou um destino local para o Environment e URL específicos. O tipo pode ser público o bastante para atravessar os callers runtime, mas seus campos e construtor são privados ao módulo do verifier. O único caminho de criação é LocalPostgresTargetVerifier::verify(...); nenhum outro módulo, caller, teste de integração ou desserializador cria a capability diretamente.
+
+O valor contém internamente, sem getters públicos que permitam substituir campos:
+
+- o Environment verificado;
+- a URL selecionada e validada, preservada como valor de conexão imutável e redigido em Debug/Display;
+- a identidade do target validado (entry única do manifest e identidade observada do daemon/container/volume/porta/database/role, sem segredos).
+
+Não implementar Default, Deserialize, FromStr, From de URL/environment, builder público nem construtor público para esta capability. Não aceitar capacidade serializada ou reconstruída de cache/config. Não expor string/credencial da URL em logs. A implementação do verifier só cria o valor depois de validar a correspondência completa entre Environment selecionado, URL selecionada, manifest e identidade local. Qualquer falha retorna erro estável e não produz capability.
+
+O seam de conexão tem uma única entrada conceitual, connect_verified(target: VerifiedLocalPostgresTarget) -> Result<AppDatabase, DatabaseError>. Esta forma é ilustrativa, não compromisso com nomes/concretos de tipos Rust. O conector recebe somente a capability — nunca (Environment, URL), (VerifiedLocalPostgresTarget, Url) ou configuração paralela. Internamente usa exatamente o valor de URL guardado na capability criada pelo verifier, sem reler env/config, re-resolver a seleção, aceitar override, reconstruir URL com outro source, ou permitir argumento substituto. A URL bruta não retorna ao chamador. Todos os callers runtime passam pelo mesmo verifier e entregam o valor produzido ao mesmo conector; URL ausente/inválida, erro de daemon/manifest/identity ou mismatched environment/URL resulta em zero chamadas ao conector SQLx.
+
+O verifier recebe explicitamente o Environment efetivo e o snapshot de configuração escolhido pela fronteira central; não escolhe ambiente por presença de chave. Seleção dev valida exclusivamente BOT_DATABASE_URL_DEV contra target dev; uma URL prod fornecida como candidata em dev, ou URL dev em prod, falha antes de criar a capability. Prod ainda bloqueado independentemente de par de credenciais existir.
+
+### Prova de API e mismatch
+
+A validação G3 futura deve provar comportamento e impossibilidade de uso incorreto na superfície externa:
+
+1. **Não forjável:** um compile-fail test/fixture em módulo externo tenta struct literal e construtor direto; não compila por campos/ctor privados. Fixtures adicionais tentam Default::default() e desserialização para VerifiedLocalPostgresTarget; ambos não compilam porque as traits não são implementadas. O mecanismo deve usar harness já disponível no repo ou doctest compile_fail; não adicionar dependência sem necessidade.
+2. **Sem URL substituta no conector:** fixture compile-fail tenta chamar connect_verified(capability, other_url) ou construir uma URL alternativa a partir da capability; a interface não oferece esses parâmetros/acessores e a fixture não compila. Caller só consegue entregar a capability retornada pelo verifier.
+3. **Mismatch runtime antes do conector:** com Environment::Dev e URL/manifest que designam target prod, o verifier retorna erro e um connector fake com contador observa zero invocações. Teste simétrico cobre Environment prod com URL dev, ainda que ambos os targets sejam fixtures válidas localmente.
+4. **URL exata na conexão:** para uma fixture dev válida, o verifier produz capability e o connector fake registra o valor de conexão recebido; deve ser byte-a-byte igual ao valor selecionado e validado por BOT_DATABASE_URL_DEV. A chamada não informa outra URL. A prova também verifica que o verifier não chama SQLx e que somente depois da capability válida o connector fake é invocado uma vez.
+5. **Rejeições pre-connector:** cobertura existente de host remoto, porta/DB/role divergentes, manifest ausente/corrompido/duplicado, daemon remota/ausente e identity mismatch afirma erro e contador SQLx zero. Nenhum teste de API usa DB/Docker/exchange.
+
+Estes testes observam o seam público real e o limite da capability; teste unitário do parser de URL ou do classificador isolado não substitui a prova de API. Para testes offline, verifier e connector são injetáveis/fake na interface privada necessária à unidade, sem exportar factory fake ou caminho de bypass em builds de produção. SQL real, se continuar necessário aos critérios anteriores, só G4 no runner seguro aprovado.
+
+### Arranque dev simples
+
+Caminho proposto após aprovação G1, implementação G3 e configuração dev real, sem chaves live:
+
+1. Na raiz do repositório, configurar localmente backend/.env com BOT_DATABASE_URL_DEV e as variáveis locais requeridas pelo compose. O URL deve corresponder a uma única entrada dev no manifest verificado; não copiar valores de produção nem depender de DATABASE_URL.
+2. Iniciar somente o PostgreSQL dev já identificado, sem cleanup/recriação implícita de volumes: docker compose --env-file backend/.env -f docker-compose.bot.yml up -d agents-postgres. Se o serviço/volume existente não corresponder ao manifest ou database/role esperado, parar; não reapontar, migrar ou apagar o volume automaticamente.
+3. A partir de backend/, iniciar a API local sem monitor/exchange: cargo run -- --environment dev serve --bind 127.0.0.1:8080. O bootstrap resolve dev → BOT_DATABASE_URL_DEV, valida o target local e conecta somente pela capability. Erro ou configuração incompleta falha antes de SQLx/listener.
+
+A primeira etapa de execução dev só é considerada pronta quando os valores locais e manifest reais existem e o verifier consegue provar a identidade do serviço. Este adendo não escreve .env, não inicia Compose, não faz migration nem acessa o serviço. O runner de integração continua separado e usa exclusivamente BOT_PG_TEST_DATABASE_URL.
+
+### TDD, critérios e transição
+
+- **RED/GREEN de tipo:** compile-fail para construtor/campos públicos, Default, Deserialize e URL extra no conector; GREEN quando todas as tentativas de forja/mismatch são recusadas no compile-time/API.
+- **RED/GREEN do verifier:** Environment/URL/manifest divergentes devem produzir erro antes da capability; GREEN válido só para URL/manifest/identity coerentes no modo dev.
+- **RED/GREEN do conector:** contador fake permanece zero sem capability válida; com capability válida, exatamente uma invocação recebe apenas o valor guardado pelo verifier, sem URL adicional.
+- **RED/GREEN de callers:** cada caller runtime encaminha Environment/config → verifier → capability → conector único; nenhum cria SQLx connector nem acessa URL por conta própria.
+- **Compatibilidade dev:** chave prod ausente/parcial não altera o caminho dev; seleção dev nunca lê BOT_DATABASE_URL_PROD para fallback. Dev sem URL/manifest/daemon válido continua falhando fechado antes do connector, não silenciosamente conectando via DATABASE_URL.
+
+G1 aprova estes seams e critérios antes de código/testes G3. G3 limita-se às provas offline de API, verifier, connector fake, callers e gate estático. Nenhuma mudança de configuração que habilite prod entra nesta rodada; acesso real a PostgreSQL/Docker/CI/exchange não é parte do G3 desta entrega. Se houver SQL de integração aprovado em item posterior, permanece só G4 no runner efêmero validado e não usa URL runtime.
+
+### Alternativas, riscos e rollback
+
+- **Struct público desserializável ou com construtor público:** rejeitado; qualquer caller poderia fabricar uma prova que nunca veio do verifier.
+- **Capability junto de URL ou ambiente separado no connector:** rejeitado; o par poderia divergir após a validação. A capability vincula os valores e o connector aceita apenas ela.
+- **Connector que reconsulta config/env:** rejeitado; poderia conectar a destino diferente do verificado ou selecionar outro perfil entre verificação e uso.
+- **Parâmetros genéricos (String, tuple ou builder) entre verifier e conector:** rejeitados; removem a propriedade de que só uma construção aprovada abre SQLx.
+- **Ativar agora allowlist prod com chaves presentes:** rejeitado; não há configuração real e operação prod precisa de design/aprovação explícitos separados.
+- **Risco de capability obsoleta:** manifest/container/porta podem mudar entre verificação e conexão. Antes de emitir capability, verifier confirma target vivo; tipo carrega identidade e URL correspondentes. G1/G3 devem decidir se o período entre prova e connect exige revalidação não conectante da identidade imediatamente antes do SQLx call. Divergência invalida capability e produz zero tentativa de connector.
+- **Rollback futuro:** retirar caller wiring e conector capability juntos e restaurar o perfil dev anterior sem fallback de ambiente. Não permitir que rollback habilite prod nem aceite URL solta; dados/volumes permanecem intocados.
+
+### Estado
+
+T-DB-ENV rev2 aguarda Critic G1 independente. Critérios de aceite visíveis: capability só é emitida pelo verifier; campos/ctor privados e ausência de Default/Deserialize; conector recebe apenas a capability e usa a URL exata verificada; testes compile-fail/API e mismatch provam esses invariantes; dev tem caminho de arranque documentado; prod permanece inativo. Sem hash de aprovação anterior aplicado a esta rev2. Nenhuma implementação ou validação operacional foi feita nesta atualização.
