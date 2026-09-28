@@ -235,3 +235,37 @@ Risco residual: AST estático não expande macros/proc-macros nem prova fluxo di
 ### Estado e próxima ação
 
 O finding foi traduzido em regra, allowlist estreita e provas RED/GREEN planejadas. Isso não é evidência de execução das fixtures. Requer nova revisão independente G1 antes da implementação; W0-02 permanece `draft` e implementação bloqueada.
+
+## Revisão G1 ciclo 6 — cobertura sintática do checker e allowlist estreita
+
+> Este adendo trata o follow-up de G1 sobre como C0 prova a regra acima. Prevalece sobre descrições anteriores do parser. O status fica `draft`; ainda requer verificação independente e não autoriza implementação.
+
+### Algoritmo e sintaxe coberta por C0
+
+O checker lista fontes rastreadas em `backend/src` e `backend/tests`, falha em erro de leitura/parsing e parseia cada arquivo com `syn::parse_file`. A travessia visita módulos inline, `ItemFn`, blocos, statements, expressões, closures, atributos e macro invocations; acompanha o caminho qualificado de cada módulo e cada função. Reconhece raízes de teste pelos atributos aprovados `#[test]`/`#[tokio::test]`, arquivos `backend/tests` e módulos com `#[cfg(test)]`. Um atributo de teste/codegen não reconhecido, `#[path]` em subtree de teste, `include!` de código ou fonte gerada que não possa ser examinada causa erro com arquivo/linha, em vez de ser ignorado.
+
+Para chamadas PostgreSQL, C0 mantém catálogo explícito dos símbolos proibidos (constructors/connectors `PostgresDatabase`, `Database`, `PgPoolOptions` e APIs adicionadas ao inventário W0-02). Resolve paths totalmente qualificados e imports `use` explícitos, inclusive `as` e árvores agrupadas, até seu símbolo canônico. Import wildcard em subtree de teste falha fechado quando não for possível provar que não expõe um símbolo do catálogo. O checker registra cada referência/call de connector, não só a chamada do helper.
+
+O checker constrói grafo de chamadas para chamadas de função estáticas resolvíveis. Parte de cada raiz de teste e percorre wrappers/helpers até os conectores; qualquer caminho alcançável a uma API proibida fora do helper dedicado ou da função allowlisted reprova. Referência a função connector como valor (ponteiro de função), chamada dinâmica/método cuja resolução não possa ser provada, alias não resolvido ou caminho indireto sem alvo conhecido reprova em subtree alcançável por teste. Qualquer arquivo/expressão/macros em que C0 não consiga estabelecer essas propriedades reprova fechado. A API de conexão interna ao helper dedicado é a única saída normal permitida; C0 não exige que o teste enxergue o connector interno.
+
+Macro invocations em teste são visitadas pelo token stream. `include!` e macros/atributos opacos capazes de gerar código de teste/conexão são proibidos, salvo atributos de teste explicitamente suportados e versionados com fixture. Se tokens de macro contêm símbolo de connector/helper ou o checker não consegue classificar seu efeito, falha fechado. Proc-macros que geram código de teste não são expandidas nem presumidas seguras; exigem alteração explícita do contrato C0 e fixtures antes de uso. Menções em comentários/strings não contam como chamadas.
+
+### Fixtures adversariais C0 (sem banco)
+
+A implementação C0 deve fornecer fixtures unitárias isoladas e demonstrar:
+- **GREEN:** teste com chamada direta ao helper, módulo inline `#[cfg(test)]`, `#[tokio::test]`, caminho qualificado, e import explícito alias-free percorre o helper e é listado uma vez;
+- **GREEN restrito:** somente `core::database::postgres::tests::runtime_marker_guard_against_marked_database`, uma chamada direta a `PostgresDatabase::connect_from_url` com assertion específica `TestDatabaseMarkerPresent`, passa na allowlist exata;
+- **RED:** conexão direta por `connect_from_env`, `connect_from_url` ou `PgPoolOptions` dentro do teste, inclusive via `use ... as`, árvore agrupada, chamada em wrapper alcançável, closure ou ponteiro de função;
+- **RED:** alias/import wildcard não resolvido, chamada dinâmica, `include!`, módulo de teste `#[path]`, macro com token de connector, atributo/proc-macro de geração desconhecido ou erro de parse;
+- **RED:** allowlist com nome/prefixo parecido, caminho de módulo diferente, sem assertion requerida, mais de uma chamada ou uso de `connect_from_env`;
+- **RED:** função sem atributo de teste que chama helper, teste omitido/fantasma no manifest e qualquer diferença do conjunto exato.
+
+As fixtures não conectam a Docker/PG e validam o checker, não comportamento do connector. A regra de conexão por helper continua coberta separadamente por testes TDD e pelo runner descartável.
+
+### Nome e escopo da exceção
+
+O nome canônico da exceção passa a ser `core::database::postgres::tests::runtime_marker_guard_against_marked_database` (“teste de guarda runtime/integration”). O propósito e limite permanecem: testar o connector runtime contra somente um database efêmero local marcado e afirmar `DatabaseError::TestDatabaseMarkerPresent`. Atualizar o nome não amplia a allowlist; nomes anteriores neste documento são superseded por este identificador exato.
+
+### Estado
+
+Cobertura algorítmica, limites de sintaxe, fixtures adversariais e nome da exceção estão especificados para revisão. O checker ainda não foi implementado nem validado pelas fixtures. G1 permanece pendente até o Critic aprovar a nova revisão; nenhum teste/DB foi executado.
