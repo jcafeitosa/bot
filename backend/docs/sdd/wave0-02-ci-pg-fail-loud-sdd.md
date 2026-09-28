@@ -364,3 +364,59 @@ Rollback da implementação futura reverte coordenador/injeção, query e testes
 ### Estado e próxima ação
 
 Esta é uma proposta para responder aos dois findings G1 ciclo 7: seam sem socket que conecta decisão e entrypoints runtime, e reconstrução de C3 sem connector direto em teste, complementada por SQL real via helper. O status permanece `draft`; nenhum finding é declarado fechado até Critic independente rever e aprovar o ciclo 8. O último veredito registrado segue sendo REPROVADO no ciclo 7. Implementação, PG, Docker e Testnet permanecem bloqueados até os gates correspondentes.
+
+## Proposta de revisão G1 ciclo 9 — preflight SQL antes do pool e composição única
+
+> Este adendo responde ao follow-up do Critic G1 ciclo 8: o ciclo 8 descrevia um seam fake, mas não fixava como a conexão runtime obtém o estado SQL antes de criar o pool da aplicação nem como os entrypoints provam que não o contornam. Prevalece sobre o ciclo 8 nesses pontos. Mantém status `draft`; não aprova G1 nem autoriza implementação.
+
+### Preflight SQL de runtime
+
+Quando a configuração pede PostgreSQL, o único coordenador runtime de banco executa esta sequência, na ordem indicada:
+
+1. valida a configuração/URL e a política de nome/versionamento já definida, sem iniciar pool;
+2. abre uma conexão SQLx transitória `PgConnection` com a mesma URL e timeout limitado, executa somente o lookup do marcador e fecha a conexão;
+3. classifica o resultado: marker válido presente → `TestDatabaseMarkerPresent`; tabela ausente ou presente vazia → `UNMARKED_RUNTIME`; qualquer erro inesperado, schema incompatível, dado inválido/múltiplo ou resposta ambígua → `MARKER_LOOKUP_FAILED` e aborta;
+4. somente para `UNMARKED_RUNTIME`, cria o `PgPool` da aplicação e então prossegue com migrations/bootstrap já previstos.
+
+O preflight não cria nem migra schema, não executa query de aplicação e não usa `PgPool`. Ele consulta `to_regclass('public.bot_test_database_marker')` para distinguir ausência inequívoca e lê o marker apenas quando a relação existe. Timeout, perda de conexão, permissão negada e qualquer erro SQL não podem ser convertidos em marker ausente. A conexão transitória é sempre fechada antes do pool; erro ao fechar também é registrado como falha de preflight e não libera a criação do pool.
+
+**Limite de concorrência:** o marker é um sinal de classificação do alvo no bootstrap, não uma defesa contra um principal privilegiado que altere simultaneamente o marker. O banco runtime usa papel sem permissão de criar/alterar/remover a tabela/linha; apenas setup externo controlado pode provisionar marker. A janela entre preflight e pool fica limitada a um único bootstrap e ao timeout configurado. Se G1 considerar esse modelo insuficiente, alternativa a avaliar é preservar o preflight e obter lock compartilhado de inicialização, sem abrir exceção de connector direto em testes. Não se presume que o marker sozinho prova identidade/descartabilidade: a prova do runner local continua sendo endpoint dedicado + identidade do container + digest/UUID/porta/database + marker.
+
+### Boundary única para runtime e testes injetáveis
+
+Há um só coordenador privado que implementa a sequência de preflight, classificação e criação do pool. A implementação de produção fornece dois adaptadores concretos: lookup SQL via conexão transitória e factory do pool. `serve` e `bootstrap_http_api` chamam esse coordenador; nenhum entrypoint cria pool diretamente, consulta marker após pool ou continua bootstrap com pool quando preflight falhou.
+
+O seam de teste injeta lookup e pool factory nesse mesmo coordenador. Os fakes não abrem rede. A composição real do entrypoint fornece sempre os adaptadores de produção e não lê flag/config para desativar guard; a injeção é privada ao módulo e disponível apenas aos testes/fixtures de unidade, sem exportação em build público. Testes de `serve`/`bootstrap_http_api` invocam a mesma função comum de inicialização com fakes e afirmam: marker presente e lookup error retornam erro antes da factory do pool e antes de montar/servir API; marker ausente chama a factory uma vez e continua o bootstrap simulado. Teste da função de conexão exercita essa mesma ordenação.
+
+Para provar que os entrypoints não contornam a boundary, o C0/checker deve impor a fronteira estrutural: catálogo de criação de pool PostgreSQL inclui `PgPoolOptions::connect`, `PgPool::connect`, `PgConnection::connect`/equivalentes; em fontes de runtime, criação de pool só é permitida no factory/coordenador autorizado; a conexão transitória `PgConnection::connect` só é permitida no adaptador de preflight autorizado; `serve`/bootstrap só podem alcançar o coordenador. Em código de teste, qualquer conector PG continua proibido fora do corpo interno do helper `database_for_integration_test`; não se reintroduz a exceção do teste de guarda. Método genérico `.connect()` em código alcançável por teste deve ser resolvido como não-PG qualificado e coberto por fixture, caso contrário falha fechado. Se o checker não consegue provar o módulo/call graph/import, ele falha fechado com localização. A lista exata de módulos autorizados é definida e versionada no manifesto, sem allowlist por substring.
+
+### C3 — substituição e matriz TDD atualizada
+
+C3 ciclo 9 substitui qualquer redação antiga que sugira chamar connector runtime direto em teste e completa os critérios do ciclo 8:
+
+- **Lookup SQL transitório:** integração PostgreSQL verifica a query de marker por todos os estados (tabela ausente, vazia, uma linha válida, identidade/dados inválidos, múltiplas linhas, schema incompatível e falha controlada de permissão/query). Toda conexão e SQL de fixture passam por `database_for_integration_test`; o teste chama a função real do lookup/classificador e não abre connector runtime.
+- **Ordenação do coordenador:** fakes registram chamadas. Presente → erro dedicado, zero pool factory; erro SQL/lookup → fail-closed, zero pool factory; ausente → pool factory uma vez e resultado propagado; falha ao criar pool → propagada sem expor URL. Nenhum pool é criado antes do lookup.
+- **Entry points:** `serve` e `bootstrap_http_api` devem seguir o mesmo coordenador privado. Testes com fakes provam que presente/erro bloqueiam startup antes de estado HTTP/serving e ausente alcança bootstrap depois de exatamente uma factory. Um teste estrutural/C0 comprova que os entrypoints não referenciam connector/factory alternativo.
+- **Produção:** teste/inspeção do coordenador confirma que o adaptador concreto executa o preflight com timeout, fecha a conexão transitória e só então constrói o pool; preflight error nunca aciona factory. Esse critério não será alegado como testado por uma conexão direta de teste; é coberto pelo desenho do coordenador injetável, consulta SQL via helper e regra estrutural do checker.
+- **Checker:** fixtures RED para pool/conector em `serve`, `bootstrap_http_api`, wrappers/import alias e factory alternativa; GREEN para ambos entrypoints delegando exclusivamente ao coordenador; RED para conexão PG direta em qualquer raiz de teste; GREEN restrito para SQL de teste pelo helper.
+
+| Fatia | RED / verificação adversarial | GREEN / prova | Gate de segurança |
+|---|---|---|---|
+| SQL do marker | Estado SQL inválido ou consulta falhando não pode resultar em `UNMARKED_RUNTIME` | Lookup/classificador real reconhece ausente/vazio/presente corretamente via helper | Container efêmero validado antes de SQL; sem runtime connector em teste |
+| Preflight/coordinator | Present/error deve demonstrar contador de pool factory zero | Ausente faz lookup → close → factory exatamente nessa ordem | Falha no lookup/close interrompe antes de pool/migration |
+| Entry points | Fixture de bypass/factory alternativa deve falhar C0; fake presente/error não inicia API | `serve` e `bootstrap_http_api` usam o coordinator e fake absent continua bootstrap | Nenhum endpoint runtime chama pool ou pula guard diretamente |
+| Checker estrutural | Conectores diretos em testes ou caminho runtime alternativo falham | Boundary de production connector é única e explicitamente qualificada | Fail-closed em unresolved call/import/path |
+
+Para cada comportamento executável, TDD registra RED primeiro e GREEN mínimo depois. Suites do checker e fakes são locais e não iniciam serviço. Só teste SQL real usa runner PG, e apenas após G1 e G3 revisarem a segurança do runner; nunca usar database persistente de aplicação.
+
+### Alternativas, riscos e rollback
+
+- **Criar pool e consultar marker através dele:** rejeitada; viola o requisito de consulta antes de criar/usar pool da aplicação.
+- **Usar conexão runtime direta dentro do teste para provar recusa:** rejeitada; viola a regra uniforme do checker e cria endpoint bypassável.
+- **Pré-flight não falível (erro tratado como ausente):** rejeitada; timeout, permissão ou rede falha poderia liberar acesso a banco marcado.
+- **Risco residual:** conexão transitória e pool são conexões distintas. Marker/ACL não deve ser mutável pelo papel da aplicação; se existir possibilidade normal de mutação entre preflight e pool, G1 deve exigir serialização de bootstrap/lock revisado antes de implementação. O marker é adicional à identidade descartável do runner, nunca sua substituição.
+- **Rollback futuro:** reverter adaptador de preflight, coordinator e wiring de entrypoints juntos. Não relaxar regra de checker nem deixar `serve` em caminho parcialmente antigo; rollback não toca schema, marcador ou dados do banco da aplicação.
+
+### Estado e próxima ação
+
+Este ciclo 9 propõe um mecanismo concreto: conexão transitória SQL de preflight, classificação fail-closed antes do pool, coordinator privado compartilhado e adaptadores fake só no seam de teste, mais prova estrutural de que `serve`/`bootstrap_http_api` não contornam a boundary. O status permanece `draft`. O veredito ciclo 8 permanece APROVADO COM FOLLOW-UP; este follow-up técnico requer Critic G1 independente. Nenhum código, teste, banco, Docker, CI ou exchange foi executado nesta atualização documental.
