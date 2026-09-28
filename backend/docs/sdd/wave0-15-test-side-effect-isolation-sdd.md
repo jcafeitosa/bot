@@ -73,13 +73,13 @@ Teste de persist=false prova cálculo com payload válido sem instanciar PG. Cas
 
 ## Plano de validação após G1
 
-1. Rodar wrapper default com `.env` e credenciais sentinela: gates zerados; observer, sentinelas e contadores mostram zero tentativa PG, migration, Neo4j, provider HTTP e Binance.
-2. PG: `DATABASE_URL` sozinho -> skip/0; gate sem URL/manifest -> falha antes de conectar; container identity divergente -> falha antes de conectar; marker ausente/divergente -> migration=0; identity+marker `trading_bot` corretos -> helper emite prova e migration permitida. Runtime contra marker continua recusado.
-3. Neo4j: sem gate -> connect=0; read gate com enforcement não verificável -> falha antes de connect; read-only válido -> só leitura; read path tentando write -> negado; write gate/mode incompatível -> falha; identity+marker write válidos -> projeção.
-4. HTTP: credenciais de provedores disponíveis com gate default -> DNS/socket/HTTP externo bloqueado e contador provider_http=0; mock loopback explicitamente permitido; redirect para host externo bloqueado.
+1. Wrapper default executa o processo Cargo/test completo como descendente de `strace -f -e trace=network` dentro de container com `--network=none`; auditoria falha para qualquer syscall de DNS ou sockaddr fora de loopback/Unix local, mesmo se o código ignorar o erro de conexão. Falhar fechado se tracer/container/audit faltar. Manter gates zerados e confirmar observer de efeitos PG/migration/Neo4j/provider/Binance em zero.
+2. Teste de controle do wrapper cria mocks em `127.0.0.1` e `::1` dentro do próprio namespace e prova que são permitidos; tentar resolver hostname/DNS, enviar UDP/HTTP externo ou redirect para endereço externo deve produzir registro de tentativa e código de saída de falha. Filhos também precisam aparecer no trace.
+3. PG: `DATABASE_URL` sozinho -> skip/0; gate sem URL/manifest -> falha antes de conectar; container identity divergente -> falha antes de conectar; marker ausente/divergente -> migration=0; identity+marker `trading_bot` corretos -> helper emite prova e migration permitida. Runtime contra marker continua recusado.
+4. Neo4j: sem gate -> connect=0; read gate com enforcement não verificável -> falha antes de connect; read-only válido -> só leitura; read path tentando write -> negado; write gate/mode incompatível -> falha; identity+marker write válidos -> projeção.
 5. Binance: credencial sem gate -> client/submit=0; filtro não exato/args extras -> reject antes do cliente; gate+exact+credenciais Testnet só pode rodar o teste canônico.
 6. Backtest: executar cada linha com resposta HTTP e counters; persist=false/503/401 sem DB, Bearer válido somente com PG efêmero.
-7. Guard estático de bypass e TDD RED/GREEN em seams públicos. Integrações somente após target efêmero, nenhum comando externo no default.
+7. TDD RED/GREEN sobre wrapper, parser do trace, gates e seams públicos. Auditoria dinâmica de syscalls de todos os processos substitui o guard estático como prova de egress; integração só roda por runner/target efêmero separado.
 
 ## Rollout, rollback e riscos
 
