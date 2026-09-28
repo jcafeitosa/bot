@@ -33,7 +33,7 @@ O registro da tarefa informa que a execução ampla carregou `backend/.env`, que
 - Resposta limita-se a eventos sustentados pelo registro; quando não houver log independente, explicita que não há registro preservado. O snapshot é identificado por path/hash e descrito somente como pós-evento, com conteúdo e restaurabilidade não verificados.
 - Inclui `What went well` mesmo que registre honestamente que não há evidência suficiente para identificar um fator positivo.
 - Inclui `Related` após busca no corpus de postmortems existentes; linka correspondências existentes, ou declara que a busca não encontrou postmortems relacionados.
-- Root cause e contribuintes descrevem lacunas sistêmicas (dotenv compartilhado por testes, integrações habilitadas por env), sem culpa pessoal.
+- Root cause e contribuintes descrevem o hazard confirmado de isolamento/exposição de credenciais por dotenv compartilhado e integrações elegíveis por ambiente, sem afirmar que isso causou os 80 failures ou qualquer resultado em PG/Neo4j/Binance. A causa dos failures e os resultados de efeitos externos continuam desconhecidos por causa da seleção não recuperável e saída truncada; sem culpa pessoal.
 - Ações têm equipe/role responsável, data e condição observável de conclusão; não afirmar que foram implementadas.
 - Revisão independente G3 e OpenKnowledge audit do documento, com achados registrados.
 
