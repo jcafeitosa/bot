@@ -544,12 +544,12 @@ A função real de lookup/classificação continua sendo chamada pelos sete caso
 | Estado retornado pelo lookup real | Classificação | Decisão runtime antes de pool/migration |
 |---|---|---|
 | Relação ausente (`to_regclass` retorna SQL NULL) com identidade independente verificada | `UNMARKED_RUNTIME` | prosseguir somente com o alvo já validado |
-| Relação ausente sem identidade independente válida | `MARKER_LOOKUP_FAILED` | fail-closed; zero connector, pool, migration e startup |
+| Identidade independente ausente/inválida, com estado do marker ainda desconhecido | `MARKER_LOOKUP_FAILED` | falhar antes de qualquer tentativa de connector, pool, migration e startup |
 | Relação presente, mas vazia | `MARKER_LOOKUP_FAILED` | fail-closed; zero pool, migration e startup |
 | Exatamente uma linha com marker completo e válido | `TEST_DATABASE_MARKER_PRESENT` | recusar runtime; zero pool, migration e startup |
 | Linha inválida, múltiplas linhas, schema incompatível, permissão/timeout/conexão/query error ou resultado ambíguo | `MARKER_LOOKUP_FAILED` | fail-closed; zero pool, migration e startup |
 
-A tabela anterior que agrupava ausência e relação vazia como `UNMARKED_RUNTIME` fica substituída por esta. Nos sete cenários SQL, a relação ausente é exercitada com identidade verificada (resultado unmarked) e identidade ausente/inválida (falha sem connector); a relação presente vazia agora deve produzir `MARKER_LOOKUP_FAILED`; os outros cinco cenários mantêm suas classificações fail-closed/presente conforme o contrato. As alterações de fixture seguem na transação do banco efêmero validado, com rollback; nunca são feitas no DB da aplicação.
+A tabela anterior que agrupava ausência e relação vazia como `UNMARKED_RUNTIME` fica substituída por esta. Os sete cenários SQL são: relação ausente com identidade verificada, relação presente vazia, linha válida, linha inválida, linhas múltiplas, schema incompatível e erro de query. Identidade ausente/inválida é um teste offline do verifier e deve falhar antes de abrir connector ou executar SQL; não é contada como cenário SQL. Relação presente vazia deve produzir `MARKER_LOOKUP_FAILED`; os outros cenários mantêm as classificações da tabela. As alterações SQL de fixture seguem na transação do banco efêmero validado, com rollback; nunca são feitas no DB da aplicação.
 
 ### Opt-out separado de opt-in inválido
 
