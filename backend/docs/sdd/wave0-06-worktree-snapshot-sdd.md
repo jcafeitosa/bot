@@ -1,6 +1,6 @@
 ---
 title: SDD W0-06 — snapshot seguro do working tree
-description: Propõe snapshot completo e filtrado do working tree backend para testes isolados.
+description: Proposta de allowlist e captura estável do working tree backend para testes isolados.
 tags:
   - sdd
   - backend
@@ -11,54 +11,76 @@ status: proposed
 ---
 # SDD W0-06 — snapshot seguro do working tree
 
-**Status:** PROPOSTO; exige G1 independente antes de implementação. Este desenho é um item separado do G1 já aprovado-com-follow-up do T-W0-06: amplia materialmente o contrato atual de snapshot somente de arquivos rastreados. Não autoriza implementação nem altera o seam pendente do addendum [ponto de entrada macOS](./wave0-06-macos-test-entrypoint-sdd.md).
+**Status:** PROPOSTO — ciclo G1 anterior encontrou três blockers; esta revisão os endereça, mas aguarda re-review G1 independente. Não implementar nem executar até aprovação. Este item altera materialmente o contrato de snapshot rastreado do T-W0-06, cujo G1 APROVADO COM FOLLOW-UP (`1d215962826470071a9954ec2885035e22959bae`) permanece histórico vigente para os demais seams; esta proposta não o amplia por si só.
 
 ## Contexto e problema
 
-O wrapper prepara uma cópia isolada do backend antes de compilar e executar testes no container Linux pinado. O contrato atual enumera arquivos com `git ls-files` e copia seus conteúdos do working tree, logo inclui modificações em arquivos rastreados, mas omite arquivos novos não rastreados. O helper hoje também copia recursivamente o diretório do harness como exceção local. No working tree analisado há fonte Rust não rastreada necessária ao projeto, então o snapshot pode omitir código atual e ainda executar Cargo sobre uma árvore incompleta ou obsoleta. A cópia recursiva do harness inclui arquivos gerados não necessários, como `__pycache__`.
+O wrapper compila e executa dentro do container Linux pinado a partir de snapshot isolado. O coletor atual enumera arquivos com `git ls-files`, então usa bytes do working tree para arquivos rastreados, mas omite fontes novas não rastreadas. A exceção que copia recursivamente `scripts/test-isolation` pode incluir harness e `__pycache__` não necessários. No checkout analisado há fonte não rastreada necessária; um snapshot incompleto pode compilar uma árvore diferente daquela em edição.
 
 ## Objetivo e seam
 
-Definir um único snapshot determinístico do backend para o wrapper. O coletor deve unir arquivos rastreados e seus bytes atuais do working tree com arquivos não rastreados e não ignorados de `backend/` que sejam entradas de source, build, migration ou teste. O resultado deve representar as alterações locais sem incluir segredos, estado gerado, repositório Git ou ferramentas do host.
+Produzir, antes de Cargo, snapshot determinístico que represente alterações rastreadas e entradas novas não ignoradas do backend, sem copiar credenciais, estado gerado, harness do host ou arquivos fora do escopo. O seam operacional continua sendo o helper chamado por `backend/scripts/verify-test-isolation.sh`; não se propõe uma rota de execução nova.
 
-O seam público permanece `backend/scripts/verify-test-isolation.sh`; a política de snapshot pertence ao helper chamado por esse wrapper e não muda o comando de entrada proposto para macOS. O processo de teste continua sem checkout, `.env`, Docker socket ou rede externa.
+## Allowlist e precedência
 
-## Contrato proposto do snapshot
+A seleção usa regras estáticas e versionadas pelo projeto, nunca uma regra genérica como `**/*.toml`, `**/*.json`, `**/*config*` ou “copiar tudo que Cargo mencionar”. Um path só entra quando uma regra positiva explícita o seleciona e todos os testes de canário daquela classe passam.
 
-- Enumerar arquivos rastreados, modificados ou não, e não rastreados não ignorados apenas dentro de `backend/`; copiar bytes atuais do working tree para ambos os grupos.
-- Excluir explicitamente `.env`, `.env.*` e quaisquer diretórios de segredo; nunca abrir, imprimir ou propagar seus valores. Excluir também `.git`, `target`, `logs`, `graphify-out`, `docs/graphify-out/cache`, `__pycache__` e `.DS_Store` em qualquer profundidade.
-- Não copiar recursivamente o harness `scripts/test-isolation`: seus arquivos de runtime já são incorporados à imagem pinada. Entradas do harness só entram se forem arquivos rastreados e explicitamente necessárias ao source snapshot.
-- Copiar somente arquivos regulares dos tipos de entrada suportados (manifestos/lockfiles Cargo, código Rust, scripts de build/teste e migrations/configurações de teste necessárias). Symlinks, sockets, FIFOs, dispositivos, permissões ambíguas, caminhos fora de `backend/` e formatos não suportados abortam o snapshot antes de Cargo.
-- Fazer descoberta e cópia de modo resistente a troca TOCTOU: validar caminho relativo e componentes, rejeitar symlink com `lstat`/abertura sem seguir links, conferir identidade/tipo do arquivo aberto e falhar se o conteúdo ou metadado mudar durante a captura. Manter o resultado read-only no container.
-- Verificar após cópia que o conjunto de destinos corresponde exatamente ao manifesto filtrado e que arquivos excluídos não aparecem; qualquer divergência aborta antes de Cargo. Não imprimir conteúdo nem valores de sentinelas em logs.
+Precedência normativa, da primeira condição à última:
 
-## Alternativas e decisão proposta
+1. **Negativas absolutas:** excluir antes de avaliar qualquer allowlist `.env` e `.env.*` em qualquer diretório; `.git`; `target`; `logs`; `graphify-out`; `docs/graphify-out/cache`; `__pycache__`; `.DS_Store`; `scripts/test-isolation` (harness já está baked na imagem); nomes contendo `credential`, `secret` ou `private-key`; extensões `.pem`, `.key`, `.p12` e `.pfx`. Nenhuma regra positiva pode reintroduzir path negado.
+2. **Validação do objeto:** caminho relativo deve permanecer abaixo de `backend/`; rejeitar symlink em qualquer componente, arquivos não regulares, hardlink com identidade ambígua, socket/FIFO/dispositivo, permissões ou tipo desconhecido. Rejeitar também nomes/case-collisions que não sejam reproduzíveis na plataforma do container.
+3. **Allowlist positiva exata:**
 
-1. **Somente arquivos rastreados (contrato G1 atual):** simples e previsível, mas deixa de fora fontes novas e não representa o working tree local; no checkout observado produz teste incompleto. Não é suficiente como evidência da versão que o desenvolvedor está editando.
-2. **Working tree filtrado — recomendado para novo G1:** inclui modificações rastreadas e arquivos de implementação não rastreados, preservando exclusões estritas de segredo, estado gerado, symlink e artefatos de controle. Tem maior superfície de inventário, por isso toda entrada precisa ser validada e tipos desconhecidos devem falhar fechado.
-3. **Exigir stage/commit antes do snapshot:** foi considerado, mas não recomendado como contrato principal; pode representar estado staged diferente do working tree, incentiva mudanças de índice apenas para testar e ainda exige uma regra para arquivos não staged. Continua como fallback operacional somente se o owner preferir deliberadamente testar o snapshot do índice em vez do working tree.
+| Classe permitida | Seletor de path e tipo | Canário positivo obrigatório | Canário negativo de precedência |
+|---|---|---|---|
+| Manifest/lock raiz | `Cargo.toml` e `Cargo.lock`, nomes exatos e arquivos regulares | fixture de cada arquivo aparece byte-a-byte | `.env` e `Cargo.local.toml` adjacentes permanecem ausentes |
+| Manifest de crate vendorizada | `vendor/**/Cargo.toml` apenas sob diretório de crate Rust | manifest canário em crate vendorizada entra | `.env.private` no mesmo diretório é excluído |
+| Fonte/build Rust | `build.rs` em raiz de crate e `src/**/*.rs`, `tests/**/*.rs`, `benches/**/*.rs`, `examples/**/*.rs`, `vendor/**/*.rs` | um arquivo alterado/novo por cada raiz incluída entra com bytes atuais | `.env.test` e arquivo `.key` sob raiz permitida permanecem ausentes |
+| Migration | `migrations/**/*.sql` | migration canário dentro da raiz entra | `.env.local` e `private-key.sql` permanecem ausentes |
+| Fixture de teste JSON | `tests/fixtures/**/*.json` somente; JSON de configuração fora desta raiz não entra | fixture não sensível sob a raiz entra | `.env` e arquivo JSON fora de `tests/fixtures/` não entram |
+
+Essas classes são o conjunto inicial. Qualquer nova extensão ou raiz (inclusive TOML/JSON/YAML de configuração, scripts, certificados ou fixture fora dos seletores acima) exige alteração explícita do SDD/allowlist e canários positivos e negativos próprios antes de ser usada. Arquivos de configuração genéricos não entram; não inferir segurança a partir de extensão. Conteúdo/canários nunca devem conter ou imprimir credenciais reais.
+
+## Captura segura e estabilidade
+
+Descoberta, abertura e cópia são relativas a file descriptors. Abrir a raiz `backend/` como diretório confiável; percorrer cada componente com `openat`/equivalente relativo ao descritor pai, `O_DIRECTORY|O_NOFOLLOW`, validar `fstat` e comparar identidade com `fstatat(..., AT_SYMLINK_NOFOLLOW)`. Não concatenar path e reabrir pelo caminho absoluto. Abrir o arquivo final com `O_NOFOLLOW|O_CLOEXEC`, confirmar que é arquivo regular e que device/inode/tipo coincidem com a identidade enumerada; copiar os bytes lidos daquele mesmo descritor validado para arquivo temporário novo no destino.
+
+Manter os descritores de diretório/arquivo abertos até publicar o snapshot. Conferir identidade de cada componente antes e após leitura; registrar `fstat` inicial/final (device, inode, modo, nlink, tamanho, mtime e ctime com precisão disponível), quantidade de bytes e digest do stream copiado. Verificar que a identidade de cada nome ainda corresponde aos descritores mantidos e que o digest/tamanho do conteúdo permanece estável pelo protocolo definido na implementação. Qualquer mudança de componente, metadado, comprimento, digest, ou incapacidade de provar estabilidade descarta o destino temporário e aborta antes de Cargo. Nunca retentar via path-following, checkout completo ou host.
+
+A publicação do snapshot é atômica: só tornar o diretório disponível ao wrapper depois de comparar o inventário final com o manifesto filtrado. O manifesto registra paths, tipo, tamanho e digest, sem dados de arquivo sensível. Logs mostram somente classe/código de erro e path relativo sanitizado, nunca bytes ou sentinelas.
+
+## Achados do G1 anterior e resposta desta revisão
+
+- **Allowlist vaga e exclusões sem precedência:** substituída por classes estáticas de path/tipo, exclusões absolutas antes da inclusão e canários positivos/negativos por formato/raiz; configuração genérica explicitamente excluída.
+- **TOCTOU na travessia/cópia:** definido percurso por descritor sem seguir symlink em cada componente, validação de identidade, cópia do mesmo file descriptor, protocolo de estabilidade e abort fechado. Acrescentadas fixtures de substituição de componente e mutação do arquivo aberto.
+- **Contradição com addendum macOS:** o addendum [W0-06/macOS](./wave0-06-macos-test-entrypoint-sdd.md) mantém seam oficial pendente da decisão do owner. Esta proposta não escolhe nem aprova esse seam. Ela apenas especifica como representar working tree no wrapper se a rota for aprovada; a exceção de plataforma macOS continua condicional ao aceite do owner. O target runner Linux aprovado pelo T-W0-06 não muda.
+
+## Alternativas e trade-offs
+
+1. **Somente rastreados:** simples, mas omite fontes novas e não representa o working tree ativo; não serve para evidência de código local não staged.
+2. **Working tree com allowlist — recomendado para novo G1:** representa código alterado/novo e exclui dados não pertinentes; custa mais validação e requer canários a cada classe.
+3. **Exigir stage/commit:** reduz enumeração, mas pode testar estado staged diferente do working tree e não resolve arquivos unstaged; só adotar por decisão explícita do owner.
 
 ## Provas comportamentais G3
 
-Escrever cada fixture primeiro e observar RED no helper atual, depois GREEN na implementação aprovada:
+Sem iniciar Cargo até o snapshot passar:
 
-- arquivo `.rs` novo e não ignorado aparece no snapshot com bytes idênticos;
-- alteração local a arquivo rastreado aparece com os bytes atuais do working tree;
-- `.env` e `.env.local` de fixture contêm sentinela canário não secreta, e nenhum caminho/valor canário aparece no destino ou nos logs;
-- diretórios `target`, `logs`, `graphify-out`, `docs/graphify-out/cache`, `__pycache__`, `.git` e `.DS_Store` ficam ausentes;
-- symlink para arquivo dentro e fora da raiz é rejeitado antes de leitura/cópia; FIFO/socket/dispositivo e extensão não suportada também falham;
-- manifest pós-cópia é exato; qualquer mudança concorrente entre descoberta e cópia aborta antes de iniciar Cargo;
-- mock Docker confirma que snapshot e registry têm mounts read-only, Cargo/target têm mounts dedicados, sem build/pull implícitos, `.env`, checkout ou variáveis de opt-in herdadas;
-- pré-requisitos de imagem/digest, arquitetura, versão do auditor e registry offline inválidos abortam sem executar Cargo/testes.
+- fonte Rust não rastreada e modificada rastreada entram com o conteúdo atual;
+- para cada classe da allowlist, canário positivo entra e canários de exclusão (incluindo `.env*` nas mesmas raízes) não entram; formatos/path fora da tabela são recusados ou excluídos conforme regra;
+- diretórios e harness excluídos permanecem ausentes;
+- symlink interno/externo falha sem seguir; substituir adversarialmente componente de diretório entre enumeração e `openat` falha; substituir arquivo após enumeração não copia o novo objeto por path;
+- alterar/truncar/regravar o mesmo inode enquanto o descritor está sendo copiado causa falha de estabilidade e zero comando Cargo;
+- sucesso e erro não expõem valores canário nos logs; o snapshot publicado corresponde exatamente ao manifesto;
+- mock do wrapper confirma pre-req inválido e qualquer falha de snapshot causam zero Cargo/test commands.
 
-Essas fixtures usam arquivos temporários não secretos e mocks; não iniciam Docker, bancos, exchange, rede externa ou serviço.
+Fixtures são temporárias, têm apenas sentinelas não secretas e não acessam Docker, DB, exchange ou rede.
 
 ## Riscos, rollout e rollback
 
-O maior risco é incluir entrada não confiável do working tree; mitigam-no exclusões explícitas, enumeração backend-only, allowlist de tipos, validação de caminhos/arquivos e falha antes de Cargo. Exclusões excessivas podem omitir um novo tipo de build/teste, por isso o formato deve ser adicionado deliberadamente com fixture. Mudança concorrente ou ambiguidade de filesystem deve abortar, nunca recorrer ao checkout ou host.
+Allowlist estreita pode omitir novo formato de teste; inclusão é deliberada e exige canários. Inventário do working tree não confiável pode conter troca concorrente; descritores fixos, comparação de identidade e abort em mudança mitigam a corrida. Nenhuma implementação pode enfraquecer exclusões para permitir que uma fixture passe.
 
-Até G1 aprovado e fixtures G3 revisadas, não substituir a política existente nem alegar que o wrapper testa fontes não rastreadas. Após aprovação, habilitar o novo coletor no wrapper e exigir a evidência dos testes de snapshot antes do uso como gate. Para rollback, desabilitar o wrapper como fonte de aceite de um working tree incompleto; não voltar silenciosamente a compilar Cargo no host nem tratar o snapshot rastreado como equivalente.
+Até G1 aprovado e fixtures G3 revisadas, manter explicitamente o coletor atual como estado histórico e não alegar que o wrapper verificou fontes não rastreadas. Após aprovação, implementar RED/GREEN no coletor e somente então aceitar evidência do wrapper para o working tree. Se qualquer proof de estabilidade não estiver disponível numa plataforma, falhar fechado antes de Cargo; rollback suspende o aceite pelo wrapper em vez de recorrer ao snapshot incompleto ou ao host.
 
-## Gates e dependências
+## Gate e dependências
 
-O G1 independente deve aprovar o contrato de working-tree, exclusões, allowlist de arquivos e defesa contra symlink/TOCTOU. G3 implementa com RED/GREEN comportamental no helper e no wrapper. G4 executa somente os testes unitários offline pelo entrypoint aceito depois dos gates; esta proposta não autoriza integração PG/Neo4j, Testnet, produção ou banco persistente. A decisão owner sobre wrapper oficial em macOS permanece separada e pendente conforme o addendum W0-06/macOS.
+Status atual: proposta revisada após blockers G1, re-review independente ciclo 2 pendente; sem autorização de implementação. A aprovação existente de T-W0-06 continua cobrindo o desenho anterior e demais seams, mas não esta expansão do snapshot. O addendum macOS segue separado e aguarda decisão do owner sobre o entrypoint. Nenhuma etapa aqui autoriza PG/Neo4j, Binance, produção ou banco persistente.
