@@ -15,9 +15,9 @@ status: draft
 
 ## Problema e objetivo
 
-Uma execução ampla de `cargo test` não deve descobrir credenciais locais e, por isso, conectar ou migrar bancos, gravar no Neo4j ou enviar ordens à exchange. O comportamento deve ser previsível mesmo quando `backend/.env` existe. Operações de integração precisam de opt-in específico, alvo descartável e seleção explícita do teste.
+Uma execução ampla de `cargo test` não deve inferir autorização de efeito externo pela presença de credenciais e, por isso, conectar ou migrar bancos, gravar no Neo4j ou enviar ordens à exchange. O comportamento deve ser previsível quando `backend/.env` existe ou quando o shell exporta credenciais. Integrações precisam de opt-in específico, alvo descartável e seleção explícita do teste.
 
-**Objetivo observável:** o caminho padrão da suíte não lê `.env` e não tenta rede nem persistência, mesmo se o arquivo contém credenciais; cada integração com efeitos exige autorização própria e prova do destino isolado.
+**Objetivo observável:** o caminho padrão da suíte não tenta rede nem persistência, mesmo quando credenciais estão no ambiente por causa de `.env` ou do shell; cada integração com efeitos exige opt-in próprio e prova do destino isolado.
 
 **Fora de escopo:** alterar o fluxo de configuração do runtime `serve`; mudar lógica de negócio de PG/Neo4j/exchange; executar ordem testnet ou iniciar suite PG/Neo4j durante a implementação deste SDD.
 
@@ -31,7 +31,7 @@ Uma execução ampla de `cargo test` não deve descobrir credenciais locais e, p
 
 ## Contratos públicos propostos — aguardam concordância
 
-1. **Suíte padrão:** `cargo test` não carrega dotenv em nenhum teste. `ensure_dotenv_loaded()` permanece no runtime, fora do caminho de inicialização do test harness. A presença de credenciais herdadas do shell nunca habilita por si só chamadas de integração com efeitos.
+1. **Suíte padrão:** `cargo test` pode herdar variáveis do shell ou carregar `.env` por um teste/configuração local, mas credenciais por si só nunca habilitam integrações com efeitos. Os guards PG, Neo4j e Binance exigem opt-in explícito e alvo permitido. `ensure_dotenv_loaded()` continua válido para o runtime e não deve ser tratado como autorização de teste.
 2. **PostgreSQL:** apenas `BOT_RUN_PG_INTEGRATION=1` autoriza testes PG. O helper exige ainda marcador de banco de teste e conexão para banco/instância descartável. Ausência de opt-in significa skip explícito; opt-in sem pré-requisitos falha alto e sem revelar URL/segredo.
 3. **Neo4j:** testes que escrevem ou consultam integração externa exigem opt-in próprio e instância de teste descartável identificável. A configuração de runtime/credenciais não deve habilitar esses testes automaticamente. O nome e formato desse opt-in e do marcador precisam ser definidos na revisão G1.
 4. **Binance Spot Testnet:** somente a combinação de `BOT_RUN_BINANCE_TESTNET_ORDER=1`, as duas credenciais testnet presentes e filtro exato de `integration_submits_minimal_market_buy_on_testnet` pode submeter a ordem. Fora desse comando, a suíte não faz chamada à Binance; credenciais sozinhas não habilitam a ordem. Credencial ausente ou gate incompleto não envia ordem e produz skip/mensagem diagnóstica segura.
@@ -41,7 +41,7 @@ A lista de alvos isolados deve distinguir o banco de aplicação persistente dos
 
 ## Alternativas consideradas
 
-- **Remover dotenv do processo de testes e adicionar opt-ins por efeito (proposta):** mantém testes unitários sem configuração local e torna explícita cada integração.
+- **Adicionar opt-ins por efeito, permitindo o dotenv local:** mantém a conveniência de configuração operacional sem transformar credenciais em autorização implícita para testes.
 - **Continuar carregando `.env` e exigir que o operador lembre de limpar variáveis:** simples, mas transforma credenciais locais em habilitação incidental de efeitos e depende de ambiente externo.
 - **Marcar somente a ordem como `#[ignore]`:** reduz o risco da exchange, mas deixa PG/Neo4j acoplados a `.env` e impede prova unificada de que o default não tenta persistência.
 
@@ -49,14 +49,14 @@ A lista de alvos isolados deve distinguir o banco de aplicação persistente dos
 
 O principal risco é um teste futuro introduzir acesso externo sem passar pelo gate. O verificador precisa observar tentativa, não apenas resultado: com `.env` contendo valores sentinela, a suite padrão deve concluir sem conexões PG/Neo4j, migração, chamada de rede ou ordem. O teste explícito da ordem deve ser validado por seleção exata e pelo gate de opt-in antes de qualquer acesso à rede; executar essa ordem é um efeito separado e requer a autorização já registrada pelo owner. Integrações PG/Neo4j só rodam contra alvos descartáveis com marcador.
 
-Rollout após aprovação G1: (a) tornar a suite padrão sem dotenv e adicionar guards; (b) configurar o job local/CI de PG para habilitar somente o opt-in PG contra DB isolado; (c) deixar ordem Binance e Neo4j opt-in desligados no gate geral; (d) fornecer comando dedicado para cada integração externa. Nenhuma publicação/deploy faz parte do trabalho. Rollback reverte guards e runner juntos; até então, não se executa a suite com ambiente contendo credenciais.
+Rollout após aprovação G1: (a) adicionar guards de opt-in na suite, preservando `.env` para runtime local; (b) configurar o job local/CI de PG para habilitar somente o opt-in PG contra DB isolado; (c) deixar ordem Binance e Neo4j opt-in desligados no gate geral; (d) fornecer comando dedicado para cada integração externa. Nenhuma publicação/deploy faz parte do trabalho. Rollback reverte guards e runner juntos; até então, não se executa a suite com ambiente contendo credenciais.
 
 ## Plano de validação (após G1 e seam acordado)
 
 - **RED/GREEN em seam público:** executar o test harness padrão com dotenv sentinela presente e nenhum opt-in; provar que não há tentativa de abrir conexão PG/Neo4j nem tráfego HTTP e que nenhum dado é gravado. Primeiro, o teste deve falhar na implementação atual onde o carregamento incidental produzir efeito; então implementar a menor guarda e repetir.
 - Com PG opt-in ausente, os testes PG são pulados com motivo estável e não conectam. Com PG opt-in presente, banco sem marcador/isolamento é recusado antes de conexão/migração; alvo descartável marcado executa o teste selecionado e passa.
 - Com Binance flag ausente (mesmo que as credenciais existam), teste exato não envia ordem. Com flag ligada sem filtro exato, o runner bloqueia antes de iniciar a ordem. Só o comando exato com flag e credenciais pode chegar à exchange testnet.
-- Verificar que `verify-backend-gates.sh` e a suíte padrão não sourceiam `.env`; executar smoke por interceptador local / conexão proibida que observe zero tentativas. Rodar testes de integração somente com destino isolado e opt-in respectivo.
+- Verificar que `verify-backend-gates.sh` e a suíte padrão não habilitam efeitos só porque `.env` ou variáveis herdadas contêm credenciais; executar smoke por interceptador local / conexão proibida que observe zero tentativas. Rodar testes de integração somente com destino isolado e opt-in respectivo.
 - Registrar quais testes de escrita Neo4j existem e seu gate observável antes de declarar o objetivo cumprido.
 
 Não executado neste SDD: testes, comandos de integração, conexão aos bancos, solicitação à Binance ou alteração de código/configuração.
@@ -65,7 +65,7 @@ Não executado neste SDD: testes, comandos de integração, conexão aos bancos,
 
 1. **O owner aprova estes seams públicos e os opt-ins `BOT_RUN_PG_INTEGRATION=1` e `BOT_RUN_BINANCE_TESTNET_ORDER=1`, incluindo exigir filtro exato para a ordem?** A evidência de fechamento é resposta explícita do owner; bloqueia qualquer teste ou código.
 2. **Qual contrato exato de opt-in e marcador isolado para Neo4j?** A resposta deve nomear variável, instância/database de teste e prova que a instância é descartável; decider: owner, com revisão independente de segurança/banco.
-3. **Para o default, o bloqueio deve observar zero tentativa de conexão/tráfego por interceptor ou também garantir que o processo de testes não receba credenciais do ambiente pai?** Proposta: ambos para CI/local gate reproduzível; teste em ambiente controlado decide.
+3. **Credenciais herdadas de `.env` ou do shell podem estar presentes no processo padrão de testes?** Resolvida pelo owner: `.env` é permitido para uso local; presença de credenciais não habilita efeitos. O comportamento verificável é zero tentativa de rede/persistência sem opt-in, provado por interceptador/runner em ambiente controlado.
 
 ## Aceite
 
@@ -81,7 +81,7 @@ O owner esclareceu que `.env` pode ser usado no trabalho local e que o backtest 
 
 ### Seams atualizados
 
-- O processo de testes não carrega `.env` implicitamente; configuração carregada pelo usuário para rodar o servidor não habilita integração dentro de `cargo test`.
+- O owner permite `.env` para runtime e execução local; qualquer credencial herdada pelo processo de teste continua sem habilitar integração por si só.
 - O conjunto padrão não tenta conectar ou persistir em PG/Neo4j e não chama Binance, independentemente da presença de credenciais.
 - Integração PG exige opt-in, conexão dedicada para instância descartável e marcador criado pelo setup explícito. O helper não deve aceitar apenas um marcador: a configuração/runner também deve provar identidade do alvo isolado antes de migrar. A forma exata dessa prova (variável dedicada, container id/host e validação de banco) fica para aprovação independente G1.
 - Teste Neo4j exige opt-in separado e instância dedicada descartável; configuração local ou credencial, isoladamente, não habilita operação.
@@ -90,4 +90,4 @@ O owner esclareceu que `.env` pode ser usado no trabalho local e que o backtest 
 
 ### Status de aceitação atualizado
 
-O owner fechou o princípio de não inferir autorização de efeitos a partir de `.env`, a necessidade de opt-ins/targets descartáveis e o comportamento do backtest conforme a flag. O G1 deste SDD segue **PENDENTE** até revisão técnica independente do adendo, fechamento da prova do destino descartável para PG, e confirmação dos seams específicos (nomes exatos dos opt-ins e mecanismo verificável de filtro exato). Nenhuma integração foi executada.
+O owner fechou o princípio de não inferir autorização de efeitos a partir de `.env` (que segue permitido para runtime local), a necessidade de opt-ins/targets descartáveis e o comportamento do backtest conforme a flag. O G1 deste SDD segue **PENDENTE** até revisão técnica independente do adendo, fechamento da prova do destino descartável para PG, e confirmação dos seams específicos (nomes exatos dos opt-ins e mecanismo verificável de filtro exato). Nenhuma integração foi executada.
