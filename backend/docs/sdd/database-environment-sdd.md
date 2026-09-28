@@ -10,7 +10,7 @@ status: proposed
 ---
 # SDD T-DB-ENV — Ambientes dev/prod com PostgreSQL local isolado
 
-**Status: PROPOSED — o owner aprovou o seletor separado e todos os callers no resolver; revisão G1 independente e detalhes operacionais ainda estão pendentes.** Não criar testes ou implementar até os gates restantes serem resolvidos. O objetivo autorizado é ter execução local dev e prod usando bancos locais distintos. Não há endpoint nem secret manager real de produção fornecido; este SDD não cria nem presume um.
+**Status: PROPOSED — G1 independente APROVADO COM FOLLOW-UP no ciclo final; implementação é autorizada sob os contratos descritos e o follow-up editorial está registrado abaixo.** O owner aprovou o seletor separado e todos os callers no resolver. O SDD continua proposed enquanto implementação/aceite G3 não forem concluídos. O objetivo autorizado é ter execução local dev e prod usando bancos locais distintos. Não há endpoint nem secret manager real de produção fornecido; este SDD não cria nem presume um.
 
 ## Contexto e objetivo
 
@@ -41,7 +41,7 @@ As URLs reais permanecem em backend/.env, com permissões restritas e fora do Gi
 
 ### PostgreSQL e isolamento
 
-Compose provisiona dois stacks persistentes, um por ambiente, com container, volume, database e role próprios. Cada ambiente recebe uma identidade estável (environment-id/Run ID criado uma vez e guardado no manifest), nomes únicos e porta host fixa distinta; reiniciar não cria novo UUID nem deixa a URL local apontando para volume/container antigo. BOT_DATABASE_URL_DEV/PROD ficam estáveis no .env local e o manifest associa deterministicamente cada URL a project, environment-id, container ID, porta, image digest/ID, volume ID e mount source. URL ausente ou divergente do manifest falha fechado.
+Compose provisiona dois stacks persistentes, um por ambiente, com container, volume, database e role próprios. Cada ambiente recebe uma identidade estável (environment-id criado uma vez e guardado no manifest), nomes únicos e porta host fixa distinta; reiniciar não cria novo UUID nem deixa a URL local apontando para volume/container antigo. BOT_DATABASE_URL_DEV/PROD ficam estáveis no .env local e o manifest associa deterministicamente cada URL a project, environment-id, container ID, porta, image digest/ID, volume ID e mount source. URL ausente ou divergente do manifest falha fechado.
 
 O banco prod local começa vazio e isolado. Não se restaura dump de produção nem se copia conteúdo de dev por padrão. Dados de mercado públicos e fixtures sintéticas podem ser carregados por ferramenta explicitamente identificada; dados de usuário, tokens, credenciais de exchange e provider não entram no seed. O banco dev pode ser recriado sem afetar o volume prod.
 
@@ -81,9 +81,9 @@ Esta matriz consolida [integração dos módulos](./database-module-integration-
 
 Acordo literal recebido do owner: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Isso cobre a separação do seletor em relação a --environment de trading/Binance e o requisito de migrar todos os callers runtime PostgreSQL ao resolver. A matriz documental acima está fechada para os callers/scripts identificados neste ciclo; auditoria do source/call graph ainda deve confirmar cobertura completa antes do aceite de implementação.
 
-Esse acordo não aprova detalhes não perguntados: nomes exatos BOT_DATABASE_URL_DEV/PROD, política de fallback DATABASE_URL, formato do manifest/Run ID e labels do Compose, operação/cleanup de recursos, critério de backup consistente ou target vazio, e contrato detalhado do runner PG continuam propostas sujeitas à revisão G1 e ao plano aprovado. Nenhum destino remoto está autorizado ou configurado.
+O owner também já aprovou nomes URLs/no-fallback, isolamento dos ambientes e contrato de persistência do backtest conforme registrados neste SDD. O G1 independente aprovou a proposta com follow-up. Restam como detalhes de execução a construir/verificar: manifest e labels, binding e revalidação de endpoint, lifecycle e cleanup exatos, e prova de backup consistente/restore ou alvo vazio. Nenhum destino remoto está autorizado ou configurado.
 
-Até revisão G1 e confirmação dos seams operacionais restantes, não criar testes dependentes desses detalhes nem alterar parser, config, connector, migrations ou Compose.
+A implementação pode avançar sob os seams aprovados; operação mutável de Compose, integração PostgreSQL e smoke do banco ficam bloqueados até revisão G3 independente e execução explicitamente autorizada.
 
 ## Produção remota e segurança
 
@@ -131,10 +131,14 @@ Rollback interrompe somente os container IDs validados, restaura configuração 
 
 - Há vários entrypoints que podem abrir PostgreSQL; auditoria do código runtime precisa provar que nenhum caller lê DATABASE_URL diretamente após a migração.
 - Novo flag e remoção do fallback DATABASE_URL são mudanças públicas e requerem acordo antes de testes/implementação.
-- Nomes, portas, roles e mounts do Compose devem ser por run-id; validação de labels, IDs e mount sources precisa ser implementada antes de qualquer operação mutável.
+- Nomes, portas, roles e mounts do Compose devem vincular ao environment-id estável; validação de labels, IDs e mount sources precisa ser implementada antes de qualquer operação mutável.
 - “prod local” ajuda a reproduzir configuração e migrations, mas não simula IAM, TLS, rede, backup ou operação de produção real.
 - A disponibilidade local de migrations/extensões da imagem deve ser validada nos containers novos; nenhum banco já existente é evidência automática para esse contrato.
 
+## G1 independente — ciclo final
+
+**Veredito registrado:** APROVADO COM FOLLOW-UP pelo Critic independente `/root/test_safety_sdd_critic`. O review aplicou-se ao SDD canônico OpenKnowledge revisão `2640bafc0cc822d64be8734f5a2b880c7b5191b9`. Follow-up editorial: padronizar identidade persistente como `environment-id`, registrar ciclo/hash aqui e manter esse ID estável ao longo do lifecycle. Este parágrafo registra o veredito externo; não substitui a execução do follow-up nem o aceite G3 da implementação.
+
 ## Decisão solicitada e estado
 
-A proposta revisada seleciona banco por --database-environment dev|prod, separado do --environment de trading; todos os callers runtime PostgreSQL passam pelo resolver, com runner de teste distinto. O owner aprovou literalmente: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Compose local comprova endpoint/socket/daemon antes de mutações; environment-id persistente vincula URLs estáveis a recursos identificados e governa up/stop/start/migrate/backup/cleanup. Esses detalhes seguem proposta técnica, não ampliação do acordo do owner. Destino remoto não é configurado. Status permanece proposed aguardando revisão G1 independente; não implementar, alterar bancos, Docker ou executar testes.
+A proposta revisada seleciona banco por --database-environment dev|prod, separado do --environment de trading; todos os callers runtime PostgreSQL passam pelo resolver, com runner de teste distinto. O owner aprovou literalmente: “Sim: aprovo --database-environment separado e todos os callers no resolver”. Compose local comprova endpoint/socket/daemon antes de mutações; environment-id persistente vincula URLs estáveis a recursos identificados e governa up/stop/start/migrate/backup/cleanup. Destino remoto não é configurado. Status permanece proposed; implementação G3 e follow-up independente ainda precisam ser verificados antes de aceite.
