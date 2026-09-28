@@ -304,3 +304,63 @@ Fixtures comportamentais exigidas antes de novo G3:
 ### Estado e próxima ação
 
 Este desenho aguarda Critic independente G1. Até o veredito, status permanece `draft`, nenhuma alteração de implementação é autorizada, e o veredito G1 ciclo 6 continua sendo o último veredito técnico registrado (APROVADO COM FOLLOW-UP para o desenho anterior). O código G3 já existente permanece fora do escopo desta atualização documental e deve ser reavaliado somente depois da nova aprovação G1.
+
+## Proposta de revisão G1 ciclo 8 — provar guard runtime sem conexão direta de teste
+
+> Este adendo responde ao veredito REPROVADO do Critic G1 ciclo 7. Prevalece sobre o ciclo 7 e sobre critérios C3 anteriores em conflito. Mantém o status geral em `draft`; G1 está pendente e nenhuma implementação é autorizada por esta proposta.
+
+### Seam de runtime proposto
+
+O guard do marcador será separado em duas operações injetáveis: (1) lookup de estado do marcador e (2) continuação de conexão/bootstrap. A política pura recebe um resultado tipado do lookup e decide: marcador presente retorna `TestDatabaseMarkerPresent` sem chamar o connector; lookup inconclusivo ou erro inesperado falha fechado sem chamar o connector; ausência inequívoca da relação ou relação válida sem linha classifica como `UNMARKED_RUNTIME` e permite continuar pelo connector injetado. A relação ausente é identificada por `to_regclass` retornando SQL NULL; erros de query, permissão, timeout, conexão, formato incompatível, múltiplas linhas ou resultados ambíguos são `MARKER_LOOKUP_FAILED`, nunca ausência.
+
+A injeção deve existir na fronteira interna de conexão/bootstrap, sem expor uma API pública para contornar o guard. Os testes unitários fornecem lookup falso e connector falso com contadores/valores observáveis: presença produz `TestDatabaseMarkerPresent` e zero chamadas ao connector; erro produz falha fechada e zero chamadas; ausência invoca o connector falso e segue o caminho normal simulado. A validação deve cobrir tanto a função que coordena a decisão de conexão quanto os entrypoints `serve`/`bootstrap_http_api`: marker presente ou lookup com erro impede que o bootstrap conclua/inicie o serviço; ausência continua pelo bootstrap injetado. Não abrir socket, não ler `DATABASE_URL`, não usar banco da aplicação nesses testes.
+
+O seam só é válido se o connector real de produção chamar o lookup real antes de criar/usar pool e se os entrypoints runtime compartilharem esse caminho; testes de injeção devem invocar a mesma função de coordenação que produção usa. A revisão de implementação verificará ausência de um bypass por configuração default/flag de teste e que as dependências fake não são expostas em builds de produção.
+
+### Teste comportamental real, restrito ao helper
+
+A camada de query SQL do marcador precisa de uma prova em PostgreSQL descartável. Um teste de integração cria e remove os estados de fixture por SQL através da conexão entregue por `database_for_integration_test` somente: tabela ausente, tabela presente sem linha, exatamente uma linha válida, linha/identidade inválida ou múltiplas linhas. Ele chama a função real de lookup/classificação e verifica os resultados estáveis `UNMARKED_RUNTIME`, `TEST_DATABASE_MARKER_PRESENT` ou `MARKER_LOOKUP_FAILED` conforme o estado. Erros inesperados de query devem ser provocados por fixture controlada (por exemplo, relação com schema/colunas incompatíveis ou permissão negada) e não convertidos em ausência.
+
+Este teste comprova a query SQL e a classificação usando o helper seguro; não chama `PostgresDatabase::connect_from_url`, `connect_from_env`, `PgPool::connect` nem qualquer connector runtime direto. A ligação entre classificação e recusa de conexão runtime é comprovada separadamente pelo seam injetável e pelo mesmo coordenador usado na produção. Nenhum teste acessa o banco persistente da aplicação.
+
+### C3 — critérios substitutivos completos
+
+C3 passa a exigir todos os itens abaixo; trechos anteriores que pedem teste de conexão runtime direta são substituídos:
+
+1. **Classificador puro:** casos para relação ausente e tabela vazia → `UNMARKED_RUNTIME`; exatamente um marker válido → `TEST_DATABASE_MARKER_PRESENT`; dados inválidos/múltiplos/ambíguos/erro de lookup → `MARKER_LOOKUP_FAILED`. Asserções cobrem a variante de erro e a decisão sem rede.
+2. **Coordenador da conexão:** com lookup fake presente, retorna `TestDatabaseMarkerPresent` antes do connector (contador do connector permanece zero); com lookup fake em erro, falha fechado antes do connector (contador zero); com lookup fake ausente, chama uma vez o connector fake e retorna seu resultado. Uma falha do connector fake é propagada sem URL/segredo.
+3. **Entry points runtime:** testar a função de conexão utilizada por produção e os caminhos `serve`/`bootstrap_http_api` através do seam injetável, verificando que marker presente e erro bloqueiam startup antes de publicar/servir estado; marker ausente permite que bootstrap continue com as dependências fake. Esses casos não usam `DATABASE_URL`, socket, container, nem `PostgresDatabase::connect_from_url` diretamente no teste.
+4. **SQL real via helper:** em container PostgreSQL local efêmero validado pelo runner, passar pelas formas de schema/linha listadas em “Teste comportamental real”; exigir resultado SQL real e classificação correta. O runner continua exigindo marker/identidade antes das migrations e o helper é o único ponto de conexão PG de teste.
+5. **Regra do checker:** nenhuma exceção de runtime guard. Qualquer connector PG direto em raiz de teste ou wrapper alcançável falha; a única conexão permitida permanece a implementação interna de `database_for_integration_test`. Método genérico `.connect()` só pode ser permitido quando o símbolo qualificado for demonstravelmente não-PG e coberto por fixture. Nenhuma allowlist por path, nome de teste, assertion ou dataflow.
+
+### Matriz TDD proposta
+
+| Comportamento | RED sem I/O | GREEN esperado | Regressão de segurança |
+|---|---|---|---|
+| Resultado do lookup | Fixtures puras para ausência, presença, erro, formato inválido e multiplicidade | Classificador retorna os três estados tipados corretamente | Erro nunca é interpretado como ausência |
+| Conexão de runtime | Fake lookup + fake connector com contador | Presença → erro dedicado/0 connect; erro → fail-closed/0 connect; ausência → connector fake chamado uma vez | Produção e teste usam o mesmo coordenador; nada de allowlist direta |
+| `serve`/`bootstrap_http_api` | Bootstrap com lookup/connector fake | Marker/erro impedem startup; ausência permite prosseguir pelo seam | Nenhuma conexão ou leitura de env nos testes |
+| Query SQL marker | Teste de integração pelo helper dedicado, primeiro falhando para cada estado SQL | Tabela ausente/vazia, marker válido e estados inválidos classificam conforme contrato | Runner valida container/identity/marker antes de migration; sem connector PG fora do helper |
+| Manifest checker | Fixtures com connector direto e wrappers alcançáveis | Rejeita todos; helper interno segue permitido | Checker canônico no gate propaga exit code não-zero |
+
+Antes de cada mudança comportamental, registrar comando e saída RED; depois da implementação mínima, registrar GREEN. Testes unitários/seam podem rodar sem serviço. A prova SQL só roda após aprovação G1 e runner seguro aprovado, em container efêmero local; não usar DB da aplicação, Docker de terceiros ou exchange.
+
+### Alternativas e riscos
+
+- **Exceção para o teste de guard conectar diretamente:** rejeitada; reintroduziria a superfície que causou os ciclos G3 e exigiria exceção AST/dados difíceis de provar.
+- **Somente classificador puro, sem seam no caminho runtime:** rejeitada; provaria a regra isolada, mas não que `connect_from_url` ou bootstrap a invoca.
+- **Somente integração via helper, sem injeção:** rejeitada; provaria SQL/helper, mas abriria conexão direta de runtime pelo teste ou deixaria os entrypoints runtime sem teste observável.
+- **Risco residual:** os testes fake comprovam a chamada ao coordenador e a propagação das decisões, não a infraestrutura de rede real de cada entrypoint. A query SQL real pelo helper fecha a lacuna de parsing/estado do marcador; revisão de código deve confirmar que toda construção de pool runtime passa pelo coordenador. O checker continua necessário como gate contra bypasses.
+- **Risco de fixture destrutiva:** a tabela/linhas de marker são alteradas somente no banco identificado como efêmero pelo runner; cada teste restaura o estado ou usa transação isolada. Cleanup limitado ao container do run. Falha de setup ou identidade encerra antes de SQL destrutivo/migration.
+
+### Rollout, rollback e gates
+
+A implementação só começa após Critic independente aprovar este desenho G1. Primeiro entram fixtures unitárias RED/GREEN do classificador e coordinator; depois fixtures de bootstrap; por último, o teste SQL do marker via helper no PostgreSQL efêmero. Integrar cada fatia ao checker/gate canônico e registrar comandos e saídas. Critic G3 revisa o diff congelado antes de qualquer runner PG.
+
+O rollout local permanece opt-in e limitado ao container efêmero com identity/manifest/marker validados; C4 do service container GitHub continua gate separado, exigindo evidência real do workflow. Nenhuma inicialização do serviço da aplicação, alteração de workflow, execução CI, migração do banco persistente, Testnet ou deploy faz parte desta revisão documental.
+
+Rollback da implementação futura reverte coordenador/injeção, query e testes como unidade, sem alterar banco de aplicação. Se a execução efêmera deixar container órfão, remover somente o container/volume com UUID do run depois de validar sua identidade; nunca aplicar cleanup por nome de banco genérico.
+
+### Estado e próxima ação
+
+Esta é uma proposta para responder aos dois findings G1 ciclo 7: seam sem socket que conecta decisão e entrypoints runtime, e reconstrução de C3 sem connector direto em teste, complementada por SQL real via helper. O status permanece `draft`; nenhum finding é declarado fechado até Critic independente rever e aprovar o ciclo 8. O último veredito registrado segue sendo REPROVADO no ciclo 7. Implementação, PG, Docker e Testnet permanecem bloqueados até os gates correspondentes.
