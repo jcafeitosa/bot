@@ -195,3 +195,42 @@ Antes do preflight/primeiro artefato, criar diretório por run-id com modo `0700
 Fixtures locais com supervisor, Docker e probe fakes verificam: host macOS→Docker Desktop→`linux/arm64`; mismatch de `NetworkMode`, arquitetura, label/ID, hash ou opção seccomp reprova; rota default/não-loopback presente reprova ainda que o syscall retorne `ENETUNREACH`; fixture UDP interna no controle positivo recebe o datagrama sem Internet; na execução `none`, `sendto` numérico observado com `ENETUNREACH` só passa junto à inspeção/rotas válidas; syscall aceita, resposta, errno inesperado, trace ausente/truncado ou correlação inválida falha; `EPERM` passa apenas quando nome da syscall e regra deny do profile hashado coincidem. Fakes de deadline simulam cliente Docker que não termina e daemon/container que não responde, verificam conclusão total dentro de 30s, relatório preservado e cleanup somente quando ID+label pertencem ao run-id; mismatch/ID desconhecido deixa container intocado e marca cleanup não verificado. Nenhuma fixture exige Docker real, Cargo, rede externa, banco ou exchange.
 
 Limites: o perfil suportado é este host macOS com Docker Desktop e container Linux/AArch64; outra arquitetura/runtime não pode inferir a mesma semântica e falha fechado. `ENETUNREACH` só corrobora junto das provas independentes de namespace, rotas, arquitetura e profile, nunca sozinho. Se o daemon não retorna estado/ID verificável no prazo, cleanup não pode ser garantido; o supervisor preserva evidência e não seleciona recurso por nome. Rollback remove esta emenda proposta e mantém self-test indisponível até novo desenho aprovado; não volta ao libc resolver nem amplia egress. G1 Critic independente e decisão do owner são gates prévios a qualquer implementação/TDD.
+
+## T-NEO4J-TEST-GAP-01 — testes Neo4j que hoje passam sem executar
+
+**Estado deste amendment: G1 proposto, aguardando Critic independente.** A especificação Neo4j acima já define gates READ/WRITE, alvo efêmero e --ignored --exact; a inspeção estática do código encontrou uma lacuna entre esse contrato e os testes atuais. Este amendment detalha somente a correção dessa lacuna. Não altera a topologia aprovada do T-W0-06. Não declara testes executados ou G3 aprovado.
+
+### Inventário observado
+
+neo4j_stack_enabled() em core/persistence/pg_integration.rs lê o opt-in antes de chamar load_agents_stack_from_env(). Sem opt-in exato 1, a configuração, credenciais e driver não são resolvidos. Porém, com opt-in 1, erro de configuração ou stack desabilitado atualmente é convertido para false; os callers retornam sem conexão e libtest registra sucesso. Erros que ocorrem depois da conexão tendem a falhar via .expect(). Essa distinção deve ser eliminada: opt-out significa teste não executado; opt-in inválido ou falho significa resultado não zero.
+
+Os nove callers diretos atuais de neo4j_stack_enabled() não têm #[ignore] e são descobertos pela suite default:
+
+| Classe | Filtro de teste exato no bin bot | Comportamento |
+|---|---|---|
+| READ | core::database::neo4j::integration_tests::ping_and_node_count_against_local_graph | ping e contagem de nós; sem mutação pelo teste |
+| READ | core::database::graph_query::tests::neo4j_list_agents_after_local_graph | consulta agentes existentes; sem mutação pelo teste |
+| WRITE | core::database::graph_query::neo4j_integration_tests::neo4j_supervision_chain_query_after_projection | escreve projeção e consulta cadeia |
+| WRITE | core::database::graph_query::neo4j_integration_tests::neo4j_bots_for_agent_after_catalog_and_promotion_projection | escreve projeções e consulta bots |
+| WRITE | core::database::graph_query::neo4j_integration_tests::neo4j_code_impact_for_module_after_seed | executa seed/MERGE e consulta impacto |
+| WRITE | modules::agents::adapters::graph_projection::neo4j_integration_tests::neo4j_agent_supervision_chain_after_projection | grava projeção de agentes |
+| WRITE | modules::bots::adapters::graph_projection::neo4j_integration_tests::neo4j_bot_promoted_by_after_catalog_and_promotion_projection | grava projeção de promoção de bot |
+| WRITE | modules::orders::adapters::graph_projection::neo4j_integration_tests::neo4j_order_intent_after_redacted_projection | grava projeção de intenção de ordem |
+| WRITE | modules::orders::adapters::graph_projection::neo4j_integration_tests::neo4j_submitted_edge_after_order_intent_projection | grava aresta de submissão |
+
+Hoje o wrapper verify-test-isolation.sh --filter <nome> encaminha o filtro ao sandbox_runner.sh, que executa Cargo com -- --exact. Ele não acrescenta --ignored nem distingue perfis Neo4j; portanto não é ainda uma rota válida para executar testes que passem a ser ignored.
+
+### Contrato de correção proposto
+
+1. Anotar os nove testes acima com #[ignore = "requires isolated Neo4j integration profile"]. O Cargo default não os executa nem os conta como passed; resultado informa explicitamente ignored.
+2. Expor no runner isolado perfis explícitos neo4j-read e neo4j-write. Cada perfil aceita somente os nomes completos da tabela, invoca exatamente um teste por processo com --ignored --exact, e configura somente o gate de seu perfil. READ nunca habilita WRITE. O perfil não lê .env nem herda indiscriminadamente o ambiente.
+3. Opt-out no perfil é uma decisão do runner antes de resolver configuração: não lê config/credencial, não instancia driver, não conecta; o teste permanece ignored e o runner reporta “skipped: opt-out”, distinguindo-o de GREEN. Para opt-in habilitado, config ausente/inválida, target/identity/permission mismatch, conexão, timeout ou query falha fechada com saída não zero. Nunca converter erro após opt-in em skip.
+4. WRITE aceita somente o container Neo4j efêmero, vazio e validado pelo manifest/marker do run atual, com role de escrita para essa execução. Stack persistente/runtime, configuração local como fallback e qualquer alvo não comprovado produzem zero connection attempts e falha.
+5. READ usa target efêmero separado com principal sem permissão de escrita. Antes de qualquer query de aplicação/assertion, o mesmo driver/session/principal que fará as leituras tenta uma escrita em transação descartável. GREEN exige erro de autorização emitido pelo servidor Neo4j; erro local, timeout, resultado ambíguo ou identidade divergente falha. Se escrita for aceita, rollback/cleanup é tentado e o teste falha antes das assertions. Uma nova conexão exige repetir o preflight com a mesma identidade vinculada ao manifest.
+6. Os testes READ acima não podem executar seed ou writes auxiliares. Se um comportamento de leitura exigir fixture mutável, classificar como WRITE e executá-lo exclusivamente no target WRITE efêmero.
+
+### Evidência TDD e gates
+
+G3 offline testa o classificador/gate com fakes: absent/empty opt-in não chama config loader, driver factory, connector ou query e reporta opt-out; opt-in 1 com configuração ausente/inválida, identidade/endereço divergente, falha de conexão, permissão inesperada ou query error retorna não zero. Teste de READ observa mesma identidade/driver na prova e na query, aceita somente erro server-side de autorização, e falha em sucesso, timeout ou erro local. Teste de WRITE verifica target efêmero validado e zero connector attempts em target persistente/mismatch. Contratos do runner verificam que o perfil executa somente o filtro permitido com ambos os argumentos --ignored --exact, um teste por chamada; filtros desconhecidos, perfil errado e seleção múltipla abortam antes de Cargo.
+
+G4 Neo4j real só começa após Critic aprovar este amendment e os gates de isolamento/T-W0-06 para o perfil estiverem implementados e aprovados. READ valida negação server-side com a identidade efetivamente usada; WRITE requer target efêmero. Esta proposta não autoriza execução agora. Rollback remove o novo perfil/ignores/testes sem alterar produção ou o runner unitário deny-egress; até GREEN, os nove casos permanecem documentados como não evidência de integração.
