@@ -14,7 +14,7 @@ tags:
 
 
 > **Manifest PG (verificado em `origin/main` `d42b71a5`):** `persist_dataset_rejects_conflicting_manifest_for_same_id` continua listado no script, mas **não tem fn de teste**: a implementação com `DatasetManifestConflict` foi revertida em `afe1f411`. `persist_dataset` usa `ON CONFLICT (dataset_id) DO NOTHING` (`core/persistence/mod.rs:52-59`). O script roda `cargo test --bin bot <nome>` sem `--exact`, então a entrada passa com 0 testes.
-> **Bloqueio de fechamento:** fatia técnica/doc do goal entregue (`verify-backend-gates.sh` **519**/**0** ignored, medido em `afe1f411` = código de `d42b71a5`; manifesto PG **29**, 28 com teste, `pg_integration`; CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09)); **IdP / owner humano verificável** e **Critic** `AGENTS.md` permanecem bloqueadores (bootstrap PG `0010` é fatia parcial — [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
+> **Bloqueio de fechamento:** fatia técnica/doc do goal entregue (`verify-backend-gates.sh` **519**/**0** ignored, medido em `afe1f411` = código de `d42b71a5`; manifesto PG **31** (contagem estática; execução não registrada), 28 com teste, `pg_integration`; CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09)); **IdP / owner humano verificável** e **Critic** `AGENTS.md` permanecem bloqueadores (bootstrap PG `0010` é fatia parcial — [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
 
 ## Resumo executivo
 
@@ -68,7 +68,7 @@ Evidência observada em 2026-09-27: etapa `cargo test --locked --bin bot -- --te
 | Completude agents | Registry + PG; promote capability; bootstrap `0010` + `VerifiedProductOwner` ([owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) | **Parcial** (IdP; Critic G1) |
 | Integração HTTP + camadas | OpenAPI **42** paths; boot `serve`; admin bearer; owner bootstrap + provider credentials admin CRUD; reconciliação; **62** `http_integration`; PG `pg_http_boot_*` + owner `0010`; [layer-mapping](../architecture/layer-mapping.md) | **Parcial** (IdP; política prod REST) |
 | Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes verdes | **519** + clippy/fmt/import (registro local); manifesto PG **29** (contagem estática; 1 entrada sem teste); CI `backend-ci.yml` nunca verde (0/511 runs `success`; #510 em 27/09 15:56 COT falhou no clippy do job `rust`, `postgres-integration` skipped) | **Parcial** (CI não comprovada) |
+| Build/testes observados | **520** testes no bin + clippy/fmt/import; manifesto PG **31** entradas estáticas (execução PG não registrada); CI `backend-ci.yml` nunca verde (0/511 runs `success`; #510 em 27/09 15:56 COT falhou no clippy do job `rust`, `postgres-integration` skipped) | **Parcial** (CI não comprovada) |
 | Revisão Critic | AGENTS.md | **Bloqueado** |
 
 ## Checklist do objetivo
@@ -79,7 +79,7 @@ Evidência observada em 2026-09-27: etapa `cargo test --locked --bin bot -- --te
 | Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
 | Expandir/melhorar implementação | Bots/orders/agents G2 parcial; owner bootstrap PG; provider credentials HTTP+PG; outbox Neo4j worker; HTTP **62** testes | **Parcial** (IdP; Critic; prod REST) |
 | Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes verdes | `./scripts/verify-backend-gates.sh` → **519** ok (bin `bot`) + 5 suítes `tests/`; clippy/fmt/import | Feito nesta revisão |
+| Build/testes observados | etapa do bin em `./scripts/verify-backend-gates.sh` → **520** ok; clippy/fmt/import passaram; gate parou na asserção de evidência, sem execução das 5 suítes workspace | Parcial
 | Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
 
 ## Roadmap de gates (pós-G1)
@@ -95,7 +95,7 @@ Evidência observada em 2026-09-27: etapa `cargo test --locked --bin bot -- --te
 
 ## Fechamento do goal (pendente)
 
-Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline: `verify-backend-gates.sh` → **522**/**0** ignored; `http_integration` → **62**; manifesto PG → **31** (contagem estática; incl. V18 fatia 1 `pg_persist_dataset_*` + `persist_dataset_rejects_conflicting_manifest_for_same_id`; C17 fatia 1 `pg_monitor_supervisor_snapshot_round_trip` + fatia 2 presentation/REST); OpenAPI **42** paths.
+Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline observado: etapa de testes do bin em `verify-backend-gates.sh` → **520**/**0** ignored; gate completo interrompido na asserção de evidência; `http_integration` → **62**; manifesto PG → **31** (contagem estática; incl. V18 fatia 1 `pg_persist_dataset_*` + `persist_dataset_rejects_conflicting_manifest_for_same_id`; C17 fatia 1 `pg_monitor_supervisor_snapshot_round_trip` + fatia 2 presentation/REST); OpenAPI **42** paths.
 
 | W0-09 domínio+outbox TX (falha injetada) | [monitor-persistence-v18-sdd](../sdd/monitor-persistence-v18-sdd.md) | **Pendente:** `pg_agent_identity_graph_outbox_transaction_rollback_on_injected_failure` e `pg_order_idempotency_graph_outbox_transaction_rollback_on_injected_failure` não existem em `origin/main` `d42b71a5` (fatia agents revertida em `2089a496`); W0-09 volta pelo G1 ([wave0-09-v18-verificacao-sdd](../sdd/wave0-09-v18-verificacao-sdd.md)); **defer:** W0-10 G4 CI |
 | Próxima fatia (escolha) | SDD | Bloqueio típico |
@@ -116,7 +116,7 @@ Escopo sugerido para uma instância **independente** (não substitui decisão de
 
 | Área | Artefatos | Verificação mínima |
 |------|-----------|-------------------|
-| HTTP admin seam | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md), `admin_auth.rs`, `http_integration_tests.rs`, matriz em [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token) | `./scripts/verify-backend-gates.sh` (**519** passed); `cargo test --locked --bin bot http_integration -- --test-threads=1` (**62** passed) |
+| HTTP admin seam | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md), `admin_auth.rs`, `http_integration_tests.rs`, matriz em [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token) | `./scripts/verify-backend-gates.sh` (etapa bin: **520** passed); `cargo test --locked --bin bot http_integration -- --test-threads=1` (**62** passed) |
 | Orders G2 | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) (checklist + threat model), `modules/orders/`, `order_execution.rs`, `binance_spot_testnet_submit.rs` (`redact_known_testnet_credentials`) | Confirmar `authorize_rest_use` / prod REST bloqueado; retenção ops documentada; teste `map_bot_error_redacts_*`; sem credenciais em CI |
 | Bots runtime G2 | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md), `evaluation_binding.rs`, `runtime_port.rs` | Promote capability + `evaluate_for_kind`; [matriz runtime vs serve](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial) (linha checklist **Parcial**) |
 | Product owner bootstrap G1 | [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md), `pg_owner_bootstrap.rs`, `register_owner.rs`, `meta.rs` | PG `pg_product_owner_bootstrap_*`; HTTP `agents_register_rejects_owner_mismatch_when_product_owner_verified`, `bots_runtime_promote_rejects_promoted_by_mismatch_when_product_owner_verified`, `meta_reports_product_owner_bootstrap_active_when_verified` |
