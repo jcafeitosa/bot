@@ -573,6 +573,18 @@ A camada central lê apenas a presença de `DATABASE_URL` e armazena no snapshot
 
 Em G3, testes puros do snapshot/resolver demonstram: `database_url_present=false` permite apenas a URL dedicada; presença `true` resulta em erro e zero connector; opt-out Neo4j READ/WRITE e Binance dá skip com zero chamadas a resolver/client/driver; cada opt-in `=1` com config, credencial, identidade, permissão ou conexão inválida falha não-zero sem skip. Fakes provam identidade runtime antes do connector e que tabela vazia/presente/erro não chama pool factory. O gate estrutural prova centralização de env reads sem ampliar allowlist.
 
+Para o seam de identidade runtime, adicionar provas offline com verifier e connector fake:
+
+| Fixture de entrada confiável/candidata | Resultado esperado |
+|---|---|
+| Environment dev + entrada única manifestada + observação fake do daemon/Compose concordante + URL `BOT_DATABASE_URL_DEV` cujo host/porta/database/role/options coincidem | verifier emite capability; connector fake recebe exatamente a URL armazenada e é chamado uma vez |
+| host/porta/database/role/options da URL diferem do manifest ou ambiente selecionado | verifier erra antes de capability; contador do connector permanece zero |
+| manifest diverge da inspeção fake ao vivo em daemon/context, project/service/labels, environment-id, container ID/estado, digest, volume/mount ou binding de porta | verifier erra antes de capability; zero chamadas SQLx/pool/migration |
+| manifest ausente/ambíguo/corrompido, daemon não local/desconhecido, qualquer override `DOCKER_HOST`/`DOCKER_CONTEXT` | falha fechada antes de consultar marker ou chamar connector |
+| chamada do connector com URL alternativa, ou construção manual de capability em módulo externo | API não oferece argumento/construtor público; fixture compile-fail não compila |
+
+A factory de verifier fake injeta somente a leitura do manifest/observação do daemon e retorna resultados tipados; não instancia SQLx. A mesma função de coordenação que os callers runtime usam consome o target verificado e escolhe entre zero connector ou uma chamada ao connector. A prova cobre especificamente identity→endpoint+database do valor efetivamente entregue ao SQLx, não apenas que uma validação de URL ou nome ocorreu.
+
 Os sete estados do lookup SQL real são escritos/congelados em G3 e executados somente em G4 pelo runner PG efêmero validado. G4 registra RED pré-correção, retorna a G3 para correção/revisão e reexecuta o mesmo teste em G4 para GREEN; falha de setup não conta como RED. Evidência SQL G4 permanece separada de evidência offline G3. Nenhum PostgreSQL, Docker, CI, Neo4j ou exchange foi executado nesta revisão documental.
 
 ### Alternativas, riscos, rollout e rollback
