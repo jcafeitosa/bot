@@ -108,11 +108,11 @@ Esta matriz consolida [integração dos módulos](./database-module-integration-
 
 ## Novo direcionamento do owner e estado dos gates
 
-Direcionamento do owner recebido: um único --environment seleciona exchange e banco; dev usa Testnet + BOT_DATABASE_URL_DEV, prod usa exchange live + BOT_DATABASE_URL_PROD; não existe --database-environment. Isso substitui a decisão anterior de seletor separado. O acordo prévio de migrar todos os callers runtime ao resolver e a seleção de URL por ambiente continuam aplicáveis, agora usando o Environment compartilhado.
+Direcionamento aprovado pelo owner: um único `--environment` seleciona exchange e banco; `dev` usa Spot Testnet + `BOT_DATABASE_URL_DEV`, `prod` seleciona conta live + `BOT_DATABASE_URL_PROD`; integração PG usa somente `BOT_PG_TEST_DATABASE_URL` isolada; não existe `--database-environment`. Esta decisão substitui o seletor separado anterior e continua sendo o seam público.
 
-O G1 APROVADO COM FOLLOW-UP citado abaixo aplica-se somente ao desenho anterior e não aprova o seam alterado. Solicitar novo G1 independente antes de implementar. Nomes de URL/no-fallback, isolamento local, backtest persist e integração de teste com PostgreSQL descartável seguem os contratos previamente acordados e preservados neste SDD. Os detalhes operacionais de Compose/manifest/backup permanecem como especificados. Nenhum destino remoto é configurado.
+O G1 APROVADO COM FOLLOW-UP registrado abaixo cobre somente o desenho anterior e não aprova esta revisão. O último Critic G1 manteve implementação bloqueada por três pontos: (1) par completo `BINANCE_PROD_API_KEY`/`BINANCE_PROD_API_SECRET` antes de qualquer conexão/migration/ação externa e definição inequívoca da allowlist de comandos prod apesar de `Config::validate` rejeitar `Environment::Prod`; (2) prova local de target e identidade antes do connector para todos os callers runtime, com zero tentativas se URL/host/porta/manifest/identity/daemon falharem; (3) TDD RED/GREEN dessas barreiras, da allowlist e da compatibilidade dev. Esta revisão incorpora propostas para os três; a aprovação de escopo do owner não substitui o novo G1 técnico.
 
-Testes de integração usam exclusivamente BOT_PG_TEST_DATABASE_URL apontando para PostgreSQL descartável; não utilizam URLs runtime e não enviam ordens à exchange. Testes não usam prod/live nem Spot Testnet para submissão de ordens. Implementação aguarda novo G1; Docker/DB/smoke operacional permanece bloqueado até G3 independente.
+Os contratos de no-fallback para URL, isolamento local, backtest persist e integração descartável continuam aplicáveis. Testes PG usam exclusivamente `BOT_PG_TEST_DATABASE_URL`, nunca URL runtime, sem submission de ordens. Até novo G1 aprovado: nenhuma implementação, chamada a DB/Docker/exchange ou smoke operacional. Nenhuma ordem live é permitida nesta entrega.
 
 ## Produção remota e segurança
 
@@ -120,29 +120,41 @@ Não existe endpoint ou secret manager de produção no escopo conhecido. Portan
 
 Em produção remota futura, não reutilizar .env local ou credenciais Docker locais. Um modo remoto deve ser opt-in separado, com configuração de secret manager e validação de destino; não adicionar BOT_DATABASE_ALLOW_REMOTE como bypass genérico.
 
-## Alternativa simples considerada
+## Alternativas consideradas
 
-A opção escolhida pelo owner reutiliza o `--environment` existente para selecionar conjuntamente exchange e banco, mantendo os dois domínios coerentes. A alternativa de trocar manualmente um único `DATABASE_URL` foi rejeitada porque permite conectar/migrar o banco errado. URLs permanecem em env local; dois TOMLs com URLs misturariam segredos à configuração.
+- **`--environment` compartilhado (escolhido pelo owner):** mantém exchange e database coerentes; `dev` seleciona Testnet + URL_DEV e `prod` live + URL_PROD. Um seletor de database separado foi rejeitado pelo owner porque permite perfis cruzados.
+- **`DATABASE_URL` único com troca manual (rejeitado):** operador/processo pode migrar o banco errado e `DATABASE_URL` herdado pelo process env pode sobrepor `.env`; nenhum fallback será mantido.
+- **Confiar somente em `.env`, `localhost` ou resposta da porta (rejeitado):** isso não prova qual container/volume/daemon atende ao socket. A prova de manifest + daemon/container/volume/port identity ocorre antes do connector.
+- **Conectar primeiro e inspecionar depois (rejeitado):** a tentativa já pode alcançar host remoto/serviço errado antes da validação; viola o requisito de zero connector attempts nos casos negativos.
+- **Remover globalmente a rejeição de `Environment::Prod` (rejeitado):** habilitaria monitor/exchange live e comandos não avaliados. A alternativa proposta é allowlist por comando, restrita a backtest offline e `serve` local sem monitor, e rejeitar o restante.
+- **Flag genérica para host remoto (rejeitada):** um `BOT_DATABASE_ALLOW_REMOTE` converteria erro de prova em bypass; configuração remota requer proposta/autorização separadas.
 
-## Matriz TDD e validação proposta após acordo
+URLs permanecem em env local; TOMLs não recebem segredos.
+
+## Matriz TDD e validação proposta para novo G1 (nenhuma execução nesta revisão)
 
 | Seam | RED/GREEN após acordo | Observabilidade/efeito esperado |
 |---|---|---|
 | --environment compartilhado | dev e prod mapeiam em pares coerentes exchange+DB; nenhuma opção de DB separada | teste puro prova mapping dev→testnet+URL_DEV e prod→live+URL_PROD; trading e DB nunca divergem |
-| Resolver e env vars | Environment seleciona só BOT_DATABASE_URL_DEV/PROD; nenhum DATABASE_URL runtime/fallback | URL ausente/vazia falha antes de connect/migrate; nenhum segredo em erro/log |
-| serve + stores transitivos | bootstrap, owner, agents, bots, provider credentials recebem o Environment compartilhado | sem seleção válida/URL zero connect/read/write/migrate |
-| monitor + optional_postgres_for_monitor_supervisor_snapshot() | contexto selecionado propaga ao caminho auxiliar; flag ausente falha fechado | zero resolução por postgres_url_from_env e zero query sem seletor |
-| backtest e orders retention-purge | persist=true e purge recebem o seletor; persist=false não abre PG | sem seletor zero connect/migrate/delete; ambiente trading não escolhe DB |
+| Resolver e env vars | Environment seleciona só `BOT_DATABASE_URL_DEV/PROD`; nenhum `DATABASE_URL` runtime/fallback | URL ausente/vazia falha antes de connect/migrate; nenhum segredo em erro/log |
+| Credencial prod ausente/parcial | RED: connector fake conta tentativa em `serve prod`/`backtest --persist` com ambos ausentes ou só uma chave | GREEN: falha antes do verifier/connector/migration/listener/ação externa; contador de connector = 0; mensagem não inclui valores |
+| Prova local antes do connector | RED para hostname/IP remoto, port mismatch, DB/role divergente, manifest ausente/corrompido/duplicado, IDs/volume/container/image divergentes, daemon ausente/remota/override | GREEN: cada caso negativo produz 0 tentativas SQLx, nenhuma migration/query/ação; somente URL+manifest+daemon+container identity verificados produzem `VerifiedLocalPostgresTarget` |
+| Comandos prod permitidos/rejeitados | RED: `Config::validate` hoje rejeita `Environment::Prod`; testes de dispatch exercitam allowlist por comando | GREEN: backtest offline permitido sem efeitos; backtest persist e serve loopback sem monitor só com par live+target provado; `serve --with-monitor`, monitor e comandos prod não listados rejeitados antes de efeitos; ordens live sempre rejeitadas |
+| Dev compatibility | RED/GREEN com apenas configuração/URL dev e sem chaves live | dev escolhe Spot Testnet + `BOT_DATABASE_URL_DEV`, os mesmos gates locais se aplicam antes de SQLx; ausência de chaves prod não altera dev; nenhuma URL/test credential prod é consultada |
+| Proteção live orders | RED com `BOT_ORDERS_EXECUTION=live_exchange` mesmo com par de chave presente | prod continua `Disabled`; qualquer ordem live é rejeitada sem submit; somente autorização explícita e SDD/teste live separados poderiam alterar esse gate |
+| serve + stores transitivos | bootstrap, owner, agents, bots, provider credentials recebem o Environment compartilhado e prova local verificada | sem seleção/URL/manifest/daemon/identity válidos, zero connector attempts, read/write/migrate |
+| monitor + optional_postgres_for_monitor_supervisor_snapshot() | contexto selecionado propaga ao caminho auxiliar; flag ausente falha fechado | zero resolução por `postgres_url_from_env`; qualquer falha de prova local causa zero connector attempts/query |
+| backtest e orders retention-purge | persist=true e purge recebem seletor e target provado; persist=false não abre PG | sem seletor/prova zero connector/migrate/delete; purge prod rejeitado pela allowlist desta entrega |
 | graph-projection drain | PG outbox usa destino selecionado; Neo4j é independente | zero PG access sem seletor |
 | run-pg-integration-tests.sh | integrações só rodam com runner/target/marker explícitos | default não lê DATABASE_URL nem conecta ao runtime DB |
 | pg-v18-monitor-persistence-audit.sh | ferramenta de auditoria requer target manifestado, não é CLI runtime | recusa target ausente/ambíguo antes de query; sem fallback DATABASE_URL |
 | verify-backend-full.sh | verificação composta delega integração somente ao runner separado | modo default não resolve URL nem cria conexão |
-| Docker context local | endpoint Unix local e daemon identity validados permitem operação; DOCKER_HOST/DOCKER_CONTEXT, SSH/TCP/HTTP remoto ou context alterado falham | nenhuma operação mutável antes/depois de falha de prova local |
-| Compose resource identity | labels/project/environment-id/container ID/volume ID/mount source/image/port corretos permitem operação; divergência aborta | zero mutações Docker em caso negativo; dev não alcança prod |
+| Docker context local | endpoint Unix local e daemon identity validados permitem operação; `DOCKER_HOST`/`DOCKER_CONTEXT`, SSH/TCP/HTTP remoto ou context alterado falham antes do connector | zero connector attempts e nenhuma operação mutável quando a prova não passa |
+| Compose resource identity | labels/project/environment-id/container ID/volume ID/mount source/image/port/database/role corretos permitem conexão somente se iguais ao manifest selecionado | mismatch aborta antes do SQLx; zero connector attempts; dev não alcança prod |
 | Lifecycle e URL estável | up cria uma vez; stop/start/migrate/backup preservam environment-id, porta e URL; cleanup preserva volume; destroy explícito remove apenas target validado | manifest mapeia deterministicamente URL→project/container/port/image/volume/mount; não fica URL stale nem cria volume substituto silencioso |
 | Schema/migration | alvo vazio migra; alvo ocupado requer backup consistente/restaurável | versão/checksum por alvo; database irmão inalterado |
 
-Testes unitários são offline, usam sentinelas e connector falso, sem carregar .env real. Integrações de runner/auditoria usam target e manifest explícitos descartáveis; scripts documentam que não são comandos runtime e não herdam DATABASE_URL. Esta seção define evidência futura, não execução já realizada.
+Testes unitários serão offline, usarão sentinelas, verifier/manifest fixtures e connector falso com contador, sem carregar `.env` real. Cada linha abaixo exige RED antes da implementação e GREEN após a mudança mínima. Integrações de runner/auditoria usam apenas target/manifest descartável por `BOT_PG_TEST_DATABASE_URL`; nunca herdam `DATABASE_URL` ou URL runtime. Esta matriz define evidência futura; não há execução de teste neste trabalho.
 
 ## Rollout local e rollback
 
@@ -152,7 +164,7 @@ Testes unitários são offline, usam sentinelas e connector falso, sem carregar 
 4. Criar uma vez projeto/container/volume persistente por ambiente com environment-id estável e porta host fixa; manifest liga deterministicamente URL→project/container/port/image/volume/mount; manter stack atual intocado.
 5. Criar targets vazios ou exigir backup consistente/restaurável; aplicar migrations e comparar versão/checksum.
 6. Migrar todos os callers da matriz em fatias pequenas, cada um usando o Environment compartilhado; seleção/URL inválida falha fechado.
-7. Configurar BOT_DATABASE_URL_DEV/PROD localmente; usar `--environment dev|prod`. Dev seleciona Testnet + URL_DEV e prod seleciona live + URL_PROD. Stop/start preserva URL e environment-id; revisar logs redigidos.
+7. Configurar `BOT_DATABASE_URL_DEV/PROD` localmente e usar `--environment dev|prod`. Dev seleciona Testnet + URL_DEV; prod seleciona live + URL_PROD, com par `BINANCE_PROD_API_KEY/SECRET` completo antes de qualquer connector/migration/ação externa. Prod suporta apenas backtest offline e `serve` loopback sem monitor, com execução `Disabled`, conforme tabela. Stop/start preserva URL e environment-id; revisar logs redigidos. Nenhuma ordem live é submetida.
 
 Rollback interrompe somente os container IDs validados, restaura configuração e backup consistente do mesmo environment-id se migration exigir; URL e porta continuam apontando para aquele manifest. Não recriar silenciosamente volume de stack persistente nem mudar para environment-id novo. Destroy é operação distinta, explícita e identificada por environment-id, com backup restaurável ou prova de vazio e remoção apenas após revalidar IDs/mounts. Nunca apontar prod para dev. Nenhuma ação remota está prevista.
 

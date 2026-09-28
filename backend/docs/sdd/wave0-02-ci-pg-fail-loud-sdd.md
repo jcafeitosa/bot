@@ -269,3 +269,38 @@ O nome canônico da exceção passa a ser `core::database::postgres::tests::runt
 ### Estado
 
 Cobertura algorítmica, limites de sintaxe, fixtures adversariais e nome da exceção estão especificados. O checker ainda não foi implementado nem validado pelas fixtures. **Veredito G1 ciclo 6: APROVADO COM FOLLOW-UP pelo Critic independente**, sobre a versão `5f474e3dc90052be5a7142f94b650de7f2f62f1c`. Follow-ups obrigatórios para G3: implementar o checker junto das fixtures comportamentais e demonstrar rejeição fail-closed de imports e paths externos indiretos que não possam ser resolvidos. O veredito aprova o desenho, não a implementação nem a execução; nenhum teste/DB foi executado. O status geral do SDD permanece `draft` enquanto os follow-ups G3 e os gates posteriores não forem concluídos.
+
+## Proposta de revisão G1 ciclo 7 — remover a exceção de conexão runtime
+
+> Adendo proposto pelo Orquestrador após escalonamento de três ciclos G3. Ele prevalece sobre as allowlists de guarda runtime nos ciclos anteriores se for aprovado. O documento continua `draft`; a revisão independente G1 está pendente. Este adendo não autoriza implementação nem altera o veredito G1 anterior.
+
+### Regra proposta
+
+C0 não terá exceção para teste de guarda runtime/integration. Toda chamada direta a connector PostgreSQL em função de teste ou em wrapper alcançável por uma raiz de teste reprova, incluindo `PostgresDatabase::connect_from_url`, `connect_from_env`, `PgPool::connect`, `PgConnection::connect`, `PgPoolOptions`, métodos genéricos `.connect()` não provados como não-PG, aliases, wrappers, closures e chamadas dinâmicas. A única conexão permitida no grafo de teste é a implementação interna do helper dedicado `database_for_integration_test`, que valida gate, endpoint, identidade, manifesto e marker antes de migrar.
+
+O teste unitário antes descrito como `runtime_marker_guard_against_marked_database` deixa de abrir conexão. O teste do runtime é reduzido a exercitar a validação pura do nome de database (`trading_bot`) sem construir pool ou fazer I/O. O checker não mantém allowlist por nome de função, path, assertion ou fluxo de dados; ausência da allowlist remove também a exceção de dataflow do resultado de conexão.
+
+### Impacto em C0, C1 e C3
+
+- C0 compara o manifesto de helpers e proíbe qualquer connector PostgreSQL direto alcançável a partir de teste; não há função allowlisted.
+- A análise alcança chamadas a método `.connect()` dentro de wrappers e fecha a execução quando o receiver/método não puder ser provado não-PG. Exceções não-PG precisam ser expressas por símbolo qualificado e cobertas por fixture (por exemplo, `Neo4jGraph::connect`), sem exceção genérica por nome curto.
+- C1 não executa um teste de guarda runtime que conecte diretamente. Os testes PG de integração seguem pelo helper dedicado com identidade efêmera e marcador.
+- C3 deve substituir a prova de conexão runtime direta por testes unitários puros das decisões de validação (nome do DB e presença do marker), sem abrir pool/conectar. O contrato de runtime continua recusando banco marcado; a forma de manter cobertura observável dessa recusa sem qualquer conexão direta de teste é uma questão a ser decidida na revisão G1. Não se deve alegar teste end-to-end do caminho SQL até que exista um seam seguro revisado.
+- A alteração do teste de nome de database não é uma autorização para remover as validações de runtime: `connect_from_url` continua aplicando o guard de nome, versão e marker antes do uso normal.
+
+### Alternativas, riscos e validação
+
+A exceção anterior permitia um connector runtime direto em teste e exigia provar por AST que a assertion se referia ao retorno daquela chamada. Ela foi removida do desenho porque aumentava a superfície da análise e exigia que a suíte acessasse banco fora do helper normal. O desenho uniforme reduz as regras especiais e mantém o isolamento num único connector.
+
+Risco residual a revisar em G1: testes puros provam a decisão isolada, mas não provam, por si, que o caminho de conexão runtime a invoca. A revisão deve decidir se um seam com dependency injection pode provar a integração sem abrir socket, ou se esse caminho fica coberto apenas pelos testes do runner no container efêmero através do helper. A decisão deve preservar a regra de zero conexões diretas fora do helper.
+
+Fixtures comportamentais exigidas antes de novo G3:
+- RED: conector direto em teste, wrapper alcançado, alias e `.connect()` genérico;
+- GREEN: conexão via helper dedicado;
+- GREEN: `Neo4jGraph::connect` qualificado como não-PG;
+- RED: path/nome falso ou tentativa de reintroduzir exceção de runtime;
+- RED/GREEN: teste puro de validação de nome e marker sem pool/rede.
+
+### Estado e próxima ação
+
+Este desenho aguarda Critic independente G1. Até o veredito, status permanece `draft`, nenhuma alteração de implementação é autorizada, e o veredito G1 ciclo 6 continua sendo o último veredito técnico registrado (APROVADO COM FOLLOW-UP para o desenho anterior). O código G3 já existente permanece fora do escopo desta atualização documental e deve ser reavaliado somente depois da nova aprovação G1.
