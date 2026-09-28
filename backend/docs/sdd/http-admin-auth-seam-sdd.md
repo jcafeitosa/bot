@@ -263,7 +263,7 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
 > Toda decisão desta subseção que exige `Enforced` obrigatório, encerra o processo sem token, validação fatal de token fraco ou decisão pendente de opt-out é legado. O contrato atual mantém `serve` ativo e responde 503 nas rotas protegidas sem token utilizável. A leitura única de env continua recomendação técnica contra TOCTOU e integra o desenho aprovado em G1; deve ser implementada e validada em G3.
 
 - **Onde:** a decisão "pode subir?" roda no braço `Some(BotCommand::Serve(args))` de `main.rs`, logo depois de `Config::load` (`main.rs:104`), antes de `--with-monitor` (`:106-136`) e de `run_server` (`:137`). Assim nenhuma conexão a PG/Neo4j, migração, outbox, hidratação ou monitor acontece sem auth válida.
-- **Forma:** função pura em `core/config` (onde o token já é lido, `core/config/http/file.rs`); nenhuma leitura de env em `presentation/`. Entrada: config de auth admin (token, bindings), `allowed_hosts` (A5) e `bind`. Saída: `Enforced` ou erro estável (`admin_auth_not_configured`, `admin_auth_token_weak`, `http_allowed_hosts_required`) sem ecoar o valor.
+- **Forma histórica:** os textos antigos de `Enforced`, Host/bind e erros de boot abaixo são não normativos/supersedidos pelo comportamento aprovado do owner. Não validar `allowed_hosts`, não falhar startup por Host/token ausente/fraco, e não usar `Enforced` como requisito desta implementação. O seam vigente é auth ausente/fraca → listener ativo; rotas protegidas respondem 503.
 - **`Enforced` fecha a auth aberta (F-01-2):**
   - O token passa a ser **não opcional** dentro do tipo validado. `HttpAdminAuth` perde o `#[derive(Default)]` (`admin_auth.rs:7`) e o `Debug` derivado (vira manual, com `<redacted>`); `disabled()` (`:15-17`) e o ramo `None` de `verify_headers` (`:92-93`) são removidos. `HttpAdminAuth` só é construído a partir do `Enforced`.
   - O `Enforced` desce por parâmetro: `main.rs` → `run_server` → `server::run` → `ApiState::build_api_state_for_http_serve` → `ApiState::for_http_server` → `HttpApiSeams::for_serve(enforced)`. `HttpApiSeams::from_env()` (`state.rs:56-63`) deixa de existir em produção: `for_serve` monta o executor de ordens e o runtime de bots como hoje (`HttpOrderExecutor::from_env()`, `shared_bot_runtime()`), mas **não relê** `BOT_HTTP_ADMIN_TOKEN`. O env de auth é lido uma vez, no boot (fecha o TOCTOU).
@@ -282,30 +282,13 @@ O axum não enumera as rotas de um `Router`, então a prova é feita pelos dois 
 - Testes de Bearer usam somente o literal determinístico `TEST_ONLY_HTTP_ADMIN_TOKEN_0123456789_ABCDEF` (43 caracteres gráficos ASCII) injetado no estado de teste; é marcador público, não segredo real nem token para `.env`. Um teste separado configura token fraco e exige listener ativo mais 503 `admin_auth_not_configured` em rota protegida. Hoje há 39 ocorrências de `HttpAdminAuth::disabled()` em `backend/src`: 38 em testes (`state.rs` 20, `http_integration_tests.rs` 15, `admin_auth.rs` 2, `register_owner.rs` 1) e 1 em produção (`state.rs:50`, dentro de `disabled_fail_closed`). Como `disabled()` sai (A3), os 38 usos de teste passam a usar `HttpAdminAuth::for_test(token)` ou `for_tests_open_admin()` só onde o teste precisa de auth aberta; `for_test_bound_agency` (`admin_auth.rs:66-73`, hoje sem token) passa a receber token.
 - **Alternativa:** o `serve` gerar um token efêmero no boot e imprimi-lo uma vez. Rejeitada: imprime segredo em terminal/log (conflita com SEC-ADM-08).
 
-### A5 — allowlist de `Host` (SEC-ADM-10)
+### A5 — allowlist de Host (fora do escopo W0-01; não aprovada)
 
-- **Posição:** para um par método+path registrado, valida Host antes da auth e antes do handler. O dispatch/classificação exatos precedem esta verificação: path ou método sem registro retorna sempre **404** `route_not_found`, sem depender de Host ou bearer, e sem executar handler. Um Host inválido em par registrado retorna **421** `host_not_allowed` antes da auth/handler.
-- **Host efetivo (F-01-1, igual ao SEC-ADM-10 do TM):** o header `Host`; se ausente, a authority da URI (`uri().authority()`, que é onde o hyper põe o `:authority` do HTTP/2). **421 somente quando:** (a) `Host` e authority estão ausentes; (b) os dois estão presentes e divergem depois de normalizados; (c) o valor normalizado não está na allowlist.
-- **Normalização:** minúsculas; remove um ponto final (`localhost.` → `localhost`); separa host e porta, com IPv6 entre colchetes (`[::1]`, `[::1]:8080`); porta tratada explicitamente (abaixo).
-- **Allowlist e portas:**
-  - Padrão: `localhost`, `127.0.0.1` e `[::1]`, aceitos sem porta, com a porta padrão do esquema (80) ou com a porta do próprio `bind`.
-  - Extras vêm da **chave nova `allowed_hosts` numa tabela nova `[http]`** do `system.toml` (hoje só existe `[http.admin]`, `system.toml:38-39`), com override por env `BOT_HTTP_ALLOWED_HOSTS` (lista separada por vírgula) pelos helpers de `core/config/load.rs`. Cada item é `host` (aceita sem porta ou porta 80) ou `host:porta` (aceita só aquela porta).
-  - Porta fora dessas regras → fora da allowlist → 421.
-- **Boot:** bind não-loopback (ex.: `0.0.0.0`) com `allowed_hosts` vazio → boot falha com `http_allowed_hosts_required`, porque nenhum cliente remoto passaria.
-- **Efeito operacional (a documentar em `cli-and-config` e no runbook):**
-  - **Docker com porta publicada:** o container precisa de bind `0.0.0.0`, então `allowed_hosts` passa a ser obrigatório. Com `-p 9000:8080`, o cliente no host manda `Host: localhost:9000`, que não é a porta do bind: o operador precisa listar `localhost:9000` (e o nome/porta pelos quais a API é acessada). Healthcheck de dentro do container (`curl localhost:8080`) passa sem configuração.
-  - **Probes por IP do pod (Kubernetes):** o kubelet manda `Host: <ip-do-pod>:<porta>`, e o IP muda a cada pod. O operador configura o probe com header `Host: localhost` (`httpGet.httpHeaders`) em vez de listar IPs.
-  - Cliente que acessa por IP da LAN ou nome próprio recebe 421 até o host entrar em `allowed_hosts`.
-- **Testes sem `Host`:** os 101 `Request::builder()` de teste (Contexto) passariam a receber 421. O aceite cria um helper de teste (nome proposto `test_request(method, uri)`) que já põe `Host: localhost`, e os testes existentes passam a usá-lo (mudança mecânica).
-- CORS: o código não tem layer de CORS (conferido com `rg`), então não há `Access-Control-Allow-Origin: *`; o aceite fixa isso num teste.
-- **O que protege:** DNS rebinding pelo navegador. **O que não protege:** proxy ou túnel local que reescreve `Host` para `localhost`. O Host allowlist é defesa adicional e não substitui autenticação; rotas protegidas continuam exigindo Bearer quando há token utilizável configurado e respondem 503 quando a configuração não é utilizável.
+O owner explicitamente não aprovou Host allowlist nem códigos `421` como parte do seam HTTP admin. Esta seção não define comportamento para implementação W0-01: não adicionar validação Host, configuração `allowed_hosts`, erros de boot ou resposta `421` nesta fatia. Host não deve alterar os resultados aprovados de autenticação. Uma política Host, se necessária, exige item e aprovação próprios em G1. O dispatch exato continua obrigatório: método/path não registrado retorna 404 `route_not_found` antes de autenticação e handler.
 
-### A6 — limitador de falhas de autenticação (SEC-ADM-11, forma revisada)
+### A6 — rate limiting (fora do escopo W0-01; não aprovado)
 
-- **Propósito:** reduzir ruído e dar observabilidade a tentativas com token errado. **Não** é defesa contra força bruta: com 32 bytes de entropia (SEC-ADM-07) a força bruta já é inviável sem limitador.
-- **Problema do texto do TM com chave por IP:** em loopback todo cliente é `127.0.0.1`; um balde por IP vira balde global e, se bloqueasse qualquer requisição, um processo local travaria o admin legítimo.
-- **Decisão:** um contador **global** em janela fixa, que conta **só** 401 da layer em pares método+path registrados e classificados `Protected`. Rota inexistente ou método não registrado, inclusive sob `/api/v1/admin`, retorna 404 `route_not_found` antes da autenticação e nunca incrementa o contador. Acima de N falhas na janela, as respostas de falha passam a **429** com header `Retry-After` (segundos até o fim da janela). O servidor **nunca** dorme nem atrasa a resposta. Uma requisição com token válido (comparação em tempo constante, SEC-ADM-06) nunca é bloqueada nem atrasada: a layer compara o token primeiro e só consulta o limitador quando a comparação falha. Rotas `PublicRead`/`PublicCompute` não passam pelo limitador. Log de 429 agregado por janela (um evento com o contador), sem token. Sem chave por IP e sem `X-Forwarded-For`/`trusted_proxies` nesta fatia.
-- **N por janela:** decisão do owner **D-SEC-ADM-RATE** (TM); proposta padrão 20 falhas por minuto, configurável em `core/config`; não bloqueia G1.
+A decisão do owner fixa 401 `unauthorized` para cada bearer ausente/incorreto numa rota registrada `Protected` quando existe token utilizável. Esta fatia não implementa limitação que transforme essas respostas em 429, `Retry-After`, atraso ou bloqueio. Rate limiting e sua política não fazem parte dos seams aprovados; qualquer futura mudança de resposta exige decisão explícita do owner e G1 próprio. Paths/métodos sem registro continuam em 404 antes da autenticação.
 
 ### Seams públicos — contratos de comportamento fechados pelo owner
 
@@ -354,16 +337,8 @@ Os critérios observáveis que prevalecem sobre os F1–F10 antigos são:
 - F5. Guard de env ampliado (A3) com caso negativo para `env::var_os` e `dotenvy::var`.
 - F6. SEC-ADM-13 e F-01-2: o scanner do guard F4 (mesma regra de isenção de `#[cfg(test)]`, mais itens com `#[cfg(test)]` na linha anterior) não acha em código de produção nenhum destes nomes: `disabled_fail_closed`, `for_tests_open_admin`, `HttpAdminAuth::disabled`, `HttpApiSeams::with_admin`, `HttpApiSeams::from_env`, `ApiState::new`, `impl Default for ApiState`, `with_agent_registry`, `with_agent_registry_and_verified_owner`, e `pub fn with_stores`. `admin_auth.rs` não deriva `Default` para `HttpAdminAuth` e `verify_headers` não tem ramo sem token. `rg "Optional fail-closed" backend/src` vazio.
 - F7. Suite HTTP existente verde com token de fixture e o helper `test_request`.
-- F8 (SEC-ADM-10). Com handler de teste que registra chamada:
-  - `Host: evil.example` → **421** `host_not_allowed` numa rota `Protected` e numa `PublicRead`; o handler não é chamado e a checagem de token não roda;
-  - sem `Host` e sem authority → 421;
-  - sem `Host` e URI absoluta `http://localhost:<porta-do-bind>/healthz` (forma do HTTP/2) → passa;
-  - `Host` e authority divergentes → 421;
-  - `Host: LOCALHOST.`, `localhost:<porta-do-bind>` e `[::1]:<porta-do-bind>` → passam;
-  - `localhost:<outra-porta>` não listada → 421; com `localhost:<outra-porta>` em `allowed_hosts` → passa;
-  - resposta sem `Access-Control-Allow-Origin`;
-  - boot com bind não-loopback sem `allowed_hosts` → exit ≠ 0.
-- F9 (SEC-ADM-11, A6). Com N de teste pequeno: N+1 requisições com token errado numa rota `Protected` → a última é **429** com `Retry-After`; requisições com token errado a paths inexistentes não mudam o contador; em seguida, token válido → **200**; rotas `PublicRead` não mudam de status durante o bloqueio; nenhum log contém o token; o Critic confere que não há `sleep` no caminho da layer.
+- F8 (SEC-ADM-10): **adiado, fora do escopo W0-01**. Não introduzir Host allowlist, erro 421, configuração ou boot gate nesta fatia; depende de decisão do owner e G1 próprios.
+- F9 (SEC-ADM-11): **adiado, fora do escopo W0-01**. Não introduzir limitador nem 429/Retry-After; bearer ausente/incorreto em rota protegida registrada mantém 401 conforme seam aprovado.
 - F10 (TOCTOU, F-01-2). Boot com token A no env produz `Enforced(A)`; o teste troca o env para B e monta o estado por `for_http_server(…, Enforced(A))`: requisição com B → 401, com A → 200.
 
 
@@ -376,7 +351,7 @@ Os critérios observáveis que prevalecem sobre os F1–F10 antigos são:
 - **Para o bot Segurança atualizar o TM antes do G4 de W0-01** (divergências aceitas para G1, sem editar o TM aqui):
   - SEC-ADM-04 fala em layer "no sub-router admin/mutante"; este SDD aplica a layer ao router inteiro (mais restritivo).
   - `GET /meta`, `GET /config/active` e `GET /monitor/snapshot` são `Protected` aqui e não estão na lista mínima do SEC-ADM-05.
-  - SEC-ADM-11: o TM ainda diz "429 com backoff crescente"; este SDD usa 429 com `Retry-After`, sem atraso no servidor, contando só 401 em rotas `Protected` casadas (A6).
+  - SEC-ADM-11: o TM registra limitação de falhas; isso não foi aprovado como seam W0-01. Esta fatia não adiciona rate limiting nem 429 e preserva 401 `unauthorized` para Bearer incorreto em rota protegida registrada; eventual política futura exige decisão do owner e G1 próprios.
 
   - SEC-ORG-33 usa `Owner`/`Org`; o nome adotado é `Org`.
   - A lista "Documentação que afirma fail-closed" do TM já está alinhada (só resta `admin_auth.rs:1`).
