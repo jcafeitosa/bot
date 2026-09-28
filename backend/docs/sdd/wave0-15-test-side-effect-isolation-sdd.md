@@ -70,3 +70,24 @@ Não executado neste SDD: testes, comandos de integração, conexão aos bancos,
 ## Aceite
 
 G1 exige aprovação independente deste desenho e respostas às questões que definem o seam. G4 exige evidência de zero tentativas de rede/persistência na suite padrão com arquivo `.env` presente, gates explícitos para cada integração, rejeição de alvo PG não marcado/não isolado, e seleção exata obrigatória no teste de ordem.
+
+## Adendo — decisões do owner e achado de backtest
+
+O owner esclareceu que `.env` pode ser usado no trabalho local e que o backtest deve funcionar como em produção. Isso autoriza carregar configuração para execução operacional, mas não transforma credenciais disponíveis no processo em opt-in para efeitos colaterais de um teste comum. O gate padrão continua sem efeitos; integrações seguem exigindo opt-in explícito e alvo descartável.
+
+**Contrato aprovado para o backtest:** `POST /api/v1/backtest/sma-crossover` permanece cálculo público quando `persist=false`; com `persist=true`, exige token admin configurado e Bearer válido. O teste público usa `persist=false`; o caso persistente é validado separadamente contra PostgreSQL descartável e com auth válida. Este comportamento depende de autorização condicional no handler porque a classificação middleware atual cobre método+path; revisão independente deve aprovar o desenho técnico e os testes antes do G3. A rota não é provada segura pela matriz de classificação sozinha.
+
+**Evidência de código:** `backend/src/modules/backtest/cli.rs::execute_backtest` chama `persist_dataset_if_configured` quando `BacktestCli.persist` é verdadeiro. Portanto, a descrição antiga de “seis POSTs de cálculo sem efeito colateral” não é suficiente para este endpoint: a flag torna o caminho persistente.
+
+### Seams atualizados
+
+- O processo de testes não carrega `.env` implicitamente; configuração carregada pelo usuário para rodar o servidor não habilita integração dentro de `cargo test`.
+- O conjunto padrão não tenta conectar ou persistir em PG/Neo4j e não chama Binance, independentemente da presença de credenciais.
+- Integração PG exige opt-in, conexão dedicada para instância descartável e marcador criado pelo setup explícito. O helper não deve aceitar apenas um marcador: a configuração/runner também deve provar identidade do alvo isolado antes de migrar. A forma exata dessa prova (variável dedicada, container id/host e validação de banco) fica para aprovação independente G1.
+- Teste Neo4j exige opt-in separado e instância dedicada descartável; configuração local ou credencial, isoladamente, não habilita operação.
+- A ordem Spot Testnet exige opt-in dedicado e filtro exato, além de credenciais testnet válidas. O opt-in autoriza apenas esse teste; não libera a suíte para outras chamadas externas.
+- Backtest sem persistência é público e sem PG; backtest persistente exige Bearer e só testa com PG descartável.
+
+### Status de aceitação atualizado
+
+O owner fechou o princípio de não inferir autorização de efeitos a partir de `.env`, a necessidade de opt-ins/targets descartáveis e o comportamento do backtest conforme a flag. O G1 deste SDD segue **PENDENTE** até revisão técnica independente do adendo, fechamento da prova do destino descartável para PG, e confirmação dos seams específicos (nomes exatos dos opt-ins e mecanismo verificável de filtro exato). Nenhuma integração foi executada.
