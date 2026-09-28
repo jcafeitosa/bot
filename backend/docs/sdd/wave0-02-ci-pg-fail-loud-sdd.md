@@ -420,3 +420,75 @@ Para cada comportamento executável, TDD registra RED primeiro e GREEN mínimo d
 ### Estado e próxima ação
 
 Este ciclo 9 propõe um mecanismo concreto: conexão transitória SQL de preflight, classificação fail-closed antes do pool, coordinator privado compartilhado e adaptadores fake só no seam de teste, mais prova estrutural de que `serve`/`bootstrap_http_api` não contornam a boundary. O status permanece `draft`. O veredito ciclo 8 permanece APROVADO COM FOLLOW-UP; este follow-up técnico requer Critic G1 independente. Nenhum código, teste, banco, Docker, CI ou exchange foi executado nesta atualização documental.
+
+## Item escalado T-W0-02b — lookup SQL comportamental e opt-ins PG centralizados
+
+> Novo item de design após o escalonamento do W0-02 no limite de ciclos anterior. Não é “ciclo 4” e não substitui nem renumera os vereditos históricos. Responde somente aos dois blockers listados abaixo. Este adendo prevalece quando o texto anterior deixar indefinidos o teste do lookup/classificador real ou a origem das configurações de opt-in. Status geral continua `draft`; G1 independente está pendente. Não autoriza G3.
+
+### Problema e limites
+
+O desenho anterior define estados de marcador e pede lookup SQL via helper, mas ainda precisa fixar uma matriz comportamental que invoque o lookup/classificador real para todos os estados apontados pelo Critic. Também descreve flags de integração sem definir uma única fronteira de leitura de ambiente; atualmente `pg_integration.rs` contém `std::env::var`, incompatível com `verify-backend-gates.sh`, que restringe essas leituras à camada de configuração.
+
+Este item não muda o contrato de isolamento, o manifesto, o runner, a semântica runtime do marcador, os comandos de CI, nem a autoridade de G3/G4. Não editar código, testes, workflow ou configuração executável neste item. Nenhum PostgreSQL, Docker, CI ou exchange será acessado nesta revisão documental.
+
+### Lookup/classificador real: seam e fixture comportamental
+
+O teste PostgreSQL chama a implementação real da consulta e classificação do marcador usando exclusivamente uma conexão obtida por `database_for_integration_test()`. Não basta testar o classificador puro, duplicar a query na fixture ou afirmar cobertura a partir dos testes fake do coordenador. A função exercitada deve ser a mesma usada pelo preflight runtime; o seam de teste só fornece a conexão já segura e a fixture. O teste não chama connector runtime nem cria outro pool.
+
+Usar uma transação por cenário dentro do banco efêmero identificado pelo runner. Dentro da transação, ajustar o estado do marcador e chamar o lookup real na mesma conexão; em seguida fazer rollback para restaurar o marcador canônico provisionado pelo runner. A fixture deve falhar antes de executar SQL destrutivo se a conexão não veio do helper seguro. Não usar nome de banco genérico nem executar fixture no banco de aplicação. Se o driver/conexão do helper não permitir executar lookup e fixture na mesma transação/conexão, o desenho deve voltar à G1 com um seam de conexão transacional equivalente; não duplicar a query nem usar um connector alternativo.
+
+| Estado preparado na transação efêmera | Ação observável do lookup real | Resultado contratual |
+|---|---|---|
+| Relação ausente | remover a relação canônica somente dentro da transação | `UNMARKED_RUNTIME` |
+| Relação correta sem linhas | criar/limpar a relação conforme o schema canônico | `UNMARKED_RUNTIME` |
+| Uma linha válida e completa | inserir a identidade esperada pelo contrato do marcador | `TEST_DATABASE_MARKER_PRESENT` |
+| Uma linha com identidade/dado inválido | usar valor que viole o contrato de identidade | `MARKER_LOOKUP_FAILED` |
+| Duas ou mais linhas | inserir multiplicidade deliberada | `MARKER_LOOKUP_FAILED` |
+| Relação com schema/colunas incompatíveis | criar a relação com estrutura incompatível com a query real | `MARKER_LOOKUP_FAILED` |
+| Erro de query reproduzível | provocar falha SQL controlada (por exemplo, permissão negada na relação) | `MARKER_LOOKUP_FAILED` |
+
+As fixtures usam o DDL/colunas canônicos já definidos para o marcador e o mesmo identificador de relação que a query de produção. Cenários que removem ou alteram a relação são transacionais e restaurados por rollback; a limpeza nunca é feita por conexão separada. Cada caso afirma o estado tipado, não apenas “não panicou”. Para o erro SQL, afirmar que a falha foi observada e convertida no estado de erro estável, sem mensagem contendo URL, credencial ou SQL sensível. O runtime segue fail-closed: somente ausência inequívoca da relação ou relação válida vazia permite `UNMARKED_RUNTIME`; lookup falho nunca libera a factory/pool.
+
+A matriz também mantém testes unitários sem I/O para o classificador sobre resultados tipados e testes com lookup/factory falsos para a ordenação do coordenador. Estes complementam, mas não substituem, os sete casos do lookup SQL real.
+
+### Configuração centralizada dos opt-ins PG
+
+Toda leitura de variáveis de ambiente ocorre na camada central `core/config` / parser de ambiente já reconhecida por `verify-backend-gates.sh`. O módulo `core/persistence/pg_integration.rs` não chama `std::env::var`, `std::env::var_os` nem lê ambiente indiretamente; recebe um snapshot imutável e tipado de configuração PG criado pela fronteira central. O helper e as funções internas de resolução recebem esse snapshot explicitamente, permitindo unit tests determinísticos sem modificar ambiente global do processo.
+
+O snapshot representa, no mínimo, `BOT_PG_INTEGRATION_REQUIRED`, `BOT_RUN_PG_INTEGRATION`, `BOT_PG_TEST_DATABASE_URL` e o caminho do manifest de alvo quando configurável. As flags de execução ficam tipadas como opt-in/required; URL e caminho mantêm parsing/validação centralizada e não aparecem em erros/logs. `DATABASE_URL` não é fallback e não participa da resolução. `DOCKER_HOST` e `DOCKER_CONTEXT`, caso ainda sejam usados pela prova de identidade local, também são lidos no boundary de configuração e transportados como estado tipado suficiente para rejeição; o resolver de persistência não consulta o processo. Nenhum valor default pode ativar PG integration.
+
+Contrato do resolver: sem opt-in, o helper mantém o comportamento local de skip existente. Com required ligado, ausência de opt-in explícito, URL dedicada, manifest ou identidade válidos falha alto e antes de connector/migration. Com os dois opt-ins e configuração válida, prossegue apenas no runner/target já validado pelos critérios C0–C4. A composição de produção não deve permitir caller omitir silenciosamente required/opt-in; qualquer caminho de teste continua passando pelo mesmo helper público de integração e configuração central.
+
+O gate estático existente `verify-backend-gates.sh` é critério executável do desenho: nenhuma ocorrência de `env::var(` ou `std::env::var(` em `src` fora da camada de configuração permitida. Não ampliar a allowlist do checker para `core/persistence`; remover o acesso direto e usar configuração central é a solução. Variáveis de opt-in de outros subsistemas não são ampliadas neste item, salvo as que este helper PG efetivamente consome.
+
+### TDD e critérios observáveis
+
+G1 aprova o seam público de configuração e teste descrito neste SDD; G3 implementa cada fatia com RED/GREEN antes de refatorar. Testes unitários com snapshot tipado usam resoluções puras e fábricas fake, sem ler ambiente, abrir socket ou iniciar serviço.
+
+| Fatia pública | RED exigido antes da implementação | GREEN / evidência exigida |
+|---|---|---|
+| Snapshot de configuração PG | valores ausente, vazio, formatos de opt-in não aceitos e configuração parcial não produzem resolução válida | parser central produz snapshot tipado, sem segredos em Debug/Display/logs |
+| Resolução do helper | sem opt-in mantém skip; required sem opt-in/url/manifest falha antes do connector | configuração válida chega ao lookup apenas após os gates já definidos |
+| Lookup real via helper | fixtures SQL para ausência, vazio, válido, inválido, múltiplas linhas, schema incompatível e erro de query falham primeiro contra a classificação pretendida | os sete cenários retornam estado tipado correto; cada fixture é revertida na transação |
+| Fail-closed do coordenador | marker presente ou erro SQL não deve chamar factory; teste verifica contador igual a zero | somente ausência inequívoca chama factory uma vez; erro de factory é propagado sem URL |
+| Guard de ambiente | `verify-backend-gates.sh` falha quando um acesso `std::env::var` é introduzido em `core/persistence` | gate passa sem exceção específica para persistência; leituras permanecem na fronteira permitida |
+| Compatibilidade | opt-in desligado preserva comportamento de skip para testes locais atuais | testes de unidade provam compatibilidade sem PostgreSQL e sem variável global compartilhada |
+
+A prova do lookup SQL é integração e pertence exclusivamente a G4, no runner efêmero seguro aprovado, depois de G1 e da revisão G3 do runner. G3 pode executar unit tests/fakes e checker local; G3 não executa PostgreSQL real. A mera aprovação G1 não autoriza Docker, banco, CI nem exchange. G4 registra o comando e resultado dos sete cenários, identity/manifest do runner, e a saída do gate `verify-backend-gates.sh`. Não alegar execução nesta revisão documental.
+
+### Alternativas, riscos e rollback
+
+- **Só testar o classificador puro:** rejeitada como cobertura única; não prova que a query real lê ausente/vazio/presente nem converte erro SQL/schema/multiplicidade.
+- **Duplicar SQL de produção dentro do teste:** rejeitada; teste poderia continuar verde com query de produção quebrada.
+- **Conectar diretamente por runtime connector ou URL do ambiente no teste:** rejeitada; contorna helper/manifest/identity e contraria C0/C3.
+- **Manter `std::env::var` no helper e ampliar allowlist do gate:** rejeitada; perpetua configuração dispersa e invalida a proteção que o script pretende oferecer.
+- **Ler ambiente dentro de cada teste:** rejeitada; torna estado dependente de execução paralela e impede snapshot determinístico. A camada central lê uma vez e injeta estado imutável.
+- **Risco de fixture/concorrência:** alteração transacional do marcador só é segura no banco efêmero exclusivo e na conexão validada pelo helper. O runner deve continuar isolando cada job; fixtures não podem ser paralelizadas se partilharem uma relação sem isolamento transacional correto. Se o banco ou conexão não suportarem restauração transacional, abortar o teste sem persistir alteração.
+- **Risco de compatibilidade:** move a fonte de flags do helper para config central, mas preserva nomes/semântica do opt-in externo; testes locais sem opt-in continuam em skip. Não muda DATABASE_URL nem comportamento de produção.
+- **Rollback futuro:** reverter em conjunto o snapshot/parsing central, injeção no helper e fixtures. Não reintroduzir env reads em persistence nem relaxar `verify-backend-gates.sh`; restaurar a versão anterior do gate e helper no mesmo commit caso a implementação precise ser revertida. Sem migração persistente ou alteração de dados de aplicação.
+
+### Gates e estado
+
+A próxima ação é revisão independente de G1 deste item escalado. Critérios de aprovação observáveis: a mesma função real de lookup é coberta pelos sete estados SQL através do helper; os testes são transacionais e não abrem connector próprio; config tipada é lida centralmente e injetada; nenhuma exceção de `verify-backend-gates.sh` permite env reads em persistence; RED/GREEN e fronteira G3/G4 estão explícitos.
+
+Até G1 aprovar, permanecem bloqueados código, testes, execução PG, Docker, CI e alteração de workflow. Se aprovado, G3 fica limitado a testes unitários/fakes, implementação e verificação estática; somente G4 no runner seguro executa SQL real. Nada neste adendo declara blockers resolvidos antes do parecer Critic.
