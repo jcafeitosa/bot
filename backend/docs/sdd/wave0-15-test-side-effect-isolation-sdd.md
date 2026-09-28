@@ -117,7 +117,7 @@ Rollback mantém Cargo target runner em deny-egress e volta os runners PG/Neo4j/
 
 O G1 anterior `7579a0f2e09d2ffb69b24d7c5b600829389d8601` foi reprovado; esta rev-next ainda aguarda novo Critic G1 independente, e código permanece congelado até esse veredito. W0-02 segue `draft/G1 pendente` segundo readback OpenKnowledge; esse estado bloqueia T-W0-06b/GREEN PG, e nenhum G1 aprovado foi inferido. A chamada normal `cargo test` usa o target runner deny-egress, enquanto full verification/CI usam o wrapper; substituição deliberada de Cargo runner/toolchain é limite residual fora da garantia e não deve ser descrita como segura.
 
-1. Cargo default apresenta integrações como ignored; gates explícitos são necessários para executá-las. Wrapper acrescenta garantia syscall-level contra egress arbitrário.
+1. Cargo default apresenta integrações como ignored; gates explícitos são necessários para executá-las. Tanto o Cargo target runner quanto o wrapper impõem deny-egress à suíte unitária; o wrapper acrescenta auditoria da invocação composta, snapshot e validação dos gates.
 2. Snapshot exclui `.env` real, rejeita symlink e prova contenção do caminho resolvido na raiz allowlisted com fixture sensível fictícia.
 3. PG local usa alvo efêmero `BOT_PG_TEST_DATABASE_URL`, opt-in, identidade e marker; `DATABASE_URL` não seleciona alvo. GREEN requer `PG_INTEGRATION_HELPER_OK` e `PG_INTEGRATION_ASSERTIONS_OK:<nome>` depois das assertions, exigidos exatamente pelo runner; qualquer falha/marcador ausente reprova. W0-02 só sai de pendente com aprovação independente.
 4. Neo4j read/write têm gates separados. Pré-flight e teste compartilham a mesma identidade/credencial/driver; `.env` não prova nem troca o alvo. Role read-only é validada.
@@ -127,7 +127,7 @@ O G1 anterior `7579a0f2e09d2ffb69b24d7c5b600829389d8601` foi reprovado; esta rev
 ## Estado
 
 - T-W0-06: **PROPOSED — G1 reprovado; nova revisão independente pendente**. Código permanece congelado até G1.
-- T-W0-06a: harness e caminho padrão isolado, sem dependência W0-02; egress zero garantido apenas no wrapper, com bypass Cargo direto explicitamente fora da garantia.
+- T-W0-06a: harness e caminho padrão isolado, sem dependência W0-02; o Cargo target runner e o wrapper garantem deny-egress para os binários da suíte unitária. O wrapper é a verificação composta padrão de full verification/CI.
 - T-W0-06b: runners PG/Neo4j/Binance após novo G1 de T-W0-06. Somente PG depende também de W0-02 G1, implementação/revisão independente do helper/marker/completion protocol; Neo4j/Testnet não herdam essa dependência PG.
 - W0-02: readback OpenKnowledge de 2026-09-28 continua `draft/G1 pendente`; T-W0-06 não declara aprovação e mantém isso como bloqueio para PG GREEN. C4 bloqueia alteração/aceite do job PG CI até prova de GitHub Actions; revisão do connector compartilhado segue dependência.
 - Escopo autorizado pelo owner: execução local, dados persistentes protegidos, runner PG/Neo4j efêmero, backtest runtime autenticado, ordem dedicada Spot Testnet apenas.
