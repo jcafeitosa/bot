@@ -14,7 +14,7 @@ tags:
 
 
 > **Manifest PG (verificado em `origin/main` `d42b71a5`):** `persist_dataset_rejects_conflicting_manifest_for_same_id` continua listado no script, mas **não tem fn de teste**: a implementação com `DatasetManifestConflict` foi revertida em `afe1f411`. `persist_dataset` usa `ON CONFLICT (dataset_id) DO NOTHING` (`core/persistence/mod.rs:52-59`). O script roda `cargo test --bin bot <nome>` sem `--exact`, então a entrada passa com 0 testes.
-> **Bloqueio de fechamento:** fatia técnica/doc do goal entregue (`verify-backend-gates.sh` **519**/**0** ignored, medido em `afe1f411` = código de `d42b71a5`; manifesto PG **31** (contagem estática; execução não registrada), 28 com teste, `pg_integration`; CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09)); **IdP / owner humano verificável** e **Critic** `AGENTS.md` permanecem bloqueadores (bootstrap PG `0010` é fatia parcial — [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
+> **Bloqueio de fechamento:** esta linha preserva o baseline histórico do goal em `afe1f411` = código de `d42b71a5` (`verify-backend-gates.sh` **519**/**0** ignored; manifesto PG **29**, 28 com função; seleção sem `--exact`). Evidência atual da etapa de testes: 520/0; manifesto PG: 31 entradas estáticas, sem execução PG registrada. A fatia técnica/doc, `pg_integration`; CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09)); **IdP / owner humano verificável** e **Critic** `AGENTS.md` permanecem bloqueadores (bootstrap PG `0010` é fatia parcial — [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
 
 ## Resumo executivo
 
@@ -31,7 +31,7 @@ Execução live e produção permanecem bloqueadas até gates de segurança.
 ## Persistência Gate 1 (scaffold)
 
 - Migração SQL `0002_agents_bots_scaffold.sql` (agents + `bot_catalog_entries`); `Database::migrate()` no boot HTTP quando `DATABASE_URL` conecta.
-- Teste `postgres_scaffold_tables_exist_after_migrate` em `core/persistence/mod.rs` (skip sem `DATABASE_URL`; manifesto PG **29**; incl. `graph_projection_outbox` migração `0009`).
+- Teste `postgres_scaffold_tables_exist_after_migrate` em `core/persistence/mod.rs` (skip sem `DATABASE_URL`; manifesto PG **31** (contagem estática; execução PG não registrada); incl. `graph_projection_outbox` migração `0009`).
 - Adapter Rust e SDD completo: [Gate 1 draft](../sdd/bots-catalog-persistence-gate1-sdd.md).
 - `core/database` expõe Neo4j opcional via `neo4rs` (`readyz` probe quando `BOT_AGENTS_ENABLED`).
 
@@ -126,7 +126,7 @@ Escopo sugerido para uma instância **independente** (não substitui decisão de
 | Graph query F3 (read-only) | [graph-query-port-f3-sdd.md](../sdd/graph-query-port-f3-sdd.md), `graph_query.rs`, `graph_cli.rs` | `graph_query_port_*`, `graph_cli_*`; CLI `graph query` (`agents`, `supervision-chain`, `bots-for-agent`, `code-impact`) — [cli-and-config](../reference/cli-and-config.md); Neo4j skip sem stack: `neo4j_list_agents_after_local_graph`, `neo4j_supervision_chain_query_after_projection`, `neo4j_bots_for_agent_after_catalog_and_promotion_projection`, `neo4j_code_impact_for_module_after_seed`; projeção agents: `neo4j_agent_supervision_chain_after_projection` (`graph_projection.rs`) |
 | Portfolio paper (HTTP) | `http_bridge/portfolio.rs`, `routes/portfolio.rs`, `state.rs` (`paper_wallet_snapshot`) | `paper_wallet_snapshot_reflects_in_process_ledger`; `portfolio_paper_snapshot_http_reflects_paper_submit` em `http_integration_tests.rs` |
 
-Comandos canônicos: `./scripts/verify-backend-gates.sh` **519** passed / **0** ignored na linha `OK:`); com `DATABASE_URL` → `trading_bot`: `./scripts/verify-backend-full.sh` (gates + manifesto PG **29**; mensagem esperada `OK: backend full verification passed`, sem execução registrada); só PG: `./scripts/run-pg-integration-tests.sh`. Testnet: `cargo test --locked integration_submits_minimal_market_buy_on_testnet` (skip sem `BINANCE_TESTNET_*`; fora de CI).
+Comandos canônicos: `./scripts/verify-backend-gates.sh` (etapa do bin observada: **520** passed / **0** ignored; gate completa interrompida na asserção de evidência); com `DATABASE_URL` → `trading_bot`: `./scripts/verify-backend-full.sh` (inclui manifesto PG com **31** entradas estáticas; execução não registrada); só PG: `./scripts/run-pg-integration-tests.sh`. Testnet: `cargo test --locked integration_submits_minimal_market_buy_on_testnet` (skip sem `BINANCE_TESTNET_*`; fora de CI).
 
 Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** / **REPROVADO** por SDD, com achados ligados a teste ou linha de código; autor do pacote não aprova o próprio artefato (`AGENTS.md`).
 
@@ -135,6 +135,6 @@ Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** /
 ## ENTREGA — pacote completude módulos (G4 Builder)
 
 - **Builder:** fatia técnica bots/orders/agents/HTTP + Neo4j F1–F3.1 + outbox F2.1.2 (worker + `/healthz` backlog) + F2.1.3 CLI drain + F2.1.3+ enqueue TX orders (`enqueue_graph_projection_outbox_tx` + `persist_idempotency_and_enqueue_graph_projection`) + F3 read-only `GraphQueryPort` (agents, supervision chain, bots_for_agent, code_impact_for_module); docs SDD/catálogo/roadmap/README alinhados.
-- **Testes/evidências:** `./scripts/verify-backend-gates.sh` + `assert-completeness-evidence.sh` → **519** passed, **0** ignored; `./scripts/verify-backend-full.sh` + `DATABASE_URL` → manifesto PG **29** (execução não registrada); `http_integration` → **62** passed; `pg_store_error` + HTTP **503** `order_store_unavailable`; F2.1.2 worker + `/healthz` outbox; F2.1.3 `graph_projection_cli_*` + `bot graph-projection drain`; F3 `graph_query_port_*` / `graph_cli_*` + [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md) ([cli-and-config](../reference/cli-and-config.md)).
+- **Registro histórico desta revisão:** `./scripts/verify-backend-gates.sh` + `assert-completeness-evidence.sh` → **519** passed, **0** ignored; manifesto PG **29** (execução não registrada). Evidência atual: etapa do bin 520/0; manifesto PG 31 entradas estáticas, sem execução registrada. `./scripts/verify-backend-full.sh` + `DATABASE_URL` → `http_integration` → **62** passed; `pg_store_error` + HTTP **503** `order_store_unavailable`; F2.1.2 worker + `/healthz` outbox; F2.1.3 `graph_projection_cli_*` + `bot graph-projection drain`; F3 `graph_query_port_*` / `graph_cli_*` + [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md) ([cli-and-config](../reference/cli-and-config.md)).
 - **Achados/revisão:** **PENDENTE** — Critic independente (`AGENTS.md`); IdP/owner humano fora do escopo da fatia bootstrap; seam `BOT_HTTP_*` + `VerifiedProductOwner` cobertos por testes.
 - **Veredito:** **PENDENTE** até sessão Critic + decisões de produto (auth owner, prod REST).

@@ -83,7 +83,7 @@ O gate canônico executa `assert-pg-integration-manifest.sh` (contagem estática
 
 **CI** (`.github/workflows/backend-ci.yml`): job `rust` → `./scripts/verify-backend-gates.sh`; job `postgres-integration` (após `rust`, service PostgreSQL `trading_bot`) → `./scripts/run-pg-integration-tests.sh` (manifesto de **31** entradas; execução PG CI não comprovada). Execução em CI ainda não comprovada: nenhum dos 511 runs do workflow `Backend CI` concluiu com `success`; o último concluído (#510, 27/09 15:56 COT, `6f48c38`) falhou no job `rust` (clippy `result_large_err` em `modules/exchanges/adapters/live.rs:165`) e `postgres-integration` ficou skipped. O serviço do job usa `timescaledb-ha:pg16`, mas o código exige PG 18+ (`core/database/postgres.rs`) e `database_for_integration_test` (`core/persistence/pg_integration.rs`) trata erro de conexão como skip — um job PG verde em pg16 não provaria os testes.
 
-Evidência local observada em 2026-09-27: etapa de testes do bin `bot` → **520** passed, **0** ignored (`modules-completeness-evidence.json`). A gate completa parou na asserção de completude e as cinco suítes de integração workspace não foram executadas nesse ciclo. O manifesto PG tem **31** entradas estáticas; execução PG local/CI não está registrada como verificada. Histórico em `afe1f411`/`d42b71a5`: 520 segundo o snapshot daquela revisão (README registrava 519) e 29 entradas, uma sem função, selecionadas sem `--exact`; esse histórico não é a evidência atual. via `./scripts/run-pg-integration-tests.sh` quando `DATABASE_URL` → `trading_bot` (compose local `:55433` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md)).
+Evidência local observada em 2026-09-27: etapa de testes do bin `bot` → **520** passed, **0** ignored (`modules-completeness-evidence.json`). A gate completa parou na asserção de completude e as cinco suítes de integração workspace não foram executadas nesse ciclo. O manifesto PG tem **31** entradas estáticas; execução PG local/CI não está registrada como verificada. Histórico em `afe1f411`/`d42b71a5`: snapshot registrava 520 (README da época registrava 519) e 29 entradas, uma sem função, selecionadas sem `--exact`; esse histórico não é a evidência atual. O script pode ser executado com `DATABASE_URL` apontando a um banco de teste isolado `trading_bot` — [postgres-and-graph-dev](../operations/postgres-and-graph-dev.md).
 
 Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo (pass) sem `DATABASE_URL`, credenciais testnet ou stack Neo4j; com pré-requisitos, exercitam o mesmo comportamento que antes estava em `#[ignore]`.
 
@@ -180,7 +180,7 @@ Testes abaixo em `presentation/http/http_integration_tests.rs` (**62** passed co
 
 ## Product owner bootstrap (`VerifiedProductOwner`)
 
-Fatia G1: [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md). PG: `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed` (manifesto PG **29**).
+Fatia G1: [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md). PG: `pg_product_owner_bootstrap_idempotent_and_conflict_fail_closed` (manifesto PG **31** entradas estáticas; execução não registrada).
 
 | Comportamento | Teste HTTP (`http_integration_tests.rs`) |
 |---------------|-------------------------------------------|
