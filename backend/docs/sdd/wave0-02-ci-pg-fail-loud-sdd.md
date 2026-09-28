@@ -268,4 +268,4 @@ O nome canônico da exceção passa a ser `core::database::postgres::tests::runt
 
 ### Estado
 
-Cobertura algorítmica, limites de sintaxe, fixtures adversariais e nome da exceção estão especificados para revisão. O checker ainda não foi implementado nem validado pelas fixtures. G1 permanece pendente até o Critic aprovar a nova revisão; nenhum teste/DB foi executado.
+Cobertura algorítmica, limites de sintaxe, fixtures adversariais e nome da exceção estão especificados. O checker ainda não foi implementado nem validado pelas fixtures. **Veredito G1 ciclo 6: APROVADO COM FOLLOW-UP pelo Critic independente**, sobre a versão `5f474e3dc90052be5a7142f94b650de7f2f62f1c`. Follow-ups obrigatórios para G3: implementar o checker junto das fixtures comportamentais e demonstrar rejeição fail-closed de imports e paths externos indiretos que não possam ser resolvidos. O veredito aprova o desenho, não a implementação nem a execução; nenhum teste/DB foi executado. O status geral do SDD permanece `draft` enquanto os follow-ups G3 e os gates posteriores não forem concluídos.
