@@ -1,6 +1,6 @@
 ---
-title: Auditoria de completude — bots, orders, agents e HTTP
-description: Estado verificável dos módulos alvo do goal, gaps, evidências de teste e próximos gates
+title: Auditoria ampliada de completude dos módulos do backend
+description: Contratos, estado observável, gaps, dependências e sequência sugerida para backend dev/testnet
 tags:
   - planning
   - backend
@@ -8,133 +8,76 @@ tags:
   - audit
 ---
 
-# Auditoria de completude — bots, orders, agents e HTTP
+# Auditoria ampliada de completude dos módulos do backend
 
-> Revisão: 2026-09-27. Snapshot machine-readable: [modules-completeness-evidence.json](./modules-completeness-evidence.json). Fonte: `backend/src`, SDDs em `docs/sdd/`. Evidência registrada: etapa de testes do gate **520**/**0** ignored (bin `bot`, `modules-completeness-evidence.json`); manifesto PG **31** (contagem estática; execução PG e CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09)); `cargo test --bin bot http_integration -- --test-threads=1` → **62** passed.
+- **Snapshot documental:** 2026-09-28.
+- **Escopo:** 11 módulos em src/modules, mais core e presentation.
+- **Método:** critérios vêm dos SDDs existentes; comportamento vem do código/evidência documental. Esta revisão não executou código, testes, Docker, banco, exchange ou CI.
+- **Veredito:** completude total não demonstrada. Não há critério único aprovado de “todos os módulos completos”. MVC mínimo mede estrutura/seams, não fechamento do produto. Nenhum módulo é marcado completo.
 
+## Prioridades e gates de entrada
 
-> **Manifest PG (verificado em `origin/main` `d42b71a5`):** `persist_dataset_rejects_conflicting_manifest_for_same_id` continua listado no script, mas **não tem fn de teste**: a implementação com `DatasetManifestConflict` foi revertida em `afe1f411`. `persist_dataset` usa `ON CONFLICT (dataset_id) DO NOTHING` (`core/persistence/mod.rs:52-59`). O script roda `cargo test --bin bot <nome>` sem `--exact`, então a entrada passa com 0 testes.
-> **Bloqueio de fechamento:** esta linha preserva o baseline histórico do goal em `afe1f411` = código de `d42b71a5` (`verify-backend-gates.sh` **519**/**0** ignored; manifesto PG **29**, 28 com função; seleção sem `--exact`). Evidência atual da etapa de testes: 520/0; manifesto PG: 31 entradas estáticas, sem execução PG registrada. CI `backend-ci.yml` sem run verde (0/511 runs `success` até 27/09); **IdP / owner humano verificável** e **Critic** `AGENTS.md` permanecem bloqueadores (bootstrap PG `0010` é fatia parcial — [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) — ver § [Fechamento do goal (pendente)](#fechamento-do-goal-pendente).
+**P0** = pré-condição de isolamento; **P1** = dev/testnet; **P2** = requisito ainda sem decisão. Prioridade é proposta, não requisito aprovado. Cada entrega futura exige SDD, Critic G1 independente, acordo explícito de seam antes dos testes, TDD red/green e Critic da implementação, conforme AGENTS.md. Esta matriz não autoriza comportamento novo nem ordens live.
 
-## Resumo executivo
+1. **Banco (P0):** T-DB-ENV recebeu G1 com follow-ups; seletor por ambiente e URLs separadas estão especificados. G3 de alvo dev ainda aguarda implementação/revisão; nenhum G4 PG é afirmado. Não há endpoint/secret manager prod. Ver [database environment SDD](../sdd/database-environment-sdd.md), WIP 763808f949fad08b523437468569fefe356fa743.
+2. **Isolamento (P0):** T-W0-06 é proposed/G1 pendente; conteúdo corrente disponível em 0bb035db2a189cb54f322c12dab0898fa08107eb. Aprovar Critic e provar runner antes de suite integral ou integrações DB/Docker/Exchange.
+3. **Evidência:** [test matrix](../reference/test-matrix.md), modules-completeness-evidence.json e [MVC status](../architecture/module-implementation-status.md) contêm números datados (520 testes bin em 2026-09-27, 62 HTTP, manifesto PG estático). Não comprovam execução atual. Nenhum resultado abaixo foi reexecutado.
+4. **Dinheiro real:** source backend/src/core/config/mod.rs:381 recusa execução de ordens prod. backend/src/modules/exchanges/rest.rs:31 libera backfill público e opt-ins Spot dev. Produção continua desabilitada até SDD/threat model/ops/autorização próprios.
 
-| Módulo / superfície | Completude | Evidência principal | Próximo gate |
+## Matriz de módulos
+
+| Módulo | Contrato e critério de aceite documentado | Comportamento/fonte observada | Gaps, prioridade, dependências e fatias SDD/TDD sugeridas |
 |---|---|---|---|
-| `modules/bots` | `MonitorStrategyRegistry` + `MonitorEvaluatorKind` (`sma_cross`/`ema_cross`), supervisor + backtest via `evaluate_for_kind`, catálogo HTTP `monitor_evaluator` + períodos v1/v2 (`bots_catalog_http_lists_monitor_registry_v2_periods`); promote SMA/EMA via registry | `monitor_strategy.rs`, `http_bridge/bots.rs`, `evaluation_binding.rs`, `server.rs` | Auth owner; orders live |
-| `modules/orders` | Paper/recording/testnet, idempotência+PG, reconciliação+poll (`LiveExchangeSpotOrderReconciliationQuery` + testnet observe), `SpotOrderSubmitAck` | `spot_order_reconciliation_query.rs`, `binance_spot_testnet_reconcile.rs`, `state.rs` | Prod REST; threat model/Critic |
-| `modules/portfolio` | `paper_snapshot_with_fills` + posições; HTTP `GET /portfolio/paper-snapshot` via `ApiState::paper_wallet_snapshot` | `controllers.rs`, `http_bridge/portfolio.rs`, `routes/portfolio.rs`, `state.rs` | Preço de mercado dinâmico (não só env fixo) |
-| `modules/agents` | Registry + PG; promote capability; bootstrap owner PG (`0010`) + `verify_register_owner_id` | `pg_owner_bootstrap.rs`, `register_owner.rs`, [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md) | IdP / owner humano verificável |
-| `presentation/http` | OpenAPI **42** paths; boot `build_api_state_for_http_serve` + owner bootstrap; `GET /meta` (`product_owner_bootstrap_active`); reconciliação; `agents_register_rejects_owner_mismatch_when_product_owner_verified` | `state.rs`, `meta.rs`, `http_integration_tests.rs` | IdP; política prod REST |
+| **agents** | Identidade/hierarquia/lifecycle, auditoria, advisory Jev opt-in; agente não cria worker ou ordem. Owner humano verificável é requisito distinto. | Models/controllers/adapters/testes em backend/src/modules/agents/. SDD descreve PG mirror e cold-start hydrate. | **P1:** authority-from-client/AGT-SEC-01 e IdP/owner são gaps documentados; PG execution não comprovada aqui. Depende de HTTP auth e DB isolado. SDD threat model/principal; TDD de autorização/negação; G4 cold-start no DB descartável. [agents SDD](../sdd/agents-module-sdd.md), [owner bootstrap](../sdd/agents-owner-bootstrap-g1-sdd.md). |
+| **backtest** | SMA offline; sinal em candle fechado e fill no open seguinte; fixture CLI fecha Sell; custos/slippage e aritmética verificados. Não alega retorno real. | CLI gera candles sintéticos em backend/src/modules/backtest/cli.rs; controller tem cálculo de slippage. T-07 registra C12/C13 G3 aprovado, mas não repetido aqui. | **P1:** --persist depende do DB/test harness isolado. **P2:** feed real, outras estratégias/métricas não especificados. Pós-P0, TDD de persistência no PG descartável. Problemas antigos de zero trades/Sell slippage são históricos, não gaps confirmados; [T-07](../sdd/backtest-trades-and-slippage-sdd.md). |
+| **bots** | Catálogo versionado strategy×timeframe/símbolo, ranking, runtime fail-closed, promoção autorizada, evaluator no monitor/backtest. Bot != agente. | backend/src/modules/bots/ implementa models/controllers/adapters; SDD descreve catálogo PG e SMA/EMA runtime parcialmente. | **P1:** PG/hydrate isolado, IdP owner e paridade runtime ainda pendentes. Depende de agents/monitor/DB. SDD de autorização; TDD capability/replay/runtime; teste PG descartável. [bots](../sdd/bots-module-sdd.md), [runtime G2](../sdd/bots-runtime-live-gate2-sdd.md), [catalog PG](../sdd/bots-catalog-persistence-gate1-sdd.md). |
+| **exchanges** | Account/transport/market tipados; feed governado; REST privado fail-closed exceto opt-in aprovado. Dev usa contas Testnet. | backend/src/modules/exchanges/ tem Binance REST/WS/Testnet adapters. rest.rs libera backfill Spot dev e submit recording/Testnet explícito. Monitor rejeita RunMode Testnet (core/config/mod.rs:390-393). | **P1:** assinatura, redação, redirects, timeout/reconciliação só em Testnet após T-W0-06. Redirect SDD existe; integração não comprovada. **P2:** outras venues sem especificação. Depende de orders/credentials/DB/isolation; TDD offline + integração Testnet opt-in. [redirect](../sdd/rest-redirect-sdd.md), [orders G2](../sdd/orders-live-execution-gate2-sdd.md). |
+| **http_bridge** | Facades por domínio; não duplicar política de domínio. | Facades em backend/src/modules/http_bridge/. Auditoria velha registra 62 HTTP integration em 27/09. backend/src/presentation/http/admin_auth.rs:96 retorna erro sem token. | **P1:** revalidar mutações/GETs sensíveis com contrato bearer e DB dev isolado (503 sem config, 401 token inválido). Docs antigos de rota aberta divergem do source. Admin bearer não é IdP. Depende de HTTP auth e DB; TDD offline por rota, PG isolado para rotas persistentes. [HTTP auth](../sdd/http-admin-auth-seam-sdd.md), [core wiring](../sdd/core-services-integration-sdd.md). |
+| **market** | OHLCV/timeframes/dataset/resampling; feed REST+WS contíguo, dedup e watermark; adapters em exchanges/persistence. | backend/src/modules/market/ usa models/controllers/adapters. Test matrix lista testes determinísticos mas não foram executados agora. Phase3 SDD descreve layout anterior e está draft. | **P1:** REST/WS/redirect contra código atual e persistência em DB descartável. **P2:** frescor/latência/venues extras não definidos. Depende de exchanges/monitor/persistence; TDD offline + integração após P0. [market Phase3](../sdd/market-module-phase3-sdd.md), [redirect](../sdd/rest-redirect-sdd.md), [monitor persistence](../sdd/monitor-persistence-policy-sdd.md). |
+| **monitor** | Loop observe/paper; pause bloqueia avaliação; resume exige backfill REST válido/contíguo; persist health OFF/HEALTHY/DEGRADED/GAP se opt-in; sem ordem real. | backend/src/modules/monitor/ tem supervisor/startup/handle/views. T-10 seams aprovados; C17 persistence registrada; presentation contract segue draft. | **P1:** pausa/retomada, headless/serve e PG opt-in sem evidência atual. **P2:** SLO/alerta/runbook sem contrato. Depende de market/strategy/risk/portfolio/DB/UI; finalizar SDD de apresentação, TDD offline de controle/lag/shutdown, depois integração. [T-10](../sdd/monitor-pause-resume-sdd.md), [T-15](../sdd/monitor-persistence-policy-sdd.md), [presentation](../sdd/monitor-presentation-contract-sdd.md), [core](../sdd/core-completeness-sdd.md). |
+| **orders** | OrderIntent validado por risk antes do port; fail-closed default; paper ledger/idempotência/reconciliação; Testnet opt-in dev; prod desabilitado. | backend/src/modules/orders/ tem submit/paper/recording/Testnet, PG stores/poll. G2 SDD marca Testnet/reconciliação parcial e Critic/threat model pendentes. | **P1:** PG idempotência/reconciliação isolada; então submit mínimo Testnet opt-in e redação/ambiguidade/async review. **P2:** prod não especificada/autorizada. Depende de risk/exchanges/credentials/DB/isolation; TDD replay/errors offline, depois G4 Testnet. [orders](../sdd/orders-module-sdd.md), [G2](../sdd/orders-live-execution-gate2-sdd.md), [ambiguous claim](../sdd/wave0-12-order-ambiguous-claim-sdd.md), [async](../sdd/wave0-13-orders-block-on-sdd.md). |
+| **portfolio** | Evidência documentada limita-se a paper snapshot/positions alimentados por paper fills; não achei contrato de portfolio financeiro completo. | backend/src/modules/portfolio/ tem models/controllers e paper snapshot; auditoria anterior cita HTTP test histórico. | **P1:** provar paper submit→snapshot em dev. Persistir somente se requisito de sobreviver restart for decidido. **P2 decisão:** valuation, balances, fees, reconciliação, multi-moeda e ledger durável sem spec. Depende de orders; decisão primeiro, depois SDD/TDD. Sem SDD específico localizado. |
+| **risk** | Limites/perfis e gate de sinais/intents; orders valida antes do executor. Risk não executa exchange/UI. | backend/src/modules/risk/ contém models/controllers/tests; Orders SDD exige validação pre-port. | **P1:** revalidar invariantes e que intenção inválida não chama executor. **P2 decisão:** política financeira de portfolio/volatilidade/gap/prod não definida. Depende de orders; TDD offline dos contratos atuais, SDD só para nova política decidida. |
+| **strategy** | Avaliação determinística de candles fechados; SMA/EMA mencionados em runtime bots; Signal compartilhado, sem ordem. | backend/src/modules/strategy/ contém models/controllers; bots SDD registra evaluator no monitor/backtest. Testes da matriz não rodados agora. | **P1:** provar paridade monitor/backtest e binding por fixtures offline. **P2 decisão:** catálogo/versionamento/treino/performance além do atual não especificados. Depende de market/contracts; TDD fixtures e SDD só após decisão. |
 
-Execução live e produção permanecem bloqueadas até gates de segurança.
+## Cross-cutting core e presentation
 
-## Persistência Gate 1 (scaffold)
-
-- Migração SQL `0002_agents_bots_scaffold.sql` (agents + `bot_catalog_entries`); `Database::migrate()` no boot HTTP quando `DATABASE_URL` conecta.
-- Teste `postgres_scaffold_tables_exist_after_migrate` em `core/persistence/mod.rs` (skip sem `DATABASE_URL`; manifesto PG **31** (contagem estática; execução PG não registrada); incl. `graph_projection_outbox` migração `0009`).
-- Adapter Rust e SDD completo: [Gate 1 draft](../sdd/bots-catalog-persistence-gate1-sdd.md).
-- `core/database` expõe Neo4j opcional via `neo4rs` (`readyz` probe quando `BOT_AGENTS_ENABLED`).
-
-
-## Verificação local
-
-Gate canônico (recomendado):
-
-```text
-./scripts/verify-backend-gates.sh
-```
-
-Equivale a: `cargo fmt --check`, `cargo clippy --locked --bin bot -- -D warnings`, `./scripts/check-import-direction.sh`, `cargo test --locked --bin bot -- --test-threads=1`, depois `cargo test --locked --test <…>` (5 suítes em `tests/`; evita reexecutar bin `bot` em paralelo). PG opcional: `./scripts/verify-backend-full.sh` (ou `./scripts/run-pg-integration-tests.sh`) com `DATABASE_URL` → `trading_bot` (Timescale + pgvector).
-
-Evidência observada em 2026-09-27: etapa `cargo test --locked --bin bot -- --test-threads=1` → **520** passed, **0** ignored, conforme `modules-completeness-evidence.json`. `verify-backend-gates.sh` parou na asserção de completude por divergência do snapshot; as cinco suítes workspace não foram executadas. Manifesto PG: **31** entradas estáticas; execução PG não registrada. Histórico em `afe1f411`/`d42b71a5`: 519 testes no bin e 29 entradas no manifesto (28 com função). (`run-pg-integration-tests.sh`, manifesto validado por `assert-pg-integration-manifest.sh`; snapshot JSON validado por `assert-completeness-evidence.sh` no gate), incl. agents/bots/orders, `loads_credentials_from_postgres` (0007), `pg_product_owner_bootstrap_*` (0010), `pg_graph_projection_outbox_*` (0009 F2.1), `pg_order_idempotency_and_graph_projection_same_transaction` (F2.1.3+ TX orders), `pg_agent_identity_and_graph_projection_same_transaction` (F2.1.3+ TX agents), `pg_monitor_supervisor_snapshot_round_trip` (0011, [C17 fatia 1](../sdd/monitor-persistence-c17-sdd.md)); unit C17 **fatia 2** (`PersistenceStatus::Gap`, REST `persistence_status` — `monitor_snapshot_maps_*`); Neo4j/testnet via `pg_integration` (skip sem stack). HTTP mutante/bearer: `cargo test --locked --bin bot http_integration -- --test-threads=1` → **62** passed. Neo4j write-only F1–F3.1 + outbox F2.1/F2.1.2 (worker + health): [unified-neo4j-graph-strategy](../architecture/unified-neo4j-graph-strategy.md) §5, [graph-projection-outbox-sdd](../sdd/graph-projection-outbox-sdd.md).
-
-## Documentação relacionada
-
-- [CLI e variáveis HTTP](../reference/cli-and-config.md) (`BOT_HTTP_*`, `BOT_ORDERS_EXECUTION`, `BOT_RUNTIME_ENABLED`, `client_order_id`; [camadas system/bot/env](../reference/cli-and-config.md#configuração-em-camadas))
-- [SDD configuração centralizada](../sdd/centralized-config-sdd.md)
-- [module-catalog.md](../architecture/module-catalog.md)
-- [module-implementation-status.md](../architecture/module-implementation-status.md) — MVC mínimo vs goal de completude (dois vereditos distintos)
-- [unimplemented-modules-analysis.md](./unimplemented-modules-analysis.md)
-- SDDs: [bots](../sdd/bots-module-sdd.md), [orders](../sdd/orders-module-sdd.md), [agents](../sdd/agents-module-sdd.md), [owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)
-
-
-
-## Matriz de requisitos (objetivo)
-
-| Requisito | Evidência | Status |
-|-----------|-----------|--------|
-| Completude bots | Registry + catálogo HTTP, runtime promote, supervisor testnet→orders (`client_order_id` + ledger partilhado; ramo inalcançável no binário — `--mode testnet` rejeitado em `core/config/mod.rs:390-393`), backtest `evaluate_for_kind` | **Parcial** (PG mirror monitor; auth owner) |
-| Completude orders | Paper/recording/testnet, idempotência PG, reconciliação+poll (recording/testnet observe), redação `BINANCE_TESTNET_*` em erros mapeados, `SpotOrderSubmitAck` | **Parcial** (prod REST; threat model/Critic) |
-| Completude agents | Registry + PG; promote capability; bootstrap `0010` + `VerifiedProductOwner` ([owner bootstrap G1](../sdd/agents-owner-bootstrap-g1-sdd.md)) | **Parcial** (IdP; Critic G1) |
-| Integração HTTP + camadas | OpenAPI **42** paths; boot `serve`; admin bearer; owner bootstrap + provider credentials admin CRUD; reconciliação; **62** `http_integration`; PG `pg_http_boot_*` + owner `0010`; [layer-mapping](../architecture/layer-mapping.md) | **Parcial** (IdP; política prod REST) |
-| Gaps documentados | SDDs + esta auditoria | **Feito** |
-| Build/testes observados | **520** testes no bin + clippy/fmt/import; manifesto PG **31** entradas estáticas (execução PG não registrada); CI `backend-ci.yml` nunca verde (0/511 runs `success`; #510 em 27/09 15:56 COT falhou no clippy do job `rust`, `postgres-integration` skipped) | **Parcial** (CI não comprovada) |
-| Revisão Critic | AGENTS.md | **Bloqueado** |
-
-## Checklist do objetivo
-
-| Item do goal | Evidência | Status |
+| Área | Contrato/comportamento observado | Gaps e fatias |
 |---|---|---|
-| Analisar completude (bots, orders, agents, HTTP) | Este documento + `unimplemented-modules-analysis.md` | Feito |
-| Identificar gaps | Tabelas acima + SDDs Gate 1 | Feito |
-| Expandir/melhorar implementação | Bots/orders/agents G2 parcial; owner bootstrap PG; provider credentials HTTP+PG; outbox Neo4j worker; HTTP **62** testes | **Parcial** (IdP; Critic; prod REST) |
-| Atualizar SDD, catálogo, roadmap, README | `module-catalog`, `current-state-and-roadmap`, `cli-and-config`, SDDs | Feito |
-| Build/testes observados | etapa do bin em `./scripts/verify-backend-gates.sh` → **520** ok; clippy/fmt/import passaram; gate parou na asserção de evidência, sem execução das 5 suítes workspace | Parcial
-| Revisão Critic independente (AGENTS.md) | — | **Bloqueado** (instância separada) |
+| **core/config** | Parser/validação; prod recusa order execution (backend/src/core/config/mod.rs:381). T-DB-ENV requer resolver por ambiente e URL separada. | **P0:** G3 do alvo local + revisão; garantir todos callers pelo resolver. **P2:** prod sem endpoint/secret manager. [database environment SDD](../sdd/database-environment-sdd.md). |
+| **core/database/persistence** | Bootstrap PG + Neo4j opcional, migrations/transações/projeções em backend/src/core/database/. Sem execução PG comprovada aqui. | **P0:** zero SQL em mismatch, alvo dev identificado, runner isolado, backup antes de mutação/limpeza. Neo4j só com alvo local reconhecido. T-DB-ENV/T-W0-02b/T-W0-06. |
+| **core/providers** | Provider clients e credential cache/CRUD. backend/src/core/providers/credentials/mod.rs declara encryption mode none/plaintext PG. | **P1 segurança:** W0-07 precisa de SDD/revisão, envelope encryption e migração antes de credenciais seguras. Sem secrets reais em logs/fixtures. [W0-07](../sdd/wave0-07-credentials-at-rest-sdd.md). |
+| **core/health/logging/notifications** | Liveness/readiness e LogNotifier em [core completeness SDD](../sdd/core-completeness-sdd.md). | Métricas, SLI/SLO, alertas, dashboards/runbooks estão explicitamente fora do SDD atual. **P2 decisão:** requisitos operacionais antes de alegar prontidão prod. |
+| **presentation/http** | Serve, routes, OpenAPI, bearer e ApiState. Código admin auth em backend/src/presentation/http/admin_auth.rs:96. | **P1:** smoke atual e rotas com DB depois dos gates; bearer não equivale IdP. Reconciliar docs antigos de auth com source atual. |
+| **presentation/terminal** | TUI Ratatui consumidora de monitor. | Se TUI faz parte do aceite: aprovar contrato e TDD snapshot/commands/lag/shutdown. Para HTTP-first, priorizar após API dev. Depende de monitor. [presentation contract SDD](../sdd/monitor-presentation-contract-sdd.md). |
 
-## Roadmap de gates (pós-G1)
+## Reconciliação e decisões necessárias
 
-| Gate | Módulo | SDD | Implementado |
-|------|--------|-----|--------------|
-| G1 PG scaffold | agents + bots catálogo | [bots-catalog-persistence-gate1-sdd.md](../sdd/bots-catalog-persistence-gate1-sdd.md) | **Parcial** (adapters + `run-pg-integration-tests.sh`; CI `postgres-integration` ainda sem execução bem-sucedida; default `cargo test` skip PG sem `DATABASE_URL` via `pg_integration`) |
-| G1 HTTP admin seam | presentation/http | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md) | **Sim**, mas fica aberto sem token (falha aberta, `admin_auth.rs:91-94`; correção em W0-01). Não é auth owner produto |
-| G2 orders live | orders + idempotência + reconciliação | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | **Parcial** (paper/recording/testnet; reconciliação PG+HTTP; poller testnet/job periódico; threat model/Critic pendentes) |
-| G2 bots runtime | bots + monitor + agents `promote_runtime_bot` quando `BOT_HTTP_AGENCY_ID` | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md) | **Parcial** (`MonitorEvaluatorKind` SMA/EMA no supervisor + `run_sma_crossover`; catálogo `monitor_evaluator`) |
-| Provider credentials PG | core/providers + http_bridge | [provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md) | **Sim** (CRUD admin; secret em texto — criptografia follow-up) |
-| Auth owner produto | agents | [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md), [agents-module-sdd.md](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist) | **Parcial** (PG+ACK+bind registro; não IdP) |
+- Auditoria prévia cobria bots/orders/agents/HTTP; esta amplia sem tratar seus testes datados como atuais.
+- [T-16 module map](../sdd/backend-module-map-sdd.md) é superseded e representa árvore anterior.
+- [MVC status](../architecture/module-implementation-status.md) separa MVC mínimo do goal de completude parcial; seus números são do snapshot 2026-09-27.
+- Docs antigos dizem que admin routes ficam abertas sem token; source atual retorna erro de configuração ausente. Revalidar em gate permitido.
+- T-16 relatou zero trades/Sell slippage ausente; [T-07](../sdd/backtest-trades-and-slippage-sdd.md) registra correções C12/C13 e aprovação; são itens históricos, não gaps atuais confirmados.
+- SDD draft/partial e existência de implementação são eixos diferentes; nenhum, isoladamente, atesta completude.
 
-## Fechamento do goal (pendente)
+Decisões humanas: (1) dev é API+paper+persistência ou inclui Binance Testnet opt-in? (2) prod significa preparação/ops ou ordens reais? Live production permanece bloqueada. (3) qual IdP/owner verificável? (4) portfolio é paper ou contabilidade/reconciliação completa? (5) política risk além das regras atuais? (6) SLI/SLO, backups, retenção e runbook? Não inventar respostas.
 
-Implementar itens **Não** nos checklists [orders G2](../sdd/orders-live-execution-gate2-sdd.md#critérios-de-fechamento-g2-checklist), [bots runtime G2](../sdd/bots-runtime-live-gate2-sdd.md#critérios-de-fechamento-g2-checklist) e [agents G1](../sdd/agents-module-sdd.md#critérios-de-fechamento-g1-checklist); revisão Critic AGENTS.md. Baseline observado: etapa de testes do bin em `verify-backend-gates.sh` → **520**/**0** ignored; gate completo interrompido na asserção de evidência; `http_integration` → **62**; manifesto PG → **31** (contagem estática; incl. V18 fatia 1 `pg_persist_dataset_*` + `persist_dataset_rejects_conflicting_manifest_for_same_id`; C17 fatia 1 `pg_monitor_supervisor_snapshot_round_trip` + fatia 2 presentation/REST); OpenAPI **42** paths.
+## Sequência proposta
 
-| W0-09 domínio+outbox TX (falha injetada) | [monitor-persistence-v18-sdd](../sdd/monitor-persistence-v18-sdd.md) | **Pendente:** `pg_agent_identity_graph_outbox_transaction_rollback_on_injected_failure` e `pg_order_idempotency_graph_outbox_transaction_rollback_on_injected_failure` não existem em `origin/main` `d42b71a5` (fatia agents revertida em `2089a496`); W0-09 volta pelo G1 ([wave0-09-v18-verificacao-sdd](../sdd/wave0-09-v18-verificacao-sdd.md)); **defer:** W0-10 G4 CI |
-| Próxima fatia (escolha) | SDD | Bloqueio típico |
-|-------------------------|-----|-----------------|
-| Threat model G2 fechado (Critic) + purge PG automatizado | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) | Critic independente; retenção ops já em [cli-and-config](../reference/cli-and-config.md#pg-orders-retention-gate-2) |
-| Auth owner verificável | [agents-capability-research.md](../research/agents-capability-research.md) | Bootstrap + decisão produto |
-| Revisão Critic pacote G1/G2 | AGENTS.md | Instância separada |
+| Etapa | Entrega | Evidência de saída |
+|---|---|---|
+| 0 | Critic aprova T-W0-02b, T-DB-ENV, T-W0-06; preservar DB existente | Contratos vigentes revisados; nenhum efeito externo prematuro |
+| 1 | G3/G4 PostgreSQL dev + test runner | mismatch rejeita antes de SQL; alvo identificado/descartável; log/exit codes registrados |
+| 2 | HTTP dev offline | serve loopback, health/ready/OpenAPI/auth/404 e testes determinísticos observados |
+| 3 | Fluxos dev persistidos | SDD e testes isolados para agents/bots/orders/monitor/backtest; Critic por fatia |
+| 4 | Binance Spot Testnet opt-in | credenciais locais sem imprimir; submit/reconcile no alvo de teste; sem produção |
+| 5 | Decisões e desenho operacional prod | IdP, encryption, SLO, backup, runbook/rollback e review; ordens live continuam bloqueadas |
 
-### Decisões fora do código (bloqueiam fechamento do goal)
+## ENTREGA — matriz documental
 
-1. **Auth owner** — transporte e bootstrap conforme [agents-capability-research.md](../research/agents-capability-research.md); `BOT_HTTP_*` não substitui.
-2. **Critic** — sessão independente com [handoff](#pacote-para-revisão-critic-handoff) abaixo; itens **Não** nos checklists G1/G2 só saem com LGTM registrado.
-3. **Prod REST** — permanece bloqueado até decisão explícita (`modules/exchanges/rest.rs`); não confundir com testnet/paper G2.
-
-## Pacote para revisão Critic (handoff)
-
-Escopo sugerido para uma instância **independente** (não substitui decisão de auth owner produto):
-
-| Área | Artefatos | Verificação mínima |
-|------|-----------|-------------------|
-| HTTP admin seam | [http-admin-auth-seam-sdd.md](../sdd/http-admin-auth-seam-sdd.md), `admin_auth.rs`, `http_integration_tests.rs`, matriz em [test-matrix](../reference/test-matrix.md#rotas-mutantes-com-bot_http_admin_token) | `./scripts/verify-backend-gates.sh` (etapa bin: **520** passed); `cargo test --locked --bin bot http_integration -- --test-threads=1` (**62** passed) |
-| Orders G2 | [orders-live-execution-gate2-sdd.md](../sdd/orders-live-execution-gate2-sdd.md) (checklist + threat model), `modules/orders/`, `order_execution.rs`, `binance_spot_testnet_submit.rs` (`redact_known_testnet_credentials`) | Confirmar `authorize_rest_use` / prod REST bloqueado; retenção ops documentada; teste `map_bot_error_redacts_*`; sem credenciais em CI |
-| Bots runtime G2 | [bots-runtime-live-gate2-sdd.md](../sdd/bots-runtime-live-gate2-sdd.md), `evaluation_binding.rs`, `runtime_port.rs` | Promote capability + `evaluate_for_kind`; [matriz runtime vs serve](../reference/test-matrix.md#bot-runtime-no-serve-vs-testes-http-g2-parcial) (linha checklist **Parcial**) |
-| Product owner bootstrap G1 | [agents-owner-bootstrap-g1-sdd.md](../sdd/agents-owner-bootstrap-g1-sdd.md), `pg_owner_bootstrap.rs`, `register_owner.rs`, `meta.rs` | PG `pg_product_owner_bootstrap_*`; HTTP `agents_register_rejects_owner_mismatch_when_product_owner_verified`, `bots_runtime_promote_rejects_promoted_by_mismatch_when_product_owner_verified`, `meta_reports_product_owner_bootstrap_active_when_verified` |
-| Agents G1 + boot HTTP | [agents-module-sdd.md](../sdd/agents-module-sdd.md), `bot_promotion.rs`, `http_bridge/agents.rs`, `state.rs` (`build_api_state_for_http_serve`, `pg_http_boot_sequence_mirrors_serve_wiring` com `GET /agents`, `GET /bots/catalog`, `GET /config/active`, `GET /orders/reconciliation/*`) | Itens **Não** do checklist permanecem bloqueadores de produto; manifesto PG **31** (`verify-backend-full.sh`; execução local/CI não comprovada) |
-| Neo4j F1–F3.1 + outbox F2.1.2/F2.1.3 | [graph-projection-outbox-sdd.md](../sdd/graph-projection-outbox-sdd.md), `graph_projection_outbox.rs`, `graph_projection_cli.rs`, projeções agents/bots/orders | `pg_graph_projection_outbox_*` no script PG; `graph_projection_cli_*` no bin `bot`; CLI `graph-projection drain` ([cli-and-config](../reference/cli-and-config.md)); testes `neo4j_*` fora do script (skip sem stack) |
-| Provider credentials admin | [provider-credentials-db-sdd.md](../sdd/provider-credentials-db-sdd.md), `http_bridge/provider_credentials.rs`, `routes/provider_credentials_admin.rs` | HTTP `provider_credentials_admin_*` (incl. DELETE `provider_credentials_admin_delete_removes_row`); PG `loads_credentials_from_postgres` no manifesto PG **31** |
-| Graph query F3 (read-only) | [graph-query-port-f3-sdd.md](../sdd/graph-query-port-f3-sdd.md), `graph_query.rs`, `graph_cli.rs` | `graph_query_port_*`, `graph_cli_*`; CLI `graph query` (`agents`, `supervision-chain`, `bots-for-agent`, `code-impact`) — [cli-and-config](../reference/cli-and-config.md); Neo4j skip sem stack: `neo4j_list_agents_after_local_graph`, `neo4j_supervision_chain_query_after_projection`, `neo4j_bots_for_agent_after_catalog_and_promotion_projection`, `neo4j_code_impact_for_module_after_seed`; projeção agents: `neo4j_agent_supervision_chain_after_projection` (`graph_projection.rs`) |
-| Portfolio paper (HTTP) | `http_bridge/portfolio.rs`, `routes/portfolio.rs`, `state.rs` (`paper_wallet_snapshot`) | `paper_wallet_snapshot_reflects_in_process_ledger`; `portfolio_paper_snapshot_http_reflects_paper_submit` em `http_integration_tests.rs` |
-
-Comandos canônicos: `./scripts/verify-backend-gates.sh` (etapa do bin observada: **520** passed / **0** ignored; gate completa interrompida na asserção de evidência); com `DATABASE_URL` → `trading_bot`: `./scripts/verify-backend-full.sh` (inclui manifesto PG com **31** entradas estáticas; execução não registrada); só PG: `./scripts/run-pg-integration-tests.sh`. Testnet: `cargo test --locked integration_submits_minimal_market_buy_on_testnet` (skip sem `BINANCE_TESTNET_*`; fora de CI).
-
-Entrega esperada do Critic: veredito **APROVADO** / **APROVADO COM FOLLOW-UP** / **REPROVADO** por SDD, com achados ligados a teste ou linha de código; autor do pacote não aprova o próprio artefato (`AGENTS.md`).
-
-<a id="entrega-pacote-completude-módulos--g4-builder"></a>
-
-## ENTREGA — pacote completude módulos (G4 Builder)
-
-- **Builder:** fatia técnica bots/orders/agents/HTTP + Neo4j F1–F3.1 + outbox F2.1.2 (worker + `/healthz` backlog) + F2.1.3 CLI drain + F2.1.3+ enqueue TX orders (`enqueue_graph_projection_outbox_tx` + `persist_idempotency_and_enqueue_graph_projection`) + F3 read-only `GraphQueryPort` (agents, supervision chain, bots_for_agent, code_impact_for_module); docs SDD/catálogo/roadmap/README alinhados.
-- **Registro histórico desta revisão:** `./scripts/verify-backend-gates.sh` + `assert-completeness-evidence.sh` → **519** passed, **0** ignored; manifesto PG **29** (execução não registrada). Evidência atual: etapa do bin 520/0; manifesto PG 31 entradas estáticas, sem execução registrada. `./scripts/verify-backend-full.sh` + `DATABASE_URL` → `http_integration` → **62** passed; `pg_store_error` + HTTP **503** `order_store_unavailable`; F2.1.2 worker + `/healthz` outbox; F2.1.3 `graph_projection_cli_*` + `bot graph-projection drain`; F3 `graph_query_port_*` / `graph_cli_*` + [graph-query-port-f3-sdd](../sdd/graph-query-port-f3-sdd.md) ([cli-and-config](../reference/cli-and-config.md)).
-- **Achados/revisão:** **PENDENTE** — Critic independente (`AGENTS.md`); IdP/owner humano fora do escopo da fatia bootstrap; seam `BOT_HTTP_*` + `VerifiedProductOwner` cobertos por testes.
-- **Veredito:** **PENDENTE** até sessão Critic + decisões de produto (auth owner, prod REST).
+- **Builder:** Orquestrador; síntese source/SDD; atualização exclusivamente por OpenKnowledge.
+- **Artefato:** esta página substitui a matriz parcial anterior; história OpenKnowledge preserva revisão anterior.
+- **Teste/evidência:** nenhum código/teste executado nesta entrega; evidências referenciadas são históricas e marcadas.
+- **Revisão:** PENDENTE — Critic independente /root/test_safety_sdd_critic.
+- **Riscos:** DB/test isolation pendentes, IdP e credenciais provider em plaintext, decisões de produto acima.
+- **Veredito:** PENDENTE até revisão independente.
