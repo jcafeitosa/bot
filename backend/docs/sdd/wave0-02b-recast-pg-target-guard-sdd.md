@@ -13,7 +13,7 @@ status: proposed
 
 # SDD T-W0-02b recast — proteção do alvo PostgreSQL e comportamento do gate
 
-**Status: PROPOSED; G1 independente pendente.** Este é um SDD substituto para fechar o comportamento do gate PostgreSQL e supersede explicitamente o item escalado T-W0-02b do [SDD W0-02 anterior](./wave0-02-ci-pg-fail-loud-sdd.md), que permanece como histórico `draft` reprovado. A substituição não aprova o desenho, não autoriza implementação e não transforma vereditos de outros SDDs em autorização.
+**Status: PROPOSED; G1 independente APROVADO COM FOLLOW-UP** pelo Critic em `226476719b4ca488c7eca8b73a8d6a5214b41245`; o follow-up G3 de composição verifier→capability→connector→pool/lifecycle permanece pendente.** Este é um SDD substituto para fechar o comportamento do gate PostgreSQL e supersede explicitamente o item escalado T-W0-02b do [SDD W0-02 anterior](./wave0-02-ci-pg-fail-loud-sdd.md), que permanece como histórico `draft` reprovado. A substituição não aprova o desenho, não autoriza implementação e não transforma vereditos de outros SDDs em autorização.
 
 ## Contexto e objetivo
 
@@ -119,7 +119,7 @@ Public API seam para callers é `Environment + central config -> verifier -> Ver
 
 ## Fases, dependências e evidências
 
-- **G1:** Critic independente aprova este SDD de substituição antes de implementação.
+- **G1:** Critic independente aprovou este SDD de substituição como APROVADO COM FOLLOW-UP na revisão `226476719b4ca488c7eca8b73a8d6a5214b41245`. A nova prova de composição verifier → capability → connector → pool wrapper → lifecycle lock é o follow-up G3 pendente; G1 não autoriza G3 global nem G4.
 - **G3:** RED/GREEN offline para verifier, URL binding, capability API, marker-policy fakes, snapshot/gates, lease shared/exclusive, lifecycle interlock, ownership até pool drop e zero connector em mismatch. Critic revisa implementação e fixtures.
 - **Dependência W0-06:** o status informado é G1 aprovado com follow-up; topologia G3 precisa estar implementada, observada e revisada antes de habilitar qualquer integração que dependa daquele perfil de egress. O gate de integração permanece disabled até esse pré-requisito G3.
 - **G4:** nenhum SQL real até G1/G3 pertinentes aprovados e autorização de execução específica. Se autorizados, somente runner PG efêmero isolado e validado; registrar sete cenários SQL marker separados de evidências offline. Nada neste SDD autoriza DB persistente, Docker, CI, Neo4j, Binance Testnet ou ambiente prod.
