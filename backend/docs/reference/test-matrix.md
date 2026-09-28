@@ -89,7 +89,7 @@ Testes PG/Neo4j/testnet usam `core/persistence/pg_integration.rs`: retorno cedo 
 
 ### Integração opcional no bin `bot` (script PG **31** + Neo4j/testnet **10** fora do script; 0 `#[ignore]`)
 
-**27** casos da tabela espelham `PG_TESTS` em `scripts/run-pg-integration-tests.sh` (validado por `assert-pg-integration-manifest.sh` no gate). Os **10** Neo4j/testnet (`ping_and_node_count_against_local_graph`; `neo4j_*` em `core/database/graph_query.rs` (4) e nos adapters `graph_projection.rs` de agents (1), bots (1) e orders (2); `integration_submits_minimal_market_buy_on_testnet`) ficam fora do script CI; a tabela também lista testes unitários F2.1/F3 relacionados (sem dependência externa); no gate passam com skip via `pg_integration` sem stack Neo4j ou credenciais testnet.
+O manifesto PG em `scripts/run-pg-integration-tests.sh` lista **31** entradas; a tabela descreve casos por módulo, mas não há validação registrada de correspondência individual entre suas linhas e todas as entradas do manifesto. A execução PG não foi comprovada. Os **10** Neo4j/testnet (`ping_and_node_count_against_local_graph`; `neo4j_*` em `core/database/graph_query.rs` (4) e nos adapters `graph_projection.rs` de agents (1), bots (1) e orders (2); `integration_submits_minimal_market_buy_on_testnet`) ficam fora do script CI; a tabela também lista testes unitários F2.1/F3 relacionados (sem dependência externa); no gate passam com skip via `pg_integration` sem stack Neo4j ou credenciais testnet.
 
 | Teste | Arquivo | Como executar |
 |-------|---------|---------------|
