@@ -86,7 +86,7 @@ Rollout proposto: implementar 503/401/continuação primeiro em testes do seam p
 
 #### Validação comportamental observável (design; ainda não executada)
 
-Para uma rota protegida representativa e para cada classe/lista aprovada: sem env, resposta 503 + `admin_auth_not_configured`, handler não chamado; com env e sem bearer / bearer inválido, resposta 401 + `unauthorized`, handler não chamado; com env e bearer válido, handler chamado uma vez e resposta normal. Para cada rota pública, sem env e sem bearer, resposta normal. Para rota futura sem classificação, handler não chamado e resposta de negação conforme seam escolhido. Cobrir também o fluxo real de `serve`: listener ativo sem token, rota pública respondendo e rota protegida retornando 503. Os nomes de helper, localização do middleware, status/corpos estáveis e estratégia de lista exigem acordo antes de testes TDD; nenhum teste foi executado nesta entrega de documentação.
+Para uma rota protegida representativa e para cada classe/lista aprovada: sem env, resposta 503 + `admin_auth_not_configured`, handler não chamado; com env e sem bearer / bearer inválido, resposta 401 + `unauthorized`, handler não chamado; com env e bearer válido, handler chamado uma vez e resposta normal. Para cada rota pública, sem env e sem bearer, resposta normal. Para rota futura sem classificação, handler não chamado e resposta 404 `route_not_found`. Cobrir também o fluxo real de `serve`: listener ativo sem token, rota pública respondendo e rota protegida retornando 503. A lista e os status/códigos estão fechados pelo owner; helper, tipo Rust e composição do middleware permanecem decisões de implementação para revisão G1. Nenhum teste foi executado nesta entrega de documentação.
 
 #### Seams públicos de comportamento — decisões fechadas pelo owner em 2026-09-27
 
@@ -101,12 +101,7 @@ Os seis seams de comportamento foram fechados pelo owner:
 
 Não há acordo pendente do owner para começar a revisão G1. O Critic deve revisar se as interfaces e a composição propostas em A2–A6 implementam fielmente estes contratos; implementação e testes seguem bloqueados até aprovação G1 e eventual acordo sobre API pública de teste conforme AGENTS.md.
 
-1. Qual API/config seam expõe o estado de configuração: tipo/enum e campos para ausente, vazio, válido e inválido; regra de força/validação do token e ponto único de leitura do env.
-2. Função/método público que decide/verifica credencial e sua assinatura: entrada do request, como representar segredo sem expô-lo em `Debug`, saída de decisão e erros/códigos públicos exatos.
-3. Lista completa método + path + classe para cada rota existente, em especial GETs sensíveis e as seis POSTs de cálculo atualmente públicas; decidir se novas rotas sem classificação falham na construção, retornam 401/503 em runtime ou são barradas por outro seam.
-4. Ponto de aplicação da autenticação no router e extensão do seam para registro de rotas futuras; confirmar como health, readiness, OpenAPI e docs são tratados.
-5. Contrato público exato de resposta 503, 401 e de bearer válido (status, corpo/código, headers) e comportamento quando a variável está presente mas inválida.
-6. OpenAPI: como declarar bearer e `security` por operação, após a lista ficar acordada.
+
 
 
 
@@ -116,7 +111,7 @@ Não há acordo pendente do owner para começar a revisão G1. O Critic deve rev
 - **Plano:** W0-01, prioridade 1, em [master-plan](../planning/master-plan.md) §4.1.
 - **Fonte dos critérios de segurança:** [F-ADM-01](../security/admin-http-auth-fail-open.md) §4 (SEC-ADM-01…15). Na versão atual do TM, SEC-ADM-01…11, 13 e 15 são F1, SEC-ADM-12 é FU e SEC-ADM-14 é P1.
 - **Leitura importante:** as seções abaixo desta ("Gate 1", "Comportamento") descrevem o código **atual**, que é fail-open sem token. Esta seção descreve o alvo. Quando W0-01 for implementado, a tabela "Comportamento" e o título mudam junto (SEC-ADM-13).
-- **Seams:** todos os seams desta seção estão **a acordar com o owner** (tabela "Seams públicos"). Nenhum foi acordado ainda.
+- **Seams:** decisões públicas de comportamento aprovadas em 2026-09-27 e registradas acima; a composição interna segue para revisão G1.
 
 ### Contexto (evidência no código, HEAD `d42b71a5`)
 
@@ -323,7 +318,20 @@ A decisão do owner fecha os seis seams públicos de comportamento listados no i
 | Rota não classificada | 404 `route_not_found` antes de executar handler; sem herança pública ou auth por omissão. |
 | Composição router | Proposta de G1: camada de classificação aplicada antes dos handlers, incluindo endpoints de sistema/docs; nome de funções e estrutura do registro ficam para Critic revisar. |
 
-### Critérios de aceite W0-01 (pronto para revisão G1; critérios observáveis, não aprovados)
+### Critérios de aceite W0-01 (pronto para revisão G1; critérios observáveis propostos)
+
+Os critérios observáveis que prevalecem sobre os F1–F10 antigos são:
+
+- **W0-01-a — serve ativo:** com token ausente e, separadamente, token fraco (menos de 32 bytes ou com espaços), `serve` não falha por causa da auth, o listener fica ativo e rota pública responde normalmente.
+- **W0-01-b — auth indisponível:** para cada rota protegida da lista aprovada, sem token ou com token fraco, a resposta é 503 `admin_auth_not_configured`; handler não executa.
+- **W0-01-c — bearer inválido:** com token configurado e válido, bearer ausente/incorreto numa rota protegida resulta em 401 `unauthorized`; handler não executa.
+- **W0-01-d — bearer válido:** com token configurado e bearer válido, rota protegida alcança o handler e preserva sua resposta normal.
+- **W0-01-e — públicas:** todas as rotas públicas da lista aprovada respondem normalmente sem token e sem bearer, inclusive os seis POSTs de cálculo.
+- **W0-01-f — rota sem classe:** responde 404 `route_not_found` antes do handler, sem depender de bearer.
+- **W0-01-g — cobertura de classificação:** teste compara a lista método+path aprovada com as rotas montadas, para detectar rota existente sem classe ou classe divergente.
+- Os critérios F1–F10 abaixo são detalhes legados do design técnico e devem ser reescritos pelo Critic/Builder quando conflitem com W0-01-a…g; nenhum foi executado nesta entrega.
+
+
 
 - SEC-ADM-01, 02, 03, 04, 05, 06, 07, 08, 09, 10, 11 (forma de A6), 13 e 15, conforme [F-ADM-01](../security/admin-http-auth-fail-open.md) §4, referenciados por ID.
 - F1. Teste CLI em `backend/tests/` (padrão de `config_cli.rs`): `serve` sem token → exit ≠ 0, porta não aberta e **zero conexões ao DB**: `DATABASE_URL` aponta para `127.0.0.1:<porta>/trading_bot` de um `TcpListener` do próprio teste, que conta `accept`s; esperado 0. Entra na lista `INTEGRATION_TESTS` de `verify-backend-gates.sh`. Mesmo teste com token fraco.
