@@ -22,11 +22,12 @@ A proposta dá a cada execução um ambiente explícito, uma URL correspondente 
 
 ### Seleção de ambiente e URL
 
-- O CLI recebe --environment dev ou --environment prod uma única vez no escopo global e propaga a mesma seleção ao monitor, serve, backtest e comandos de banco que aceitam conexão.
-- A resolução usa exclusivamente BOT_DATABASE_URL_DEV para dev e BOT_DATABASE_URL_PROD para prod. Não há fallback cruzado entre variáveis.
-- Se a variável selecionada estiver ausente, vazia, inválida ou apontar para ambiente não permitido localmente, o comando falha antes de conectar, criar schema ou migrar. O diagnóstico informa a variável ausente/inválida sem imprimir a URL.
-- DATABASE_URL permanece fora do novo caminho após migração. A implementação não o consulta como fallback para dev/prod. A retirada de usos legados de DATABASE_URL ocorre em entrega separada, com inventário de callers e janela de compatibilidade; até lá, caminhos legados não aceitam --environment como se fossem isolados.
-- Nenhuma opção implícita escolhe prod. Para comandos que podem persistir, ausência de --environment falha antes de resolver URL. O valor selecionado aparece em logs/metadados sem credenciais.
+- Opção pública proposta: --database-environment dev|prod, independente do --environment existente usado para perfil trading/Binance. Não modifica market, strategy, run mode nem seleção de credenciais de exchange.
+- A seleção de banco é obrigatória para todo caller runtime que conecta, lê, escreve ou migra PostgreSQL. Ela é propagada a monitor, serve, backtest --persist, graph-projection e stores transitivos do bootstrap.
+- A resolução usa exclusivamente BOT_DATABASE_URL_DEV para dev e BOT_DATABASE_URL_PROD para prod. Não há fallback cruzado nem fallback DATABASE_URL.
+- Se seletor/URL estiver ausente, duplicado ou inválido, comando falha antes de resolver conexão, criar schema ou migrar; mensagem redige URL e segredos.
+- Todos os callers runtime que leem DATABASE_URL são migrados ao resolver comum nesta entrega. Se um caminho não receber DatabaseEnvironment, ele falha fechado e não pode manter leitura direta/legada.
+- O ambiente aparece em logs/metadados sem credenciais. Nenhuma opção implícita escolhe prod.
 
 Variáveis candidatas para acordo:
 
@@ -44,25 +45,34 @@ Compose provisiona dois serviços locais separados, cada um com container, volum
 
 O banco prod local começa vazio e isolado. Não se restaura dump de produção nem se copia conteúdo de dev por padrão. Dados de mercado públicos e fixtures sintéticas podem ser carregados por ferramenta explicitamente identificada; dados de usuário, tokens, credenciais de exchange e provider não entram no seed. O banco dev pode ser recriado sem afetar o volume prod.
 
-Migration executa apenas após validar ambiente, container, database, role e identidade do volume. A mesma cadeia versionada de migrations e schema é aplicada a dev e prod localmente; não se mantém schema divergente por ambiente. Antes de migrar, o runner registra a versão atual e tira backup local do volume selecionado, ou exige banco vazio quando backup confiável não é possível. Migrations são transacionais quando suportado; falha interrompe o comando e preserva log redigido.
+Migration executa apenas após validar ambiente, database, role e identidade Docker. A mesma cadeia versionada é aplicada em dev e prod local, sem schema divergente. Antes da primeira migration, provar alvo vazio. Para alvo não vazio, exigir backup consistente prévio associado ao database/container/volume e evidência de restore verificável; se isso não puder ser demonstrado, recusar migration e criar alvo vazio novo. Migration falha interrompe o comando, preserva log redigido e não altera o outro ambiente.
 
 Os documentos [core database](./core-database-sdd.md), [integração de módulos](./database-module-integration-sdd.md) e [configuração centralizada](./centralized-config-sdd.md) descrevem o seam PostgreSQL e as camadas de configuração existentes. Este SDD propõe seleção por ambiente sem declarar que esses contratos foram alterados ou aprovados.
 
 ### Compose local
 
-Compose deve oferecer comandos separados para subir, health-check, migrate, backup e parar cada ambiente. Um comando dev não pode iniciar, parar, resetar ou migrar postgres-prod. O serviço prod local não publica porta em todas as interfaces; se a aplicação precisar conectar, usa rede Docker privada ou bind loopback. Senhas de role são distintas e geradas localmente; o compose não contém valores de segredo em texto fixo.
+Compose deve criar projetos exclusivos por ambiente e execução, como bot-db-env-dev-<run-id> e bot-db-env-prod-<run-id>, com nomes únicos para containers e volumes. Não usar nome default por diretório nem reutilizar recursos do docker-compose.bot.yml. Antes de cada start/stop/backup/migrate/cleanup, validar project/environment/run labels, container ID, image ID/digest, volume ID e mount source do manifest. Qualquer divergência aborta sem mutação.
 
-Antes de implementar, inventariar docker-compose.bot.yml e containers/volumes existentes. Não reatribuir volume, trocar imagem, apagar container nem executar migrations em alvos atuais como parte da entrega sem plano de migração revisado. Criar stack nova com nomes e volumes inequívocos; rollback mantém o stack antigo intacto.
+Cada operação nomeia explicitamente project + service/container + volume validados. Proibidos: down sem identidade validada, down -v, docker system prune, volume prune, rm amplo ou nomes parciais. Cleanup só remove IDs criados pelo runner após revalidar labels/IDs/mount sources. Dev nunca opera recursos prod. Inventariar stack atual antes de criar recursos; não reatribuir volumes nem migrar o stack existente. Bind somente loopback ou rede privada Docker; credenciais não ficam em texto fixo no Compose.
 
-## Seams que exigem acordo explícito antes de testes
+## Matriz de callers runtime e contrato
 
-1. Se --environment é obrigatório para todo caminho mutável/que persiste ou somente para comandos ligados a banco; proposta: obrigatório para qualquer comando que possa escrever no PostgreSQL.
-2. Nomes BOT_DATABASE_URL_DEV e BOT_DATABASE_URL_PROD, precedência e rejeição total de fallback DATABASE_URL; proposta: nomes exatos acima, sem fallback.
-3. Se prod local usa container/volume independente; proposta: instância, role, database e volume independentes de dev.
-4. Política de host aceito e proof of identity do container Compose antes de connect/migrate; proposta: somente container criado/identificado pelo stack local e nenhuma URL remota.
-5. Se backtest persist=true herda a seleção de ambiente ou exige um parâmetro explícito próprio; proposta: herda --environment e só grava no alvo local selecionado.
+| Caller | Uso PostgreSQL documentado | Mudança proposta |
+|---|---|---|
+| serve / AppDatabases::bootstrap_runtime (bootstrap_http_api) | bootstrap, hidratação de registry/owner e writes de stores habilitados | recebe DatabaseEnvironment; URL, connector e migrations usam resolver comum |
+| monitor / bootstrap_monitor_postgres e persistência opcional de market data | conexão e migration quando persistência está ativa | propaga --database-environment; sem flag não resolve URL nem conecta |
+| backtest --persist / postgres_for_cli_persist | escrita de resultados | herda database-environment global; persist=false não abre PG |
+| graph-projection drain | leitura/escrita de outbox e migration/validação PG | recebe o seletor; Neo4j segue configuração própria |
+| stores providers credentials, bots, agents e product-owner | leitura/escrita via bootstrap/store | sem leitura própria de URL; recebem AppDatabases já selecionado |
+| runner PostgreSQL de testes | conexão e migration de integração | seam separado: exige BOT_PG_TEST_DATABASE_URL + gate/identity/marker do runner; DATABASE_URL não é fallback |
 
-Até esses contratos receberem acordo do owner e G1, não criar testes de contrato desses seams nem alterar parser, configuração, connector, migrations ou Compose.
+Este inventário deriva de [integração dos módulos](./database-module-integration-sdd.md), [core database](./core-database-sdd.md), [configuração centralizada](./centralized-config-sdd.md) e [referência de CLI](../reference/cli-and-config.md). Implementação deve auditar toda leitura direta/transitiva de DATABASE_URL e mapear símbolo runtime a DatabaseEnvironment; qualquer caller sem resolução comum reprova aceite.
+
+## Seams que exigem novo acordo explícito antes de testes
+
+A autorização anterior cobriu os cinco seams do rascunho original. Esta revisão altera flag pública e migra todos os callers, por isso exige novo acordo para: (1) --database-environment dev|prod ortogonal a --environment de trading/Binance; (2) nomes BOT_DATABASE_URL_DEV/PROD e ausência de fallback DATABASE_URL; (3) migração de todos os callers da matriz e fail-closed nos sem seletor; (4) Compose com nomes por run e validação de project labels, IDs e mount sources, sem down/prune amplo; (5) backup consistente/restaurável em banco não vazio ou exigência de target vazio; (6) backtest persist=true herdar seletor e persist=false não abrir PG.
+
+Até acordo e G1, não criar testes dependentes desses seams nem alterar parser, config, connector, migrations ou Compose.
 
 ## Produção remota e segurança
 
@@ -74,34 +84,38 @@ Em produção remota futura, não reutilizar .env local ou credenciais Docker lo
 
 Manter um único DATABASE_URL e trocar seu valor manualmente entre dev e prod exige menos código, mas não associa o alvo à seleção --environment e torna fácil conectar/migrar o banco errado. Foi rejeitada para este objetivo porque não oferece separação observável por execução. Outra alternativa, dois TOMLs com URLs, mistura segredos com configuração e amplia o risco de commit; URLs permanecem em env local.
 
-## Validação proposta após acordo
+## Matriz TDD e validação proposta após acordo
 
-- Testes unitários de resolução de ambiente verificam URL exata, variável ausente, variável vazia, variável do outro ambiente, URL inválida e redaction, sem abrir conexão.
-- Testes de integração usam containers locais novos por execução, com identidade de container/volume validada antes de conexão/migration; exercitam schema e migrations nas duas variantes sem ler .env real.
-- Testes demonstram que comando dev não consegue parar/resetar/migrar prod e que URL remota é recusada antes de socket/connect.
-- Prova de migração compara versão de schema e conjunto de migrations aplicadas nos dois bancos; falha de migration não altera o outro ambiente.
-- Execução manual local verifica health, conexão de serve e persistência backtest com dados descartáveis. Relatório não inclui URL, senha, token ou conteúdo sensível.
+| Seam | RED/GREEN após acordo | Observabilidade/efeito esperado |
+|---|---|---|
+| --database-environment | ausente/inválido/duplicado falha; dev e prod resolvem destinos diferentes | connector falso recebe zero chamadas nos erros; --environment trading não muda |
+| Resolver e env vars | escolhe só BOT_DATABASE_URL_DEV/PROD; DATABASE_URL isolada ou presente como fallback é rejeitada | zero connect/migrate e erro sem URL/segredo |
+| Callers runtime | serve, monitor, backtest, graph-projection e stores recebem mesmo DatabaseEnvironment | sem seletor todos registram zero conexão/read/write/migrate |
+| Compose resource identity | labels/container ID/volume ID/mount source corretos permitem operação; divergência aborta | nenhum comando Docker mutável no caso negativo; tentativa dev não alcança prod |
+| Schema/migration | alvo vazio migra; alvo ocupado requer backup consistente comprovável | versão/checksum por alvo; database irmão inalterado |
+| Test runner separado | BOT_PG_TEST_DATABASE_URL só via runner validado; DATABASE_URL nunca fallback | sem gate/runner, zero connect/migrate; runtime recusa marker de teste |
 
-Esta seção descreve critérios futuros, não evidência de testes já executados.
+Testes unitários são offline, usam valores-sentinela e connector falso, sem carregar .env real. Integração usa apenas runner descartável autorizado; esta seção define evidência futura e não afirma execução já realizada.
 
 ## Rollout local e rollback
 
-1. Após aprovação G1 e acordo de seams, implementar primeiro resolução/config pura e testes sem conexão.
-2. Adicionar novos serviços Compose e volumes separados sem substituir containers/volumes existentes; validar health e identidade.
-3. Criar databases vazios, aplicar migrations e executar smoke checks limitados a dados descartáveis.
-4. Configurar BOT_DATABASE_URL_DEV e BOT_DATABASE_URL_PROD localmente; iniciar cada comando com --environment explícito e revisar logs redigidos.
-5. Migrar callers legados de DATABASE_URL em fatias separadas; manter bloqueio fail-closed se caller não indicar ambiente.
+1. Após acordo dos novos seams e G1, inventariar e mapear todos os callers runtime de DATABASE_URL antes de código.
+2. Implementar --database-environment e resolver puro; provar RED/GREEN offline com connector falso.
+3. Criar projetos, containers e volumes Compose novos com run-id; validar labels, IDs e mount sources; manter o stack atual intocado.
+4. Criar targets vazios ou exigir backup consistente/restaurável; aplicar migrations e comparar versão/checksum.
+5. Migrar todos os callers da matriz em fatias pequenas, cada um exigindo DatabaseEnvironment; URL sem seletor falha fechado.
+6. Configurar BOT_DATABASE_URL_DEV/PROD localmente; usar --database-environment explícito em cada execução; revisar logs redigidos.
 
 Rollback interrompe processos, restaura configuração local anterior e seleciona os containers/volumes antigos sem apagá-los. Se uma migration tiver alterado o novo volume, recriar somente o volume descartável correspondente ou restaurar seu backup; nunca apontar rollback para o outro ambiente. Nenhuma ação remota está prevista.
 
 ## Riscos e pendências
 
-- Há vários entrypoints que podem abrir PostgreSQL; inventário completo dos callers e de quais aceitam --environment é pré-requisito de implementação.
-- DATABASE_URL é usado por código e documentação existentes; compatibilidade precisa ser delimitada sem permitir que ela contorne a nova seleção.
-- Nomes de serviços, portas, roles, volume, checks de identidade e política de dados seed precisam de confirmação no inventário do Compose local.
+- Há vários entrypoints que podem abrir PostgreSQL; auditoria do código runtime precisa provar que nenhum caller lê DATABASE_URL diretamente após a migração.
+- Novo flag e remoção do fallback DATABASE_URL são mudanças públicas e requerem acordo antes de testes/implementação.
+- Nomes, portas, roles e mounts do Compose devem ser por run-id; validação de labels, IDs e mount sources precisa ser implementada antes de qualquer operação mutável.
 - “prod local” ajuda a reproduzir configuração e migrations, mas não simula IAM, TLS, rede, backup ou operação de produção real.
 - A disponibilidade local de migrations/extensões da imagem deve ser validada nos containers novos; nenhum banco já existente é evidência automática para esse contrato.
 
 ## Decisão solicitada e estado
 
-A decisão proposta é selecionar exclusivamente por --environment e usar BOT_DATABASE_URL_DEV/BOT_DATABASE_URL_PROD com dois alvos PostgreSQL Docker independentes; bloquear fallback DATABASE_URL e qualquer destino remoto. Aguardam-se: revisão técnica independente G1 e acordo explícito do owner sobre os cinco seams acima. Até então, status permanece proposed; não implementar, alterar bancos ou executar testes.
+A proposta revisada seleciona banco exclusivamente por --database-environment dev|prod, ortogonal ao --environment de trading; usa BOT_DATABASE_URL_DEV/PROD sem fallback e migra todos os callers runtime PostgreSQL ao resolver comum; separa runner de testes; e opera somente projetos/containers/volumes novos após validar labels, IDs e mount sources. Destino remoto não é configurado. Aguardam-se novo acordo explícito dos seams materiais e revisão G1 independente. Até então, status permanece proposed; não implementar, alterar bancos ou executar testes.
