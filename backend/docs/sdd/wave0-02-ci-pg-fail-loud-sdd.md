@@ -533,3 +533,54 @@ G3 não executa conexão PG, inicia Docker, workflow/CI externo ou exchange. A e
 Alternativa rejeitada: mover somente os opt-ins PG e manter Binance/Neo4j lendo std::env em pg_integration.rs; isso deixa o gate quebrado e mantém uma única unidade com várias fontes de configuração. Também rejeitado ampliar a exceção do verify-backend-gates.sh para esse arquivo: o gate deve demonstrar que todos os env reads ficaram centralizados, não autorizar a dispersão.
 
 O status continua draft/G1 pendente. Critérios observáveis para fechar o finding: snapshot inclui as oito entradas acima; comportamento exato de opt-in preservado; nenhum acesso direto/indireto local à env em pg_integration.rs; teste estrutural prova as negativas para var e var_os e só autoriza core/config; verify-backend-gates.sh fica verde sem exceção nova. Nenhuma implementação ou execução do gate/testes ocorreu nesta atualização documental.
+## T-W0-02b G1 re-review — correção dos findings atuais
+
+> Esta revisão documental responde aos findings G1 do Critic sobre marker vazio, opt-ins solicitados mas inválidos e herança de `DATABASE_URL`. Ela prevalece sobre qualquer trecho anterior deste SDD em conflito, inclusive propostas antigas que tratavam relação vazia como ausente ou convertiam falhas pós-opt-in em `false`/skip. O estado geral continua `draft`, G1 deste item escalado pendente e implementação proibida. O veredito G1 ciclo 6/hash `5f474e3dc90052be5a7142f94b650de7f2f62f1c` cobre outro escopo histórico e não aprova esta revisão. W0-06 continua dependência conforme já definida; este delta não altera sua fronteira nem seu estado.
+
+### Marcador: ausência requer identidade independente; vazio falha fechado
+
+A função real de lookup/classificação continua sendo chamada pelos sete casos SQL transacionais via `database_for_integration_test()` e é a mesma função usada no preflight runtime. A identidade do alvo runtime deve ser validada independentemente do conteúdo do marker antes de qualquer abertura de conexão SQLx; o marker não prova identidade. Identidade não verificada resulta em falha antes do connector, pool, migration e startup.
+
+| Estado retornado pelo lookup real | Classificação | Decisão runtime antes de pool/migration |
+|---|---|---|
+| Relação ausente (`to_regclass` retorna SQL NULL) com identidade independente verificada | `UNMARKED_RUNTIME` | prosseguir somente com o alvo já validado |
+| Relação ausente sem identidade independente válida | `MARKER_LOOKUP_FAILED` | fail-closed; zero connector, pool, migration e startup |
+| Relação presente, mas vazia | `MARKER_LOOKUP_FAILED` | fail-closed; zero pool, migration e startup |
+| Exatamente uma linha com marker completo e válido | `TEST_DATABASE_MARKER_PRESENT` | recusar runtime; zero pool, migration e startup |
+| Linha inválida, múltiplas linhas, schema incompatível, permissão/timeout/conexão/query error ou resultado ambíguo | `MARKER_LOOKUP_FAILED` | fail-closed; zero pool, migration e startup |
+
+A tabela anterior que agrupava ausência e relação vazia como `UNMARKED_RUNTIME` fica substituída por esta. Nos sete cenários SQL, a relação ausente é exercitada com identidade verificada (resultado unmarked) e identidade ausente/inválida (falha sem connector); a relação presente vazia agora deve produzir `MARKER_LOOKUP_FAILED`; os outros cinco cenários mantêm suas classificações fail-closed/presente conforme o contrato. As alterações de fixture seguem na transação do banco efêmero validado, com rollback; nunca são feitas no DB da aplicação.
+
+### Opt-out separado de opt-in inválido
+
+O snapshot tipado `PgIntegrationSettings`, criado somente em `core/config`, inclui as flags PG, `BOT_RUN_NEO4J_READ_INTEGRATION`, `BOT_RUN_NEO4J_WRITE_INTEGRATION`, `BOT_RUN_BINANCE_TESTNET_ORDER`, estado de credenciais/configuração necessárias, presença de `DOCKER_HOST`/`DOCKER_CONTEXT` e `database_url_present`. `BOT_RUN_NEO4J_INTEGRATION` fica superseded por gates READ e WRITE independentes. `core/persistence/pg_integration.rs` continua sem leituras diretas/indiretas de ambiente; o gate estrutural não recebe allowlist nova.
+
+Para cada gate, ausência ou valor explícito `0` significa opt-out: skip/ignored sem resolver credenciais, construir client/driver, conectar ou executar query/assertion. O valor literal `1` significa que o efeito foi solicitado e então obriga validação completa: config presente e válida, target efêmero/identidade válidos, credenciais completas, conexão correta e permissões adequadas. Se qualquer requisito falhar após opt-in, o resultado é erro não-zero; jamais rebaixar para `false`, `None` ou skip silencioso. Qualquer outro valor do gate é erro de configuração não-zero.
+
+| Integração | Opt-out | Opt-in `=1` com requisito inválido |
+|---|---|---|
+| Neo4j READ (`BOT_RUN_NEO4J_READ_INTEGRATION`) | sem config/credencial/driver/conexão; teste ignored | config, endpoint/identidade, credencial, conexão ou prova read-only inválidos/inconclusivos → erro não-zero antes de query/assertion |
+| Neo4j WRITE (`BOT_RUN_NEO4J_WRITE_INTEGRATION`) | sem config/credencial/driver/conexão; teste ignored | target efêmero, credencial, conexão ou permissão de escrita inválidos → erro não-zero antes do teste; gate READ não autoriza WRITE |
+| Binance Spot Testnet (`BOT_RUN_BINANCE_TESTNET_ORDER`) | sem resolver credencial, client, transport ou submit | chave/secret Testnet ausente/parcial/inválida, target ou conexão inválidos → erro não-zero; nunca usar chaves/endpoint Live |
+
+READ conserva o seam de segurança definido em W0-06: pré-flight comprova negação de escrita no servidor com o mesmo principal/driver/sessão antes das queries/assertions. Falha de permissão, conexão, identidade ou resultado inconclusivo após READ opt-in é erro e não skip. Binance continua limitada ao Spot Testnet. O estado de W0-06 permanece uma dependência separada e inalterada.
+
+### `DATABASE_URL` herdada e URL dedicada
+
+A camada central lê apenas a presença de `DATABASE_URL` e armazena no snapshot um bit booleano; não copia, faz parse, exibe ou usa seu valor. Se a variável estiver presente no processo do runner PG, mesmo vazia e mesmo que `BOT_PG_TEST_DATABASE_URL` esteja configurada, a resolução falha antes de qualquer connector SQLx, pool, migration ou query. A única URL de destino permitida para integração é `BOT_PG_TEST_DATABASE_URL`, após opt-in e identidade/manifest válidos. `DATABASE_URL` jamais é fallback, seletor ou valor alternativo.
+
+### TDD e fronteira G3/G4
+
+Em G3, testes puros do snapshot/resolver demonstram: `database_url_present=false` permite apenas a URL dedicada; presença `true` resulta em erro e zero connector; opt-out Neo4j READ/WRITE e Binance dá skip com zero chamadas a resolver/client/driver; cada opt-in `=1` com config, credencial, identidade, permissão ou conexão inválida falha não-zero sem skip. Fakes provam identidade runtime antes do connector e que tabela vazia/presente/erro não chama pool factory. O gate estrutural prova centralização de env reads sem ampliar allowlist.
+
+Os sete estados do lookup SQL real são escritos/congelados em G3 e executados somente em G4 pelo runner PG efêmero validado. G4 registra RED pré-correção, retorna a G3 para correção/revisão e reexecuta o mesmo teste em G4 para GREEN; falha de setup não conta como RED. Evidência SQL G4 permanece separada de evidência offline G3. Nenhum PostgreSQL, Docker, CI, Neo4j ou exchange foi executado nesta revisão documental.
+
+### Alternativas, riscos, rollout e rollback
+
+Rejeitados: permitir runtime pool para marker table vazia; inferir identidade apenas do marker/URL/nome; converter falha de config/credenciais/permissões/conectividade após opt-in em skip; aceitar `DATABASE_URL` herdada como inofensiva ou fallback; combinar Neo4j READ e WRITE num gate. Isso pode liberar banco sem prova de identidade ou mascarar runner inválido como teste ignorado.
+
+O rollout futuro continua condicionado a G1 independente deste SDD, G3 TDD/revisão e G4 SQL no runner seguro; a dependência W0-06 permanece como já documentada. Rollback futuro reverte snapshot, validação de presence, gates, resolver e fixtures como unidade; não toca DB persistente, não afrouxa fail-closed e não adiciona exceção ao gate ambiental. Até G1, nenhuma implementação ou efeito externo é autorizado.
+
+### Estado atual e precedência
+
+Esta correção é a redação vigente de T-W0-02b para os três findings atuais. O artefato continua `draft/G1 pendente`; nenhum veredito histórico, inclusive o ciclo 6 no hash citado, é tratado como aprovação do presente escopo. As propostas antigas permanecem como histórico de desenho, mas cedem a esta seção em qualquer conflito. Próximo passo: readback e revisão independente G1; não executar código, testes, DB, Docker, CI ou exchange.
