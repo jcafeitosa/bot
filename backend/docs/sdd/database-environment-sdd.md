@@ -60,21 +60,21 @@ Cada ação nomeia explicitamente context local + project + service/container + 
 
 ## Matriz de callers runtime e ferramentas
 
-A regra proposta é abrangente: todo caller runtime que conecta, lê, escreve, migra ou apaga dados PostgreSQL recebe o mesmo DatabaseEnvironment e usa o resolver. Nenhum caller runtime aceita DATABASE_URL após a migração. Se um caminho não puder receber o seletor, falha fechado antes de resolver URL ou conectar.
+A regra proposta é abrangente: todo caller runtime que conecta, lê, escreve, migra ou apaga dados PostgreSQL recebe o mesmo --environment efetivo e usa o resolver. Nenhum caller runtime aceita DATABASE_URL após a migração. Se um caminho não puder receber o seletor, falha fechado antes de resolver URL ou conectar.
 
 | Caller / ferramenta | Classificação e operação PostgreSQL | Caminho de seleção proposto |
 |---|---|---|
-| serve / AppDatabases::bootstrap_runtime (bootstrap_http_api) | runtime transitivo: bootstrap/connect/migrations; stores de agents, bots, owner e provider credentials leem/escrevem via AppDatabases | propaga --database-environment ao resolver comum; stores não leem env por conta própria |
-| monitor / bootstrap_monitor_postgres | runtime: conexão e migrations do monitor | recebe DatabaseEnvironment; ausente → zero connect/migrate |
+| serve / AppDatabases::bootstrap_runtime (bootstrap_http_api) | runtime transitivo: bootstrap/connect/migrations; stores de agents, bots, owner e provider credentials leem/escrevem via AppDatabases | propaga o --environment compartilhado ao resolver comum; stores não leem env por conta própria |
+| monitor / bootstrap_monitor_postgres | runtime: conexão e migrations do monitor | recebe o Environment compartilhado; URL selecionada ausente → zero connect/migrate |
 | optional_postgres_for_monitor_supervisor_snapshot() | runtime transitivo: consulta snapshot/supervisor usando PostgreSQL opcional | recebe contexto do bootstrap selecionado; não chama postgres_url_from_env nem aceita DATABASE_URL; sem resolver, permanece sem DB/falha fechado |
-| backtest --persist / postgres_for_cli_persist | runtime: leitura/escrita de persistência de backtest | herda --database-environment global; persist=false não abre conexão |
-| orders CLI retention-purge | runtime CLI: abre/migra e apaga registros via postgres_url_from_env | substituir postgres_url_from_env por DatabaseEnvironment/resolver; --database-environment obrigatório; sem fallback DATABASE_URL |
-| graph-projection drain | runtime CLI: lê/escreve outbox e valida/migra PG; Neo4j é conexão separada | recebe DatabaseEnvironment no PG; Neo4j mantém seu próprio config/gate |
+| backtest --persist / postgres_for_cli_persist | runtime: leitura/escrita de persistência de backtest | herda o --environment compartilhado; persist=false não abre conexão |
+| orders CLI retention-purge | runtime CLI: abre/migra e apaga registros via postgres_url_from_env | substituir postgres_url_from_env pelo resolver do Environment compartilhado; sem fallback DATABASE_URL |
+| graph-projection drain | runtime CLI: lê/escreve outbox e valida/migra PG; Neo4j é conexão separada | recebe o Environment compartilhado no PG; Neo4j mantém seu próprio config/gate |
 | run-pg-integration-tests.sh | runner de testes de integração, não caller runtime; executa testes PG individuais | usa runner dedicado, URL BOT_PG_TEST_DATABASE_URL, gate/identity/marker; rejeita DATABASE_URL fallback antes de iniciar testes |
 | pg-v18-monitor-persistence-audit.sh | ferramenta de auditoria PG, não runtime do produto; acesso a banco só no alvo explicitamente validado | exige target/manifest isolado e URL de auditoria explícita; não faz fallback para DATABASE_URL nem escolhe dev/prod silenciosamente |
 | verify-backend-full.sh | wrapper de verificação; não conecta diretamente, pode delegar ao runner PG | encaminha apenas para run-pg-integration-tests.sh com target/gate explícitos; no modo default não resolve DATABASE_URL |
 
-Esta matriz consolida [integração dos módulos](./database-module-integration-sdd.md), [core database](./core-database-sdd.md), [configuração centralizada](./centralized-config-sdd.md) e [referência de CLI](../reference/cli-and-config.md), mais os callers/orders e scripts identificados no review. Antes do aceite de implementação, busca de código e inspeção de call graph devem confirmar a lista completa de acessos diretos/transitivos. Critério: nenhum acesso runtime residual a DATABASE_URL ou postgres_url_from_env; helpers transitivos recebem DatabaseEnvironment; scripts de teste/auditoria ficam em contratos explícitos separados e não são apresentados como comandos runtime.
+Esta matriz consolida [integração dos módulos](./database-module-integration-sdd.md), [core database](./core-database-sdd.md), [configuração centralizada](./centralized-config-sdd.md) e [referência de CLI](../reference/cli-and-config.md), mais os callers/orders e scripts identificados no review. Antes do aceite de implementação, busca de código e inspeção de call graph devem confirmar a lista completa de acessos diretos/transitivos. Critério: nenhum acesso runtime residual a DATABASE_URL ou postgres_url_from_env; helpers transitivos recebem o Environment compartilhado; scripts de teste/auditoria ficam em contratos explícitos separados e não são apresentados como comandos runtime.
 
 ## Acordo owner e pendências de seam
 
@@ -94,7 +94,7 @@ Em produção remota futura, não reutilizar .env local ou credenciais Docker lo
 
 ## Alternativa simples considerada
 
-Manter um único DATABASE_URL e trocar seu valor manualmente entre dev e prod exige menos código, mas não associa o alvo à seleção --environment e torna fácil conectar/migrar o banco errado. Foi rejeitada para este objetivo porque não oferece separação observável por execução. Outra alternativa, dois TOMLs com URLs, mistura segredos com configuração e amplia o risco de commit; URLs permanecem em env local.
+A opção escolhida pelo owner reutiliza o `--environment` existente para selecionar conjuntamente exchange e banco, mantendo os dois domínios coerentes. A alternativa de trocar manualmente um único `DATABASE_URL` foi rejeitada porque permite conectar/migrar o banco errado. URLs permanecem em env local; dois TOMLs com URLs misturariam segredos à configuração.
 
 ## Matriz TDD e validação proposta após acordo
 
@@ -102,7 +102,7 @@ Manter um único DATABASE_URL e trocar seu valor manualmente entre dev e prod ex
 |---|---|---|
 | --environment compartilhado | dev e prod mapeiam em pares coerentes exchange+DB; nenhuma opção de DB separada | teste puro prova mapping dev→testnet+URL_DEV e prod→live+URL_PROD; trading e DB nunca divergem |
 | Resolver e env vars | Environment seleciona só BOT_DATABASE_URL_DEV/PROD; nenhum DATABASE_URL runtime/fallback | URL ausente/vazia falha antes de connect/migrate; nenhum segredo em erro/log |
-| serve + stores transitivos | bootstrap, owner, agents, bots, provider credentials recebem DatabaseEnvironment | sem seletor zero connect/read/write/migrate |
+| serve + stores transitivos | bootstrap, owner, agents, bots, provider credentials recebem o Environment compartilhado | sem seleção válida/URL zero connect/read/write/migrate |
 | monitor + optional_postgres_for_monitor_supervisor_snapshot() | contexto selecionado propaga ao caminho auxiliar; flag ausente falha fechado | zero resolução por postgres_url_from_env e zero query sem seletor |
 | backtest e orders retention-purge | persist=true e purge recebem o seletor; persist=false não abre PG | sem seletor zero connect/migrate/delete; ambiente trading não escolhe DB |
 | graph-projection drain | PG outbox usa destino selecionado; Neo4j é independente | zero PG access sem seletor |
@@ -123,15 +123,15 @@ Testes unitários são offline, usam sentinelas e connector falso, sem carregar 
 3. Validar o Docker context/socket local e daemon identity, sem overrides, antes de qualquer operação mutável.
 4. Criar uma vez projeto/container/volume persistente por ambiente com environment-id estável e porta host fixa; manifest liga deterministicamente URL→project/container/port/image/volume/mount; manter stack atual intocado.
 5. Criar targets vazios ou exigir backup consistente/restaurável; aplicar migrations e comparar versão/checksum.
-6. Migrar todos os callers da matriz em fatias pequenas, cada um exigindo DatabaseEnvironment; URL sem seletor falha fechado.
-7. Configurar BOT_DATABASE_URL_DEV/PROD localmente; usar --database-environment explícito. Stop/start preserva URL e environment-id; revisar logs redigidos.
+6. Migrar todos os callers da matriz em fatias pequenas, cada um usando o Environment compartilhado; seleção/URL inválida falha fechado.
+7. Configurar BOT_DATABASE_URL_DEV/PROD localmente; usar `--environment dev|prod`. Dev seleciona Testnet + URL_DEV e prod seleciona live + URL_PROD. Stop/start preserva URL e environment-id; revisar logs redigidos.
 
 Rollback interrompe somente os container IDs validados, restaura configuração e backup consistente do mesmo environment-id se migration exigir; URL e porta continuam apontando para aquele manifest. Não recriar silenciosamente volume de stack persistente nem mudar para environment-id novo. Destroy é operação distinta, explícita e identificada por environment-id, com backup restaurável ou prova de vazio e remoção apenas após revalidar IDs/mounts. Nunca apontar prod para dev. Nenhuma ação remota está prevista.
 
 ## Riscos e pendências
 
 - Há vários entrypoints que podem abrir PostgreSQL; auditoria do código runtime precisa provar que nenhum caller lê DATABASE_URL diretamente após a migração.
-- Novo flag e remoção do fallback DATABASE_URL são mudanças públicas e requerem acordo antes de testes/implementação.
+- O seam unificado `--environment` e a remoção do fallback `DATABASE_URL` requerem G1 independente antes de implementação.
 - Nomes, portas, roles e mounts do Compose devem vincular ao environment-id estável; validação de labels, IDs e mount sources precisa ser implementada antes de qualquer operação mutável.
 - “prod local” ajuda a reproduzir configuração e migrations, mas não simula IAM, TLS, rede, backup ou operação de produção real.
 - A disponibilidade local de migrations/extensões da imagem deve ser validada nos containers novos; nenhum banco já existente é evidência automática para esse contrato.
